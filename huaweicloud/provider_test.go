@@ -47,16 +47,8 @@ var (
 	HW_CLOUDTABLE_AVAILABILITY_ZONE = os.Getenv("HW_CLOUDTABLE_AVAILABILITY_ZONE")
 	HW_CDN_DOMAIN_NAME              = os.Getenv("HW_CDN_DOMAIN_NAME")
 	HW_ADMIN                        = os.Getenv("HW_ADMIN")
-	HW_CHARGING_MODE                = os.Getenv("HW_CHARGING_MODE")
 	HW_ENTERPRISE_PROJECT_ID_TEST   = os.Getenv("HW_ENTERPRISE_PROJECT_ID_TEST")
 	HW_USER_ID                      = os.Getenv("HW_USER_ID")
-
-	HW_CERTIFICATE_KEY_PATH         = os.Getenv("HW_CERTIFICATE_KEY_PATH")
-	HW_CERTIFICATE_CHAIN_PATH       = os.Getenv("HW_CERTIFICATE_CHAIN_PATH")
-	HW_CERTIFICATE_PRIVATE_KEY_PATH = os.Getenv("HW_CERTIFICATE_PRIVATE_KEY_PATH")
-	HW_CERTIFICATE_SERVICE          = os.Getenv("HW_CERTIFICATE_SERVICE")
-	HW_CERTIFICATE_PROJECT          = os.Getenv("HW_CERTIFICATE_PROJECT")
-	HW_CERTIFICATE_PROJECT_UPDATED  = os.Getenv("HW_CERTIFICATE_PROJECT_UPDATED")
 )
 
 var testAccProviders map[string]*schema.Provider
@@ -79,12 +71,6 @@ func testAccPreCheck(t *testing.T) {
 func testAccPrecheckCustomRegion(t *testing.T) {
 	if HW_CUSTOM_REGION_NAME == "" {
 		t.Skip("This environment does not support custom region tests")
-	}
-}
-
-func testAccPreCheckChargingMode(t *testing.T) {
-	if HW_CHARGING_MODE != "prePaid" {
-		t.Skip("This environment does not support prepaid tests")
 	}
 }
 
@@ -199,12 +185,6 @@ func testAccPreCheckProjectID(t *testing.T) {
 func testAccAsConfigPreCheck(t *testing.T) {
 	if HW_FLAVOR_ID == "" {
 		t.Skip("HW_FLAVOR_ID must be set for acceptance tests")
-	}
-}
-
-func testAccPreCheckBms(t *testing.T) {
-	if HW_USER_ID == "" {
-		t.Skip("HW_USER_ID must be set for BMS acceptance tests")
 	}
 }
 
@@ -355,14 +335,4 @@ func envVarFile(varName string) (string, error) {
 		return "", fmtp.Errorf("Error closing temp file: %s", err)
 	}
 	return tmpFile.Name(), nil
-}
-
-func testAccPreCheckScm(t *testing.T) {
-	if HW_CERTIFICATE_KEY_PATH == "" || HW_CERTIFICATE_CHAIN_PATH == "" ||
-		HW_CERTIFICATE_PRIVATE_KEY_PATH == "" || HW_CERTIFICATE_SERVICE == "" ||
-		HW_CERTIFICATE_PROJECT == "" || HW_CERTIFICATE_PROJECT_UPDATED == "" {
-		t.Skip("HW_CERTIFICATE_KEY_PATH, HW_CERTIFICATE_CHAIN_PATH, HW_CERTIFICATE_PRIVATE_KEY_PATH, " +
-			"HW_CERTIFICATE_SERVICE, HW_CERTIFICATE_PROJECT and HW_CERTIFICATE_TARGET_UPDATED " +
-			"can not be empty for SCM certificate tests")
-	}
 }

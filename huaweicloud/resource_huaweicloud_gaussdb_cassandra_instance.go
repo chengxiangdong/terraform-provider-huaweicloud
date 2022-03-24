@@ -98,6 +98,13 @@ func resourceGeminiDBInstanceV3() *schema.Resource {
 			"dedicated_resource_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+				ForceNew: true,
+			},
+			"dedicated_resource_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 				ForceNew: true,
 			},
 			"datastore": {
@@ -128,9 +135,6 @@ func resourceGeminiDBInstanceV3() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"3.11",
-							}, true),
 						},
 					},
 				},
@@ -359,6 +363,29 @@ func resourceGeminiDBInstanceV3Create(d *schema.ResourceData, meta interface{}) 
 		createOpts.Ssl = "1"
 	}
 
+	// dedicated resource
+	if d.Get("dedicated_resource_id") == "" && d.Get("dedicated_resource_name") != "" {
+		pages, err := instances.ListDeh(client).AllPages()
+		if err != nil {
+			return fmtp.Errorf("Unable to retrieve dedicated resources: %s", err)
+		}
+		allResources, err := instances.ExtractDehResources(pages)
+		if err != nil {
+			return fmtp.Errorf("Unable to extract dedicated resources: %s", err)
+		}
+
+		derName := d.Get("dedicated_resource_name").(string)
+		for _, der := range allResources.Resources {
+			if der.ResourceName == derName {
+				createOpts.DedicatedResourceId = der.Id
+				break
+			}
+		}
+		if createOpts.DedicatedResourceId == "" {
+			return fmtp.Errorf("Unable to find dedicated resource named %s", derName)
+		}
+	}
+
 	// PrePaid
 	if d.Get("charging_mode") == "prePaid" {
 		if err := validatePrePaidChargeInfo(d); err != nil {
@@ -445,6 +472,25 @@ func resourceGeminiDBInstanceV3Read(d *schema.ResourceData, meta interface{}) er
 	d.Set("dedicated_resource_id", instance.DedicatedResourceId)
 	d.Set("mode", instance.Mode)
 	d.Set("db_user_name", instance.DbUserName)
+
+	if instance.DedicatedResourceId != "" {
+		pages, err := instances.ListDeh(client).AllPages()
+		if err != nil {
+			logp.Printf("[DEBUG] Unable to retrieve dedicated resources: %s", err)
+		} else {
+			allResources, err := instances.ExtractDehResources(pages)
+			if err != nil {
+				logp.Printf("[DEBUG] Unable to extract dedicated resources: %s", err)
+			} else {
+				for _, der := range allResources.Resources {
+					if der.Id == instance.DedicatedResourceId {
+						d.Set("dedicated_resource_name", der.ResourceName)
+						break
+					}
+				}
+			}
+		}
+	}
 
 	if dbPort, err := strconv.Atoi(instance.Port); err == nil {
 		d.Set("port", dbPort)
@@ -644,7 +690,7 @@ func resourceGeminiDBInstanceV3Update(d *schema.ResourceData, meta interface{}) 
 		if len(configParams) != len(instanceConfigParams) {
 			return fmtp.Errorf("Error updating configuration for instance: %s", d.Id())
 		}
-		for i, _ := range configParams {
+		for i := range configParams {
 			if !configParams[i].ReadOnly && configParams[i] != instanceConfigParams[i] {
 				return fmtp.Errorf("Error updating configuration for instance: %s", d.Id())
 			}
@@ -691,14 +737,14 @@ func resourceGeminiDBInstanceV3Update(d *schema.ResourceData, meta interface{}) 
 			if err != nil {
 				return err
 			}
-			volume_size := 0
+			volumeSize := 0
 			for _, group := range instance.Groups {
 				if volSize, err := strconv.Atoi(group.Volume.Size); err == nil {
-					volume_size = volSize
+					volumeSize = volSize
 					break
 				}
 			}
-			if volume_size != d.Get("volume_size").(int) {
+			if volumeSize != d.Get("volume_size").(int) {
 				return fmtp.Errorf("Error extending volume for instance %s: order failed", d.Id())
 			}
 		}
@@ -708,9 +754,9 @@ func resourceGeminiDBInstanceV3Update(d *schema.ResourceData, meta interface{}) 
 		old, newnum := d.GetChange("node_num")
 		if newnum.(int) > old.(int) {
 			//Enlarge Nodes
-			expand_size := newnum.(int) - old.(int)
+			expandSize := newnum.(int) - old.(int)
 			enlargeNodeOpts := instances.EnlargeNodeOpts{
-				Num: expand_size,
+				Num: expandSize,
 			}
 			if d.Get("charging_mode") == "prePaid" {
 				enlargeNodeOpts.IsAutoPay = "true"
@@ -752,9 +798,7 @@ func resourceGeminiDBInstanceV3Update(d *schema.ResourceData, meta interface{}) 
 				}
 				nodeNum := 0
 				for _, group := range instance.Groups {
-					for _, _ = range group.Nodes {
-						nodeNum += 1
-					}
+					nodeNum += len(group.Nodes)
 				}
 				if nodeNum != newnum.(int) {
 					return fmtp.Errorf("Error enlarging node for instance %s: order failed", d.Id())
@@ -763,13 +807,13 @@ func resourceGeminiDBInstanceV3Update(d *schema.ResourceData, meta interface{}) 
 		}
 		if newnum.(int) < old.(int) {
 			//Reduce Nodes
-			shrink_size := old.(int) - newnum.(int)
+			shrinkSize := old.(int) - newnum.(int)
 			reduceNodeOpts := instances.ReduceNodeOpts{
 				Num: 1,
 			}
 			logp.Printf("[DEBUG] Reduce Node Options: %+v", reduceNodeOpts)
 
-			for i := 0; i < shrink_size; i++ {
+			for i := 0; i < shrinkSize; i++ {
 				result := instances.ReduceNode(client, d.Id(), reduceNodeOpts)
 				if result.Err != nil {
 					return fmtp.Errorf("Error shrinking huaweicloud_gaussdb_cassandra_instance %s node size: %s", d.Id(), result.Err)
@@ -930,8 +974,8 @@ func resourceGeminiDBInstanceV3Update(d *schema.ResourceData, meta interface{}) 
 		var updateOpts backups.UpdateOpts
 		backupRaw := d.Get("backup_strategy").([]interface{})
 		rawMap := backupRaw[0].(map[string]interface{})
-		keep_days := rawMap["keep_days"].(int)
-		updateOpts.KeepDays = &keep_days
+		keepDays := rawMap["keep_days"].(int)
+		updateOpts.KeepDays = &keepDays
 		updateOpts.StartTime = rawMap["start_time"].(string)
 		// Fixed to "1,2,3,4,5,6,7"
 		updateOpts.Period = "1,2,3,4,5,6,7"

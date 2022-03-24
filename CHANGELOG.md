@@ -1,5 +1,284 @@
 # CHANGELOG
 
+## 1.34.1 (March 4, 2022)
+
+* **New Resurce:**
+  + `huaweicloud_vpc_address_group` [GH-1972]
+  + `huaweicloud_fgs_dependency` [GH-1999]
+
+* **New Data Source:**
+  + `huaweicloud_networking_secgroups` [GH-1992]
+
+ENHANCEMENTS:
+
+* support EPS Authorization for the following resources or data sources:
+  + huaweicloud_evs_volumes [GH-1995]
+  + huaweicloud_compute_instance [GH-1996]
+  + huaweicloud_as [GH-1983]
+
+## 1.34.0 (February 28, 2022)
+
+* **New Resurce:**
+  + `huaweicloud_drs_job` [GH-1978]
+  + `huaweicloud_modelarts_notebook` [GH-1920]
+  + `huaweicloud_modelarts_notebook_mount_storage` [GH-1941]
+
+* **New Data Source:**
+  + `huaweicloud_modelarts_notebook_images` [GH-1921]
+
+ENHANCEMENTS:
+
+* config: update all versions for a specified customizing service endpoint [GH-1967]
+* resource/huaweicloud_fgs_trigger: support apig type for trigger [GH-1982]
+* resource/huaweicloud_evs_volume: support prepaid resource creation [GH-1945]
+* resource/huaweicloud_cbr_policy: support long-term retention settings [GH-1971]
+* support EPS Authorization for the following resources or data sources:
+  + huaweicloud_vpc [GH-1958]
+  + huaweicloud_vpc_eip [GH-1968]
+  + huaweicloud_vpc_bandwidth [GH-1968]
+  + huaweicloud_networking_secgroup [GH-1913]
+  + huaweicloud_networking_secgroup_rule [GH-1913]
+  + huaweicloud_images_image [GH-1943]
+
+BUG FIXES:
+
+* dns: do not update other fields when only tags was changed [GH-1957]
+* resource/huaweicloud_compute_instance: fix regexp error for IsIPv4Address [GH-1944]
+
+## 1.33.0 (January 29, 2022)
+
+* **New Resurce:**
+  + `huaweicloud_csms_secret` [GH-1889]
+
+* **New Data Source:**
+  + `huaweicloud_gaussdb_nosql_flavors` [GH-1862]
+  + `huaweicloud_css_flavors` [GH-1895]
+  + `huaweicloud_csms_secret_version` [GH-1898]
+
+ENHANCEMENTS:
+
+* Authentication: Add ECS metadata API authentication support [GH-1907]
+* rename `huaweicloud_networking_eip_associate` to `huaweicloud_vpc_eip_associate` resource [GH-1908]
+* resource/huaweicloud_vpc_bandwidth: add `publicips` attribute [GH-1888]
+* resource/huaweicloud_vpc_eip: add `port_id` attribute [GH-1916]
+* resource/huaweicloud_cce_node: support `password` as plain or salted format [GH-1918]
+* resource/huaweicloud_compute_eip_associate: support to associate IPv6 address to a shared bandwidth [GH-1919]
+* resource/huaweicloud_gaussdb_cassandra_instance: add `dedicated_resource_name` support [GH-1925]
+* resource/huaweicloud_lb_*: update shared ELB resources with v2 API [GH-1900]
+
+BUG FIXES:
+
+* resource/huaweicloud_elb_loadbalancer: release eip when deleting the loadbalancer [GH-1893]
+* resource/huaweicloud_nat_dnat_rule: add checkDeleted in read function [GH-1899]
+
+DEPRECATE:
+
+* resource/huaweicloud_dms_group [GH-1878]
+* resource/huaweicloud_dms_queue [GH-1880]
+
+## 1.32.1 (January 11, 2022)
+
+ENHANCEMENTS:
+
+* resource/huaweicloud_compute_eip_associate: add `port_id` attribute [GH-1864]
+* resource/huaweicloud_lb_certificate: support `enterprise_project_id` field [GH-1865]
+
+BUG FIXES:
+
+* resource/huaweicloud_evs_volume: fix incorrect device_type configuration [GH-1852]
+* resource/huaweicloud_vpc_eip: set `port_id` to computed and deprecated [GH-1856]
+* resource/huaweicloud_dms_kafka_topic: fix an API issue when updating [GH-1874]
+* fix a URL splicing error for customizing endpoint of IAM service [GH-1866]
+
+## 1.32.0 (December 31, 2021)
+
+* **New Resurce:**
+  + `huaweicloud_cdm_link` [GH-1819]
+  + `huaweicloud_cdm_job` [GH-1840]
+
+* **New Data Source:**
+  + `huaweicloud_vpc_eips` [GH-1792]
+  + `huaweicloud_evs_volumes` [GH-1794]
+  + `huaweicloud_rds_instances` [GH-1826]
+
+ENHANCEMENTS:
+
+* resource/huaweicloud_elb_pool: make name and description can be updated to empty [GH-1816]
+* resource/huaweicloud_networking_vip: support IPv6 function [GH-1818]
+* resource/huaweicloud_vpc_eip: support IPv6 function [GH-1821]
+* resource/huaweicloud_compute_instance: support IPv6 function [GH-1834]
+
+BUG FIXES:
+
+* resource/huaweicloud_compute_instance: fix checkdeleted issue [GH-1793]
+* resource/huaweicloud_cbr_vaults: fix the resources cannot be removed [GH-1796]
+* resource/huaweicloud_vpc_subnet: retry to delete when the error code was 403 [GH-1841]
+* resource/huaweicloud_lb_*: don't resty to create resources when an error occurs [GH-1842]
+
+DEPRECATE:
+
+* data/huaweicloud_dms_az [GH-1828]
+
+## 1.31.1 (December 10, 2021)
+
+* **New Resurce:**
+  + `huaweicloud_dli_flinkjar_job` [GH-1666]
+  + `huaweicloud_dli_permission` [GH-1695]
+  + `huaweicloud_identity_provider` [GH-1625]
+  + `huaweicloud_identity_provider_conversion` [GH-1737]
+  + `huaweicloud_waf_instance_group_associate` [GH-1684]
+
+* **New Data Source:**
+  + `huaweicloud_cbr_vaults` [GH-1687]
+  + `huaweicloud_obs_buckets` [GH-1691]
+  + `huaweicloud_iec_bandwidths` [GH-1762]
+
+ENHANCEMENTS:
+
+* resource/huaweicloud_iec_eip: support multi line [GH-1755]
+* resource/huaweicloud_fgs_function: add encrypted user data support [GH-1766]
+* resource/huaweicloud_dis_stream: add `partitions` attribute [GH-1771]
+* resource/huaweicloud_mapreduce_cluster: support `public_ip` parameter [GH-1765]
+* resoure/huaweicloud_dms_kafka_instance: support to update storage capacity and bandwidth [GH-1776]
+* data/huaweicloud_rds_flavors: add availability_zone filter [GH-1767]
+
+BUG FIXES:
+
+* resource/huaweicloud_rds_configuration: ignore case for `type` [GH-1756]
+
+Removed:
+
+* data/huaweicloud_dis_partition [GH-1768]
+
+## 1.31.0 (November 30, 2021)
+
+* **New Resurce:**
+  + `huaweicloud_cci_namespace` [GH-1648]
+  + `huaweicloud_swr_repository_sharing` [GH-1671]
+  + `huaweicloud_enterprise_project` [GH-1731]
+  + `huaweicloud_cci_network` [GH-1726]
+
+* **New Data Source:**
+  + `huaweicloud_rds_engine_versions` [GH-1729]
+  + `huaweicloud_vpcs` [GH-1694]
+  + `huaweicloud_vpc_subnets` [GH-1707]
+
+ENHANCEMENTS:
+
+* resource/huaweicloud_gaussdb_mysql_instance: Add configuration_name and dedicated_resource_name [GH-1709]
+* resource/huaweicloud_kms_key: Add key_algorithm parameter [GH-1712]
+* data/huaweicloud_iec_sites: Add lines attribute [GH-1733]
+* resource/huaweicloud_compute_instance: Add source_dest_check parameter [GH-1727]
+* resource/huaweicloud_iec_vip: Add ip_address support [GH-1736]
+* resource/huaweicloud_identity_user: Add pwd_reset support [GH-1725]
+
+BUG FIXES:
+
+* resource/huaweicloud_evs_volume: Fix update of tag [GH-1705]
+* resource/huaweicloud_elb_pool: Add HTTPS and QUIC to protocl [GH-1715]
+* resource/huaweicloud_obs_bucket: Ignore FsNotSupport error [GH-1723]
+
+## 1.30.1 (November 27, 2021)
+
+BUG FIXES:
+
+* data/huaweicloud_gaussdb_mysql_instances: Update public_ips type [GH-1740]
+
+## 1.30.0 (October 30, 2021)
+
+* **New Resurce:**
+  + `huaweicloud_apig_api_publishment` [GH-1595]
+  + `huaweicloud_cce_namespace` [GH-1650]
+  + `huaweicloud_dli_database` [GH-1607]
+  + `huaweicloud_dli_table` [GH-1621]
+  + `huaweicloud_dli_package` [GH-1622]
+  + `huaweicloud_dli_sql_job` [GH-1623]
+  + `huaweicloud_dli_spark_job` [GH-1651]
+  + `huaweicloud_dli_flinksql_job` [GH-1659]
+  + `huaweicloud_gaussdb_mysql_proxy` [GH-1635]
+  + `huaweicloud_swr_organization_permissions` [GH-1575]
+  + `huaweicloud_swr_repository` [GH-1658]
+  + `huaweicloud_waf_instance_group` [GH-1628]
+
+* **New Data Source:**
+  + `huaweicloud_compute_instances` [GH-1645]
+  + `huaweicloud_dws_flavors` [GH-1593]
+  + `huaweicloud_gaussdb_cassandra_flavors` [GH-1652]
+  + `huaweicloud_waf_instance_groups` [GH-1637]
+
+ENHANCEMENTS:
+
+* cce: Support data volume encryption [GH-1616]
+* vpc: Add `description` field and deprecate `routes` field [GH-1644]
+* resource/huaweicloud_dds_instance: Support import function [GH-1613]
+* resource/huaweicloud_gaussdb_redis_instance: Support to update `flavor` and `security_group_id` fields  [GH-1576]
+* resource/huaweicloud_waf_dedicated_instance: Add `group_id` parameter [GH-1638]
+* resource/huaweicloud_vpc_route_table: Support more than 5 routes when creating [GH-1624]
+* resource/huaweicloud_vpc_route: Support `description` and more route types [GH-1619]
+* data/huaweicloud_images_image: Add more querying options: name_regex, architecture, os, os_version and image_type [GH-1597]
+* data/huaweicloud_gaussdb_mysql_flavors: Add `type` and `az_status` attributes [GH-1614]
+* data/huaweicloud_waf_dedicated_instances: Add `group_id` attribute [GH-1640]
+* data/huaweicloud_waf_reference_tables: Support to filter data by `name` [GH-1570]
+
+BUG FIXES:
+
+* cce: add missing ForceNew limits [GH-1582]
+* data/huaweicloud_vpc_route_table: Retrieve the default route table if name was not specified [GH-1643]
+
+DEPRECATE:
+
+* resource/huaweicloud_images_image_v2 [GH-1604]
+* data/huaweicloud_vpc_route_ids [GH-1641]
+* data/huaweicloud_vpc_route [GH-1641]
+
+## 1.29.2 (October 9, 2021)
+
+BUG FIXES:
+
+* resource/huaweicloud_dns_recordset: Update to use region client for private zone [GH-1579]
+
+## 1.29.1 (October 6, 2021)
+
+ENHANCEMENTS:
+
+* resource/huaweicloud_cce_pvc: Update with kubernetes API [GH-1572]
+
+## 1.29.0 (September 29, 2021)
+
+* **New Resurce:**
+  + `huaweicloud_vpc_route_table` [GH-1359]
+  + `huaweicloud_fgs_trigger` [GH-1372]
+  + `huaweicloud_css_thesaurus` [GH-1513]
+  + `huaweicloud_cce_pvc` [GH-1552]
+
+* **New Data Source:**
+  + `huaweicloud_gaussdb_opengauss_instances` [GH-1483]
+  + `huaweicloud_identity_group` [GH-1485]
+  + `huaweicloud_vpc_route_table` [GH-1493]
+  + `huaweicloud_dcs_flavors` [GH-1498]
+  + `huaweicloud_bms_flavors` [GH-1557]
+
+ENHANCEMENTS:
+
+* IAM: Make `domain_name` optional for IAM resources [GH-1480]
+* data/huaweicloud_rds_flavors: Support vcpus and memory arguments [GH-1484]
+* resource/huaweicloud_obs_bucket: Support default encryption for a bucket [GH-1518]
+* resource/huaweicloud_compute_keypair: Add key file parameter of the private key creation path [GH-1524]
+* resource/huaweicloud_dcs_instance: Upgrade DCS API version to V2 [GH-1547]
+* resource/huaweicloud_cce_node_attach: Support reset operation [GH-1555]
+
+BUG FIXES:
+
+* resource/huaweicloud_cce_addon: Support json string in values block [GH-1479]
+* resource/huaweicloud_vpc_eip: Check whether the eip exists before delete [GH-1522]
+* resource/huaweicloud_mapreduce_cluster: fix the type error when handling assigned_roles of node [GH-1526]
+* resource/huaweicloud_identity_group_membership: Check whether the user exists before remove [GH-1533]
+
+DEPRECATE:
+
+* data/huaweicloud_dcs_az [GH-1521]
+* data/huaweicloud_dcs_product [GH-1521]
+
 ## 1.28.1 (September 3, 2021)
 
 ENHANCEMENTS:

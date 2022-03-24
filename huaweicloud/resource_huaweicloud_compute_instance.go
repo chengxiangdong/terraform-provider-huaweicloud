@@ -2,15 +2,12 @@ package huaweicloud
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/blockstorage/extensions/volumeactions"
-	"github.com/chnsz/golangsdk/openstack/blockstorage/v2/volumes"
 	"github.com/chnsz/golangsdk/openstack/common/tags"
 	"github.com/chnsz/golangsdk/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/chnsz/golangsdk/openstack/compute/v2/extensions/keypairs"
@@ -22,9 +19,11 @@ import (
 	"github.com/chnsz/golangsdk/openstack/ecs/v1/block_devices"
 	"github.com/chnsz/golangsdk/openstack/ecs/v1/cloudservers"
 	"github.com/chnsz/golangsdk/openstack/ecs/v1/powers"
+	"github.com/chnsz/golangsdk/openstack/evs/v2/cloudvolumes"
 	"github.com/chnsz/golangsdk/openstack/ims/v2/cloudimages"
 	"github.com/chnsz/golangsdk/openstack/networking/v1/subnets"
-	"github.com/chnsz/golangsdk/openstack/networking/v2/extensions/security/groups"
+	"github.com/chnsz/golangsdk/openstack/networking/v2/ports"
+	"github.com/chnsz/golangsdk/openstack/networking/v3/security/groups"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -70,7 +69,8 @@ func ResourceComputeInstanceV2() *schema.Resource {
 			},
 			"availability_zone": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				Computed: true,
 				ForceNew: true,
 			},
 			"name": {
@@ -117,6 +117,7 @@ func ResourceComputeInstanceV2() *schema.Resource {
 				Type:          schema.TypeSet,
 				Optional:      true,
 				Computed:      true,
+				Description:   "schema: Computed",
 				ConflictsWith: []string{"security_group_ids"},
 				Elem:          &schema.Schema{Type: schema.TypeString},
 				Set:           schema.HashString,
@@ -136,16 +137,23 @@ func ResourceComputeInstanceV2() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"uuid": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ForceNew: true,
-							Computed: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							ForceNew:    true,
+							Computed:    true,
+							Description: "schema: Required",
 						},
 						"port": {
-							Type:     schema.TypeString,
+							Type:        schema.TypeString,
+							Optional:    true,
+							ForceNew:    true,
+							Computed:    true,
+							Description: "schema: Computed",
+						},
+						"ipv6_enable": {
+							Type:     schema.TypeBool,
 							Optional: true,
 							ForceNew: true,
-							Computed: true,
 						},
 						"fixed_ip_v4": {
 							Type:     schema.TypeString,
@@ -153,11 +161,17 @@ func ResourceComputeInstanceV2() *schema.Resource {
 							ForceNew: true,
 							Computed: true,
 						},
-						"fixed_ip_v6": {
-							Type:     schema.TypeString,
+						"source_dest_check": {
+							Type:     schema.TypeBool,
 							Optional: true,
-							ForceNew: true,
 							Computed: true,
+						},
+						"fixed_ip_v6": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							ForceNew:    true,
+							Computed:    true,
+							Description: "schema: Computed",
 						},
 						"mac": {
 							Type:     schema.TypeString,
@@ -249,15 +263,7 @@ func ResourceComputeInstanceV2() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				// just stash the hash for state & diff comparisons
-				StateFunc: func(v interface{}) string {
-					switch v.(type) {
-					case string:
-						hash := sha1.Sum([]byte(v.(string)))
-						return hex.EncodeToString(hash[:])
-					default:
-						return ""
-					}
-				},
+				StateFunc: utils.HashAndHexEncode,
 			},
 			"stop_before_destroy": {
 				Type:     schema.TypeBool,
@@ -294,10 +300,9 @@ func ResourceComputeInstanceV2() *schema.Resource {
 				ForceNew: true,
 			},
 			"tags": {
-				Type:         schema.TypeMap,
-				Optional:     true,
-				ValidateFunc: utils.ValidateECSTagValue,
-				Elem:         &schema.Schema{Type: schema.TypeString},
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"power_action": {
 				Type:     schema.TypeString,
@@ -429,6 +434,14 @@ func resourceComputeInstanceV2Create(d *schema.ResourceData, meta interface{}) e
 	if err != nil {
 		return fmtp.Errorf("Error creating HuaweiCloud image client: %s", err)
 	}
+	nicClient, err := config.NetworkingV2Client(GetRegion(d, config))
+	if err != nil {
+		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+	}
+
+	if err := validateComputeInstanceConfig(d, config); err != nil {
+		return err
+	}
 
 	// Determines the Image ID using the following rules:
 	// If a bootable block_device was specified, ignore the image altogether.
@@ -454,7 +467,7 @@ func resourceComputeInstanceV2Create(d *schema.ResourceData, meta interface{}) e
 	if !hasFilledOpt(d, "block_device") && !hasFilledOpt(d, "metadata") {
 		ecsV11Client, err := config.ComputeV11Client(GetRegion(d, config))
 		vpcClient, err := config.NetworkingV1Client(GetRegion(d, config))
-		sgClient, err := config.NetworkingV2Client(GetRegion(d, config))
+		sgClient, err := config.NetworkingV3Client(GetRegion(d, config))
 		if err != nil {
 			return fmtp.Errorf("Error creating HuaweiCloud Client: %s", err)
 		}
@@ -505,9 +518,8 @@ func resourceComputeInstanceV2Create(d *schema.ResourceData, meta interface{}) e
 		}
 
 		var metadata cloudservers.MetaData
-		if hasFilledOpt(d, "user_id") {
-			metadata.OpSvcUserId = d.Get("user_id").(string)
-		}
+		metadata.OpSvcUserId = getOpSvcUserID(d, config)
+
 		if hasFilledOpt(d, "agency_name") {
 			metadata.AgencyName = d.Get("agency_name").(string)
 		}
@@ -660,13 +672,33 @@ func resourceComputeInstanceV2Create(d *schema.ResourceData, meta interface{}) e
 		}
 	}
 
-	return resourceComputeInstanceV2Read(d, meta)
+	if err := resourceComputeInstanceV2Read(d, meta); err != nil {
+		return err
+	}
+
+	// note: as "network.port" is optional, we shoud use it after resourceComputeInstanceV2Read
+	networks := d.Get("network").([]interface{})
+	for _, v := range networks {
+		nic := v.(map[string]interface{})
+		nicPort := nic["port"].(string)
+		if nicPort == "" {
+			continue
+		}
+
+		if sourceDestCheck := nic["source_dest_check"].(bool); !sourceDestCheck {
+			if err := disableSourceDestCheck(nicClient, nicPort); err != nil {
+				return fmtp.Errorf("Error disable source dest check on port(%s) of instance(%s) failed: %s", nicPort, d.Id(), err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func resourceComputeInstanceV2Read(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*config.Config)
 	ecsClient, err := config.ComputeV1Client(GetRegion(d, config))
-	blockStorageClient, err := config.BlockStorageV3Client(GetRegion(d, config))
+	blockStorageClient, err := config.BlockStorageV2Client(GetRegion(d, config))
 	if err != nil {
 		return fmtp.Errorf("Error creating HuaweiCloud client: %s", err)
 	}
@@ -678,6 +710,11 @@ func resourceComputeInstanceV2Read(d *schema.ResourceData, meta interface{}) err
 	server, err := cloudservers.Get(ecsClient, d.Id()).Extract()
 	if err != nil {
 		return CheckDeleted(d, err, "compute instance")
+	} else {
+		if server.Status == "DELETED" {
+			d.SetId("")
+			return nil
+		}
 	}
 
 	logp.Printf("[DEBUG] Retrieved compute instance %s: %+v", d.Id(), server)
@@ -767,7 +804,7 @@ func resourceComputeInstanceV2Read(d *schema.ResourceData, meta interface{}) err
 		bds := make([]map[string]interface{}, len(server.VolumeAttached))
 		for i, b := range server.VolumeAttached {
 			// retrieve volume `size` and `type`
-			volumeInfo, err := volumes.Get(blockStorageClient, b.ID).Extract()
+			volumeInfo, err := cloudvolumes.Get(blockStorageClient, b.ID).Extract()
 			if err != nil {
 				return err
 			}
@@ -958,6 +995,18 @@ func resourceComputeInstanceV2Update(d *schema.ResourceData, meta interface{}) e
 		}
 	}
 
+	if d.HasChange("network") {
+		var err error
+		nicClient, err := config.NetworkingV2Client(GetRegion(d, config))
+		if err != nil {
+			return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		}
+
+		if err := updateSourceDestCheck(d, nicClient); err != nil {
+			return err
+		}
+	}
+
 	if d.HasChange("tags") {
 		ecsClient, err := config.ComputeV1Client(GetRegion(d, config))
 		if err != nil {
@@ -1096,11 +1145,13 @@ func resourceComputeInstanceV2ImportState(d *schema.ResourceData, meta interface
 	networks := []map[string]interface{}{}
 	for _, nic := range allInstanceNics {
 		v := map[string]interface{}{
-			"uuid":        nic.NetworkID,
-			"port":        nic.PortID,
-			"fixed_ip_v4": nic.FixedIPv4,
-			"fixed_ip_v6": nic.FixedIPv6,
-			"mac":         nic.MAC,
+			"uuid":              nic.NetworkID,
+			"port":              nic.PortID,
+			"fixed_ip_v4":       nic.FixedIPv4,
+			"fixed_ip_v6":       nic.FixedIPv6,
+			"ipv6_enable":       nic.FixedIPv6 != "",
+			"source_dest_check": nic.SourceDestCheck,
+			"mac":               nic.MAC,
 		}
 		networks = append(networks, v)
 	}
@@ -1158,6 +1209,25 @@ func resourceInstanceSecGroupIdsV1(client *golangsdk.ServiceClient, d *schema.Re
 	return secgroups, nil
 }
 
+func getOpSvcUserID(d *schema.ResourceData, config *config.Config) string {
+	if v, ok := d.GetOk("user_id"); ok {
+		return v.(string)
+	}
+	return config.UserID
+}
+
+func validateComputeInstanceConfig(d *schema.ResourceData, config *config.Config) error {
+	_, hasSSH := d.GetOk("key_pair")
+	if d.Get("charging_mode").(string) == "prePaid" && hasSSH {
+		if getOpSvcUserID(d, config) == "" {
+			return fmtp.Errorf("user_id must be specified when charging_mode is set to prePaid and " +
+				"the ECS is logged in using an SSH key")
+		}
+	}
+
+	return nil
+}
+
 func resourceInstanceSecGroupsV2(d *schema.ResourceData) []string {
 	rawSecGroups := d.Get("security_groups").(*schema.Set).List()
 	secgroups := make([]string, len(rawSecGroups))
@@ -1182,8 +1252,9 @@ func resourceInstanceNicsV2(d *schema.ResourceData) []cloudservers.Nic {
 	for _, v := range networks {
 		network := v.(map[string]interface{})
 		nicRequest := cloudservers.Nic{
-			SubnetId:  network["uuid"].(string),
-			IpAddress: network["fixed_ip_v4"].(string),
+			SubnetId:   network["uuid"].(string),
+			IpAddress:  network["fixed_ip_v4"].(string),
+			Ipv6Enable: network["ipv6_enable"].(bool),
 		}
 
 		nicRequests = append(nicRequests, nicRequest)
@@ -1255,9 +1326,10 @@ func resourceInstanceSchedulerHintsV2(d *schema.ResourceData, schedulerHintsRaw 
 
 func getImage(client *golangsdk.ServiceClient, id, name string) (*cloudimages.Image, error) {
 	listOpts := &cloudimages.ListOpts{
-		ID:    id,
-		Name:  name,
-		Limit: 1,
+		ID:                  id,
+		Name:                name,
+		Limit:               1,
+		EnterpriseProjectID: "all_granted_eps",
 	}
 	allPages, err := cloudimages.List(client, listOpts).AllPages()
 	if err != nil {
@@ -1492,5 +1564,60 @@ func doPowerAction(client *golangsdk.ServiceClient, d *schema.ResourceData, acti
 	if err := cloudservers.WaitForJobSuccess(client, int(timeout/time.Second), jobResp.JobID); err != nil {
 		return err
 	}
+	return nil
+}
+
+func disableSourceDestCheck(networkClient *golangsdk.ServiceClient, portID string) error {
+	// Update the allowed-address-pairs of the port to 1.1.1.1/0
+	// to disable the source/destination check
+	portpairs := []ports.AddressPair{
+		{
+			IPAddress: "1.1.1.1/0",
+		},
+	}
+	portUpdateOpts := ports.UpdateOpts{
+		AllowedAddressPairs: &portpairs,
+	}
+
+	_, err := ports.Update(networkClient, portID, portUpdateOpts).Extract()
+	return err
+}
+
+func enableSourceDestCheck(networkClient *golangsdk.ServiceClient, portID string) error {
+	// cancle all allowed-address-pairs to enable the source/destination check
+	portpairs := make([]ports.AddressPair, 0)
+	portUpdateOpts := ports.UpdateOpts{
+		AllowedAddressPairs: &portpairs,
+	}
+
+	_, err := ports.Update(networkClient, portID, portUpdateOpts).Extract()
+	return err
+}
+
+func updateSourceDestCheck(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	var err error
+
+	networks := d.Get("network").([]interface{})
+	for i, v := range networks {
+		nic := v.(map[string]interface{})
+		nicPort := nic["port"].(string)
+		if nicPort == "" {
+			continue
+		}
+
+		if d.HasChange(fmt.Sprintf("network.%d.source_dest_check", i)) {
+			sourceDestCheck := nic["source_dest_check"].(bool)
+			if !sourceDestCheck {
+				err = disableSourceDestCheck(client, nicPort)
+			} else {
+				err = enableSourceDestCheck(client, nicPort)
+			}
+
+			if err != nil {
+				return fmtp.Errorf("Error updating source_dest_check on port(%s) of instance(%s) failed: %s", nicPort, d.Id(), err)
+			}
+		}
+	}
+
 	return nil
 }

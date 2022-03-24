@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -35,14 +36,6 @@ func SuppressCaseDiffs(k, old, new string, d *schema.ResourceData) bool {
 // Suppress changes if we get a computed min_disk_gb if value is unspecified (default 0)
 func SuppressMinDisk(k, old, new string, d *schema.ResourceData) bool {
 	return new == "0" || old == new
-}
-
-// Suppress changes if we get a fixed ip when not expecting one, if we have a floating ip (generates fixed ip).
-func SuppressComputedFixedWhenFloatingIp(k, old, new string, d *schema.ResourceData) bool {
-	if v, ok := d.GetOk("floating_ip"); ok && v != "" {
-		return new == "" || old == new
-	}
-	return false
 }
 
 func SuppressLBWhitelistDiffs(k, old, new string, d *schema.ResourceData) bool {
@@ -86,6 +79,20 @@ func SuppressEquivilentTimeDiffs(k, old, new string, d *schema.ResourceData) boo
 	}
 
 	return oldTime.Equal(newTime)
+}
+
+func SuppressVersionDiffs(k, old, new string, d *schema.ResourceData) bool {
+	oldArray := regexp.MustCompile(`[\.\-]+`).Split(old, -1)
+	newArray := regexp.MustCompile(`[\.\-]+`).Split(new, -1)
+	if len(newArray) > len(oldArray) {
+		return false
+	}
+	for i, v := range newArray {
+		if v != oldArray[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func CompareJsonTemplateAreEquivalent(tem1, tem2 string) (bool, error) {

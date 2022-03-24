@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/chnsz/golangsdk"
-	"github.com/chnsz/golangsdk/openstack/apigw/v2/apis"
+	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/apis"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -748,7 +748,8 @@ func buildAPIBackendParameters(backends *schema.Set) []apis.BackendParamBase {
 			Value:    buildAPIBackendParameterValue(origin, paramMap["value"].(string)),
 		}
 		if origin != "REQUEST" {
-			param.Description = golangsdk.MaybeString(paramMap["description"].(string))
+			desc := paramMap["description"].(string)
+			param.Description = &desc
 		}
 		result[i] = param
 	}

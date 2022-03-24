@@ -19,17 +19,31 @@
                 ],
                 "computed": true
               },
+              "auto_renew": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
+              },
               "availability_zone": {
                 "type": "string",
-                "required": true
+                "required": true,
+                "forcenew": true
               },
               "backup_id": {
                 "type": "string",
-                "optional": true
+                "optional": true,
+                "forcenew": true
               },
               "cascade": {
                 "type": "bool",
-                "optional": true
+                "optional": true,
+                "default": false
+              },
+              "charging_mode": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
               },
               "description": {
                 "type": "string",
@@ -37,12 +51,15 @@
               },
               "device_type": {
                 "type": "string",
-                "optional": true
+                "optional": true,
+                "forcenew": true,
+                "default": "VBD"
               },
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true
+                "computed": true,
+                "forcenew": true
               },
               "id": {
                 "type": "string",
@@ -50,19 +67,33 @@
               },
               "image_id": {
                 "type": "string",
-                "optional": true
+                "optional": true,
+                "forcenew": true
               },
               "kms_id": {
                 "type": "string",
-                "optional": true
+                "optional": true,
+                "forcenew": true
               },
               "multiattach": {
                 "type": "bool",
-                "optional": true
+                "optional": true,
+                "forcenew": true,
+                "default": false
               },
               "name": {
                 "type": "string",
                 "optional": true
+              },
+              "period": {
+                "type": "number",
+                "optional": true,
+                "forcenew": true
+              },
+              "period_unit": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
               },
               "region": {
                 "type": "string",
@@ -75,7 +106,8 @@
               },
               "snapshot_id": {
                 "type": "string",
-                "optional": true
+                "optional": true,
+                "forcenew": true
               },
               "tags": {
                 "type": [
@@ -86,7 +118,8 @@
               },
               "volume_type": {
                 "type": "string",
-                "required": true
+                "required": true,
+                "forcenew": true
               },
               "wwn": {
                 "type": "string",

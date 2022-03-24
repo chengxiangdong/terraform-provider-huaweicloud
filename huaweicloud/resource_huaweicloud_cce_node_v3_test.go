@@ -133,6 +133,34 @@ func TestAccCCENodeV3_volume_extendParams(t *testing.T) {
 	})
 }
 
+func TestAccCCENodeV3_data_volume_encryption(t *testing.T) {
+	var node nodes.Nodes
+
+	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
+	resourceName := "huaweicloud_cce_node.test"
+	//clusterName here is used to provide the cluster id to fetch cce node.
+	clusterName := "huaweicloud_cce_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckKms(t)
+		},
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckCCENodeV3Destroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCCENodeV3_data_volume_encryption(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckCCENodeV3Exists(resourceName, clusterName, &node),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttrSet(resourceName, "data_volumes.0.kms_key_id"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccCCENodeV3_prePaid(t *testing.T) {
 	var node nodes.Nodes
 
@@ -154,6 +182,54 @@ func TestAccCCENodeV3_prePaid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
 					resource.TestCheckResourceAttr(resourceName, "period_unit", "month"),
 					resource.TestCheckResourceAttr(resourceName, "period", "1"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccCCENodeV3_password(t *testing.T) {
+	var node nodes.Nodes
+
+	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
+	resourceName := "huaweicloud_cce_node.test"
+	//clusterName here is used to provide the cluster id to fetch cce node.
+	clusterName := "huaweicloud_cce_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckCCENodeV3Destroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCCENodeV3_password(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckCCENodeV3Exists(resourceName, clusterName, &node),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+				),
+			},
+		},
+	})
+}
+
+func TestAccCCENodeV3_storage(t *testing.T) {
+	var node nodes.Nodes
+
+	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
+	resourceName := "huaweicloud_cce_node.test"
+	//clusterName here is used to provide the cluster id to fetch cce node.
+	clusterName := "huaweicloud_cce_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckCCENodeV3Destroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCCENodeV3_storage(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckCCENodeV3Exists(resourceName, clusterName, &node),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
 				),
 			},
 		},
@@ -419,6 +495,39 @@ resource "huaweicloud_cce_node" "test" {
 `, testAccCCENodeV3_Base(rName), rName)
 }
 
+func testAccCCENodeV3_data_volume_encryption(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_kms_key" "test" {
+  key_alias    = "%s"
+  pending_days = "7"
+}
+
+resource "huaweicloud_cce_node" "test" {
+  cluster_id        = huaweicloud_cce_cluster.test.id
+  name              = "%s"
+  flavor_id         = "s6.large.2"
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  key_pair          = huaweicloud_compute_keypair.test.name
+
+  root_volume {
+    size       = 40
+    volumetype = "SSD"
+  }
+  data_volumes {
+    size       = 100
+    volumetype = "SSD"
+    kms_key_id = huaweicloud_kms_key.test.id
+  }
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
+`, testAccCCENodeV3_Base(rName), rName, rName)
+}
+
 func testAccCCENodeV3_prePaid(rName string) string {
 	return fmt.Sprintf(`
 %s
@@ -447,4 +556,132 @@ resource "huaweicloud_cce_node" "test" {
   }
 }
 `, testAccCCENodeV3_Base(rName), rName)
+}
+
+func testAccCCENodeV3_password(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_vpc_eip" "test" {
+  publicip {
+    type = "5_bgp"
+  }
+  bandwidth {
+    name        = "test"
+    size        = 8
+    share_type  = "PER"
+    charge_mode = "traffic"
+  }
+}
+
+resource "huaweicloud_cce_node" "test" {
+  cluster_id        = huaweicloud_cce_cluster.test.id
+  name              = "%s"
+  flavor_id         = "s6.large.2"
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  password          = "Test@123"
+  eip_id            = huaweicloud_vpc_eip.test.id
+
+  root_volume {
+    size       = 40
+    volumetype = "SSD"
+  }
+  data_volumes {
+    size       = 100
+    volumetype = "SSD"
+  }
+
+  provisioner "remote-exec" {
+    connection {
+      user     = "root"
+      password = "Test@123"
+      host     = huaweicloud_vpc_eip.test.address
+      port     = "22"
+      timeout  = "60s"
+    }
+
+    inline = [
+      "date"
+    ]
+  }
+}
+`, testAccCCENodeV3_Base(rName), rName)
+}
+
+func testAccCCENodeV3_storage(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_kms_key" "test" {
+  key_alias    = "%s"
+  pending_days = "7"
+}
+
+resource "huaweicloud_cce_node" "test" {
+  cluster_id        = huaweicloud_cce_cluster.test.id
+  name              = "%s"
+  flavor_id         = "s6.large.2"
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  key_pair          = huaweicloud_compute_keypair.test.name
+
+  root_volume {
+    size       = 40
+    volumetype = "SSD"
+  }
+  
+  data_volumes {
+    size       = 100
+    volumetype = "SSD"
+    kms_key_id = huaweicloud_kms_key.test.id
+  }
+
+  storage {
+    selectors {
+      name              = "cceUse"
+      type              = "evs"
+      match_label_size  = "100"
+      match_label_count = 1
+    }
+
+    selectors {
+      name                           = "user"
+      type                           = "evs"
+      match_label_size               = "100"
+      match_label_metadata_encrypted = "1"
+      match_label_metadata_cmkid     = huaweicloud_kms_key.test.id
+      match_label_count              = "1"
+    }
+
+    groups {
+      name           = "vgpaas"
+      selector_names = ["cceUse"]
+      cce_managed    = true
+
+      virtual_spaces {
+        name        = "kubernetes"
+        size        = "10%%"
+        lvm_lv_type = "linear"
+      }
+
+      virtual_spaces {
+        name        = "runtime"
+        size        = "90%%"
+        lvm_lv_type = "linear"
+      }
+    }
+
+    groups {
+      name           = "vguser"
+      selector_names = ["user"]
+
+      virtual_spaces {
+        name        = "user"
+        size        = "100%%"
+        lvm_lv_type = "linear"
+        lvm_path    = "/workspace"
+      }
+    }
+  }
+}
+`, testAccCCENodeV3_Base(rName), rName, rName)
 }

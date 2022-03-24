@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/chnsz/golangsdk/openstack/common/tags"
-	"github.com/chnsz/golangsdk/openstack/compute/v2/servers"
+	"github.com/chnsz/golangsdk/openstack/ecs/v1/cloudservers"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccComputeV2Instance_basic(t *testing.T) {
-	var instance servers.Server
+	var instance cloudservers.CloudServer
 
 	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "huaweicloud_compute_instance.test"
@@ -34,8 +33,11 @@ func TestAccComputeV2Instance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "status", "ACTIVE"),
 					resource.TestCheckResourceAttrSet(resourceName, "system_disk_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "security_groups.#"),
-					resource.TestCheckResourceAttrSet(resourceName, "network.#"),
 					resource.TestCheckResourceAttrSet(resourceName, "volume_attached.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "network.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "network.0.port"),
+					resource.TestCheckResourceAttrSet(resourceName, "availability_zone"),
+					resource.TestCheckResourceAttr(resourceName, "network.0.source_dest_check", "true"),
 				),
 			},
 			{
@@ -51,7 +53,7 @@ func TestAccComputeV2Instance_basic(t *testing.T) {
 }
 
 func TestAccComputeV2Instance_disks(t *testing.T) {
-	var instance servers.Server
+	var instance cloudservers.CloudServer
 
 	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "huaweicloud_compute_instance.test"
@@ -73,7 +75,7 @@ func TestAccComputeV2Instance_disks(t *testing.T) {
 }
 
 func TestAccComputeV2Instance_prePaid(t *testing.T) {
-	var instance servers.Server
+	var instance cloudservers.CloudServer
 
 	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "huaweicloud_compute_instance.test"
@@ -95,7 +97,7 @@ func TestAccComputeV2Instance_prePaid(t *testing.T) {
 }
 
 func TestAccComputeV2Instance_tags(t *testing.T) {
-	var instance servers.Server
+	var instance cloudservers.CloudServer
 
 	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "huaweicloud_compute_instance.test"
@@ -141,7 +143,7 @@ func TestAccComputeV2Instance_tags(t *testing.T) {
 }
 
 func TestAccComputeV2Instance_powerAction(t *testing.T) {
-	var instance servers.Server
+	var instance cloudservers.CloudServer
 
 	rName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "huaweicloud_compute_instance.test"
@@ -211,7 +213,7 @@ func TestAccComputeV2Instance_powerAction(t *testing.T) {
 
 func testAccCheckComputeV2InstanceDestroy(s *terraform.State) error {
 	config := testAccProvider.Meta().(*config.Config)
-	computeClient, err := config.ComputeV2Client(HW_REGION_NAME)
+	computeClient, err := config.ComputeV1Client(HW_REGION_NAME)
 	if err != nil {
 		return fmtp.Errorf("Error creating HuaweiCloud compute client: %s", err)
 	}
@@ -221,9 +223,9 @@ func testAccCheckComputeV2InstanceDestroy(s *terraform.State) error {
 			continue
 		}
 
-		server, err := servers.Get(computeClient, rs.Primary.ID).Extract()
+		server, err := cloudservers.Get(computeClient, rs.Primary.ID).Extract()
 		if err == nil {
-			if server.Status != "SOFT_DELETED" {
+			if server.Status != "DELETED" {
 				return fmtp.Errorf("Instance still exists")
 			}
 		}
@@ -232,7 +234,7 @@ func testAccCheckComputeV2InstanceDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckComputeV2InstanceExists(n string, instance *servers.Server) resource.TestCheckFunc {
+func testAccCheckComputeV2InstanceExists(n string, instance *cloudservers.CloudServer) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
@@ -244,12 +246,12 @@ func testAccCheckComputeV2InstanceExists(n string, instance *servers.Server) res
 		}
 
 		config := testAccProvider.Meta().(*config.Config)
-		computeClient, err := config.ComputeV2Client(HW_REGION_NAME)
+		computeClient, err := config.ComputeV1Client(HW_REGION_NAME)
 		if err != nil {
 			return fmtp.Errorf("Error creating HuaweiCloud compute client: %s", err)
 		}
 
-		found, err := servers.Get(computeClient, rs.Primary.ID).Extract()
+		found, err := cloudservers.Get(computeClient, rs.Primary.ID).Extract()
 		if err != nil {
 			return err
 		}
@@ -265,7 +267,7 @@ func testAccCheckComputeV2InstanceExists(n string, instance *servers.Server) res
 }
 
 func testAccCheckComputeV2InstanceTags(
-	instance *servers.Server, k, v string) resource.TestCheckFunc {
+	instance *cloudservers.CloudServer, k, v string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		config := testAccProvider.Meta().(*config.Config)
 		client, err := config.ComputeV1Client(HW_REGION_NAME)
@@ -291,7 +293,7 @@ func testAccCheckComputeV2InstanceTags(
 }
 
 func testAccCheckComputeV2InstanceNoTags(
-	instance *servers.Server) resource.TestCheckFunc {
+	instance *cloudservers.CloudServer) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		config := testAccProvider.Meta().(*config.Config)
 		client, err := config.ComputeV1Client(HW_REGION_NAME)
@@ -345,7 +347,6 @@ resource "huaweicloud_compute_instance" "test" {
   image_id           = data.huaweicloud_images_image.test.id
   flavor_id          = data.huaweicloud_compute_flavors.test.ids[0]
   security_group_ids = [data.huaweicloud_networking_secgroup.test.id]
-  availability_zone  = data.huaweicloud_availability_zones.test.names[0]
 
   network {
     uuid = data.huaweicloud_vpc_subnet.test.id

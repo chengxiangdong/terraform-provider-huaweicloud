@@ -6,7 +6,7 @@ subcategory: "Identity and Access Management (IAM)"
 
 Manages a User resource within HuaweiCloud IAM service. This is an alternative to `huaweicloud_identity_user_v3`
 
-Note: You _must_ have admin privileges in your HuaweiCloud cloud to use this resource.
+Note: You *must* have admin privileges in your HuaweiCloud cloud to use this resource.
 
 ## Example Usage
 
@@ -38,6 +38,9 @@ The following arguments are supported:
 
 * `password` - (Optional, String) Specifies the password for the user with 6 to 32 characters. It must contain at least
   two of the following character types: uppercase letters, lowercase letters, digits, and special characters.
+
+* `pwd_reset` - (Optional, Bool) Specifies whether or not the password should be reset. By default, the password is asked
+   to reset at the first login.
 
 * `enabled` - (Optional, Bool) Specifies whether the user is enabled or disabled. Valid values are `true` and `false`.
 

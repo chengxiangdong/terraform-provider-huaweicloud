@@ -12,6 +12,7 @@ import (
 	"github.com/chnsz/golangsdk/openstack/common/tags"
 	"github.com/chnsz/golangsdk/openstack/mrs/v1/cluster"
 	clusterV2 "github.com/chnsz/golangsdk/openstack/mrs/v2/clusters"
+	"github.com/chnsz/golangsdk/openstack/networking/v1/eips"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -134,6 +135,13 @@ func ResourceMRSClusterV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+				Computed: true,
+			},
+			"public_ip": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
 			},
 			"log_collection": {
 				Type:     schema.TypeBool,
@@ -210,7 +218,7 @@ func ResourceMRSClusterV2() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				ForceNew: true,
-				Elem:     nodeGroupSchemaResource("", true, 1, 500),
+				Elem:     nodeGroupSchemaResource("", false, 1, 500),
 			},
 
 			"tags": {
@@ -288,12 +296,12 @@ func nodeGroupSchemaResource(groupName string, nodeScalable bool, minNodeNum, ma
 			},
 			"data_volume_type": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 			},
 			"data_volume_size": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 			},
 			"data_volume_count": {
@@ -314,6 +322,12 @@ func nodeGroupSchemaResource(groupName string, nodeScalable bool, minNodeNum, ma
 				ForceNew: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
+				},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if clusterType := d.Get("type").(string); clusterType != typeCustom {
+						return true
+					}
+					return false
 				},
 			},
 		},
@@ -411,9 +425,9 @@ func buildNodeGroupOpts(d *schema.ResourceData, optsRaw []interface{}, defaultNa
 		opts := optsRaw[i].(map[string]interface{})
 
 		nodeGroup.GroupName = defaultName
-		customeName := opts["group_name"]
-		if customeName != nil {
-			nodeGroup.GroupName = customeName.(string)
+		customName := opts["group_name"]
+		if customName != nil {
+			nodeGroup.GroupName = customName.(string)
 		}
 
 		nodeGroup.NodeSize = opts["flavor"].(string)
@@ -438,9 +452,12 @@ func buildNodeGroupOpts(d *schema.ResourceData, optsRaw []interface{}, defaultNa
 		}
 		nodeGroup.DataVolumeCount = golangsdk.IntToPointer(volumeCount)
 		// This parameter is mandatory when the cluster type is CUSTOM. Specifies the roles deployed in a node group.
-		for _, v := range opts["assigned_roles"].([]interface{}) {
-			nodeGroup.AssignedRoles = append(nodeGroup.AssignedRoles, v.(string))
+		if clusterType := d.Get("type").(string); clusterType == typeCustom {
+			for _, v := range opts["assigned_roles"].([]interface{}) {
+				nodeGroup.AssignedRoles = append(nodeGroup.AssignedRoles, v.(string))
+			}
 		}
+
 		result = append(result, nodeGroup)
 	}
 	return result
@@ -516,6 +533,17 @@ func resourceMRSClusterV2Create(d *schema.ResourceData, meta interface{}) error 
 		return fmtp.Errorf("Unable to find the subnet (%s) on the server: %s", subnetId, err)
 	}
 
+	networkingClient, err := config.NetworkingV1Client(region)
+	if err != nil {
+		return fmtp.Errorf("Error creating networking client: %s", err)
+	}
+
+	eipId, publicIp, err := queryEipInfo(networkingClient, d.Get("eip_id").(string), d.Get("public_ip").(string))
+	if err != nil {
+		return fmtp.Errorf("Unable to find the eip_id=%s,public_ip=%s on the server: %s", d.Get("eip_id").(string),
+			d.Get("public_ip").(string), err)
+	}
+
 	createOpts := &clusterV2.CreateOpts{
 		Region:               region,
 		AvailabilityZone:     d.Get("availability_zone").(string),
@@ -526,7 +554,8 @@ func resourceMRSClusterV2Create(d *schema.ResourceData, meta interface{}) error 
 		VpcName:              vpcResp.Name,
 		SubnetId:             subnetId,
 		SubnetName:           subnetResp.Name,
-		EipId:                d.Get("eip_id").(string),
+		EipId:                eipId,
+		EipAddress:           publicIp,
 		Components:           buildMrsComponents(d),
 		EnterpriseProjectId:  common.GetEnterpriseProjectID(d, config),
 		LogCollection:        buildLogCollection(d),
@@ -566,6 +595,36 @@ func resourceMRSClusterV2Create(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	return resourceMRSClusterV2Read(d, meta)
+}
+
+func queryEipInfo(client *golangsdk.ServiceClient, eipId, PublicIp string) (string, string, error) {
+	if eipId == "" && PublicIp == "" {
+		return "", "", nil
+	}
+
+	var listOpts eips.ListOpts
+	if eipId != "" {
+		listOpts.Id = []string{eipId}
+	}
+	if PublicIp != "" {
+		listOpts.PublicIp = []string{PublicIp}
+	}
+
+	pages, err := eips.List(client, listOpts).AllPages()
+	if err != nil {
+		return "", "", err
+	}
+
+	allEips, err := eips.ExtractPublicIPs(pages)
+	if err != nil {
+		return "", "", fmtp.Errorf("Unable to retrieve eips: %s ", err)
+	}
+
+	if len(allEips) < 1 {
+		return "", "", fmtp.Errorf("Unable to retrieve eips")
+	}
+
+	return allEips[0].ID, allEips[0].PublicAddress, nil
 }
 
 func setMrsClsuterType(d *schema.ResourceData, resp *cluster.Cluster) error {
@@ -678,7 +737,7 @@ func setMrsClusterNodeGroups(d *schema.ResourceData, mrsV1Client *golangsdk.Serv
 			groupMap["group_name"] = node.GroupName
 		}
 
-		groupMap["assigned_roles"] = parseAssignedRoles(d, node.GroupName, isCustomNode)
+		groupMap["assigned_roles"] = node.AssignedRoles
 		if node.DataVolumeCount != 0 {
 			groupMap["data_volume_type"] = node.DataVolumeType
 			groupMap["data_volume_size"] = node.DataVolumeSize
@@ -689,35 +748,12 @@ func setMrsClusterNodeGroups(d *schema.ResourceData, mrsV1Client *golangsdk.Serv
 	}
 
 	for k, v := range values {
-		// lintignore:R001
+		//lintignore:R001
 		if err := d.Set(k, v); err != nil {
 			return fmtp.Errorf("set nodeGroup= %s error", k)
 		}
 	}
 
-	return nil
-}
-
-func parseAssignedRoles(d *schema.ResourceData, groupName string, isCustomNode bool) []string {
-	if isCustomNode {
-		if optsRaw, ok := d.GetOk("custom_nodes"); ok {
-			opts := optsRaw.([]interface{})
-			for i := 0; i < len(opts); i++ {
-				groupOpts := opts[i].(map[string]interface{})
-				groupNameInConfig := groupOpts["group_name"].(string)
-				if groupName == groupNameInConfig {
-					return groupOpts["assigned_roles"].([]string)
-				}
-
-			}
-		}
-	} else {
-		ids := d.Get(fmt.Sprintf("%s.%s", groupName, "assigned_roles"))
-		if ids != nil {
-			return ids.([]string)
-		}
-
-	}
 	return nil
 }
 
@@ -783,6 +819,8 @@ func resourceMRSClusterV2Read(d *schema.ResourceData, meta interface{}) error {
 		d.Set("master_node_ip", resp.Masternodeip),
 		d.Set("private_ip", resp.Privateipfirst),
 		d.Set("status", resp.Clusterstate),
+		d.Set("public_ip", resp.EipAddress),
+		d.Set("eip_id", resp.EipId),
 		setMrsClsuterType(d, resp),
 		setMrsClsuterComponentList(d, resp),
 		setMrsClsuterSafeMode(d, resp),
@@ -893,6 +931,25 @@ func getNodeResizeNumber(oldList, newList []interface{}) int {
 	return newSize - oldSize
 }
 
+// calculate the number of the custom group resize option. Dont support add new nodeGroup
+func parseCustomNodeResize(oldList, newList []interface{}) map[string]int {
+	var rst = make(map[string]int)
+
+	for newIndex := 0; newIndex < len(oldList); newIndex++ {
+		newNode := newList[newIndex].(map[string]interface{})
+
+		groupName := newNode["group_name"].(string)
+		newSize := newNode["node_number"].(int)
+
+		oldNode := oldList[newIndex].(map[string]interface{})
+		oldSize := oldNode["node_number"].(int)
+
+		// Distinguish scale out and scale in by positive and negative
+		rst[groupName] = newSize - oldSize
+	}
+	return rst
+}
+
 func updateMRSClusterNodes(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	clusterType := d.Get("type").(string)
 	if clusterType == typeAnalysis || clusterType == typeHybrid {
@@ -937,11 +994,14 @@ func updateMRSClusterNodes(d *schema.ResourceData, client *golangsdk.ServiceClie
 	if clusterType == typeCustom {
 		if d.HasChange("custom_nodes") {
 			oldRaws, newRaws := d.GetChange("custom_nodes")
-			num := getNodeResizeNumber(oldRaws.([]interface{}), newRaws.([]interface{}))
-			err := resizeMRSClusterCoreNodes(client, d.Id(), customNodeGroup, num)
-			if err != nil {
-				return err
+			scaleMap := parseCustomNodeResize(oldRaws.([]interface{}), newRaws.([]interface{}))
+			for k, num := range scaleMap {
+				err := resizeMRSClusterCoreNodes(client, d.Id(), k, num)
+				if err != nil {
+					return err
+				}
 			}
+
 		}
 	}
 
@@ -962,7 +1022,7 @@ func resourceMRSClusterV2Update(d *schema.ResourceData, meta interface{}) error 
 		}
 	}
 
-	// lintignore:R019
+	//lintignore:R019
 	if d.HasChanges("analysis_core_nodes", "streaming_core_nodes", "analysis_task_nodes",
 		"streaming_task_nodes", "custom_nodes") {
 		err = updateMRSClusterNodes(d, client)

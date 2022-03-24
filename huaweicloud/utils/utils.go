@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/chnsz/golangsdk"
-	"github.com/chnsz/golangsdk/openstack/rts/v1/stacks"
-	"gopkg.in/yaml.v2"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // ConvertStructToMap converts an instance of struct to a map object, and
@@ -74,6 +73,18 @@ func ExpandToIntList(v []interface{}) []int {
 	return s
 }
 
+// ExpandToStringListBySet takes the result for a set of strings and returns a []string
+func ExpandToStringListBySet(v *schema.Set) []string {
+	s := make([]string, 0, v.Len())
+	for _, val := range v.List() {
+		if strVal, ok := val.(string); ok && strVal != "" {
+			s = append(s, strVal)
+		}
+	}
+
+	return s
+}
+
 // Takes list of pointers to strings. Expand to an array
 // of raw strings and returns a []interface{}
 func flattenToStringList(list []*string) []interface{} {
@@ -114,57 +125,6 @@ func NormalizeJsonString(jsonString interface{}) (string, error) {
 	bytes, _ := json.Marshal(j)
 
 	return string(bytes[:]), nil
-}
-
-// Takes a value containing YAML string and passes it through
-// the YAML parser. Returns either a parsing
-// error or original YAML string.
-func checkYamlString(yamlString interface{}) (string, error) {
-	var y interface{}
-
-	if yamlString == nil || yamlString.(string) == "" {
-		return "", nil
-	}
-
-	s := yamlString.(string)
-
-	err := yaml.Unmarshal([]byte(s), &y)
-	if err != nil {
-		return s, err
-	}
-
-	return s, nil
-}
-
-func NormalizeStackTemplate(templateString interface{}) (string, error) {
-	if looksLikeJsonString(templateString) {
-		return NormalizeJsonString(templateString.(string))
-	}
-
-	return checkYamlString(templateString)
-}
-
-func FlattenStackOutputs(stackOutputs []*stacks.Output) map[string]string {
-	outputs := make(map[string]string, len(stackOutputs))
-	for _, o := range stackOutputs {
-		outputs[*o.OutputKey] = *o.OutputValue
-	}
-	return outputs
-}
-
-// FlattenStackParameters is flattening list of
-// stack Parameters and only returning existing
-// parameters to avoid clash with default values
-func FlattenStackParameters(stackParams map[string]string,
-	originalParams map[string]interface{}) map[string]string {
-	params := make(map[string]string, len(stackParams))
-	for key, value := range stackParams {
-		_, isConfigured := originalParams[key]
-		if isConfigured {
-			params[key] = value
-		}
-	}
-	return params
 }
 
 // StrSliceContains checks if a given string is contained in a slice
@@ -227,22 +187,68 @@ func IsResourceNotFound(err error) bool {
 	return ok
 }
 
-// Method FormatTimeStampRFC3339 is used to unify the time format to RFC-3339 and return a time string.
+// FormatTimeStampRFC3339 is used to unify the time format to RFC-3339 and return a time string.
 func FormatTimeStampRFC3339(timestamp int64) string {
 	createTime := time.Unix(timestamp, 0)
 	return createTime.Format(time.RFC3339)
 }
 
-// Method EncodeBase64String is used to encode a string by base64.
+// FormatTimeStampUTC is used to unify the unix second time to UTC time string, format: YYYY-MM-DD HH:MM:SS.
+func FormatTimeStampUTC(timestamp int64) string {
+	return time.Unix(timestamp, 0).UTC().Format("2006-01-02 15:04:05")
+}
+
+// EncodeBase64String is used to encode a string by base64.
 func EncodeBase64String(str string) string {
 	strByte := []byte(str)
 	return base64.StdEncoding.EncodeToString(strByte)
 }
 
-// Method EncodeBase64IfNot is used to encode a string by base64 if it not a base64 string.
+// EncodeBase64IfNot is used to encode a string by base64 if it not a base64 string.
 func EncodeBase64IfNot(str string) string {
 	if _, err := base64.StdEncoding.DecodeString(str); err != nil {
 		return base64.StdEncoding.EncodeToString([]byte(str))
 	}
 	return str
+}
+
+// IsIPv4Address is used to check whether the addr string is IPv4 format
+func IsIPv4Address(addr string) bool {
+	pattern := "^((25[0-5]|2[0-4]\\d|(1\\d{2}|[1-9]?\\d))\\.){3}(25[0-5]|2[0-4]\\d|(1\\d{2}|[1-9]?\\d))$"
+	matched, _ := regexp.MatchString(pattern, addr)
+	return matched
+}
+
+// This function compares whether there is a containment relationship between two maps, that is,
+// whether map A (rawMap) contains map B (filterMap).
+//   Map A is {'foo': 'bar'} and filter map B is {'foo': 'bar'} or {'foo': 'bar,dor'} will return true.
+//   Map A is {'foo': 'bar'} and filter map B is {'foo': 'dor'} or {'foo1': 'bar'} will return false.
+//   Map A is {'foo': 'bar'} and filter map B is {'foo': ''} will return true.
+//   Map A is {'foo': 'bar'} and filter map B is {'': 'bar'} or {'': ''} will return false.
+// The value of filter map 'bar,for' means that the object value can be either 'bar' or 'dor'.
+// Note: There is no spaces before and after the delimiter (,).
+func HasMapContains(rawMap map[string]string, filterMap map[string]interface{}) bool {
+	if len(filterMap) < 1 {
+		return true
+	}
+
+	hasContain := true
+	for key, value := range filterMap {
+		hasContain = hasContain && hasMapContain(rawMap, key, value.(string))
+	}
+
+	return hasContain
+}
+
+func hasMapContain(rawMap map[string]string, filterKey, filterValue string) bool {
+	if rawTag, ok := rawMap[filterKey]; ok {
+		if filterValue != "" {
+			filterTagValues := strings.Split(filterValue, ",")
+			return StrSliceContains(filterTagValues, rawTag)
+		} else {
+			return true
+		}
+	} else {
+		return false
+	}
 }

@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -15,16 +18,42 @@ import (
 	huaweisdk "github.com/chnsz/golangsdk/openstack"
 	"github.com/chnsz/golangsdk/openstack/identity/v3/domains"
 	"github.com/chnsz/golangsdk/openstack/identity/v3/projects"
+	"github.com/chnsz/golangsdk/openstack/identity/v3/users"
 	"github.com/chnsz/golangsdk/openstack/obs"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/jmespath/go-jmespath"
+	"github.com/mitchellh/go-homedir"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/pathorcontents"
 )
 
 const (
 	obsLogFile         string = "./.obs-sdk.log"
 	obsLogFileSize10MB int64  = 1024 * 1024 * 10
+	securityKeyURL     string = "http://169.254.169.254/openstack/latest/securitykey"
+	keyExpiresDuration int64  = 600
 )
+
+// CLI Shared Config
+type SharedConfig struct {
+	Current  string    `json:"current"`
+	Profiles []Profile `json:"profiles"`
+}
+
+type Profile struct {
+	Name             string `json:"name"`
+	Mode             string `json:"mode"`
+	AccessKeyId      string `json:"accessKeyId"`
+	SecretAccessKey  string `json:"secretAccessKey"`
+	SecurityToken    string `json:"securityToken"`
+	Region           string `json:"region"`
+	ProjectId        string `json:"projectId"`
+	DomainId         string `json:"domainId"`
+	AgencyDomainId   string `json:"agencyDomainId"`
+	AgencyDomainName string `json:"agencyDomainName"`
+	AgencyName       string `json:"agencyName"`
+}
 
 type Config struct {
 	AccessKey           string
@@ -52,6 +81,11 @@ type Config struct {
 	TerraformVersion    string
 	RegionClient        bool
 	EnterpriseProjectID string
+	SharedConfigFile    string
+	Profile             string
+
+	// metadata security key expires at
+	SecurityKeyExpiresAt time.Time
 
 	HwClient     *golangsdk.ProviderClient
 	DomainClient *golangsdk.ProviderClient
@@ -66,6 +100,10 @@ type Config struct {
 	// RPLock is used to make the accessing of RegionProjectIDMap serial,
 	// prevent sending duplicate query requests
 	RPLock *sync.Mutex
+
+	// SecurityKeyLock is used to make the accessing of SecurityKeyExpiresAt serial,
+	// prevent sending duplicate query metadata api
+	SecurityKeyLock *sync.Mutex
 }
 
 func (c *Config) LoadAndValidate() error {
@@ -87,15 +125,29 @@ func (c *Config) LoadAndValidate() error {
 		} else {
 			err = buildClientByPassword(c)
 		}
+	} else if c.SharedConfigFile != "" {
+		err = buildClientByConfig(c)
 
+	} else {
+		err = getAuthConfigByMeta(c)
+		if err != nil {
+			return fmt.Errorf("Error fetching Auth credentials from ECS Metadata API, AkSk or ECS agency must be provided: %s", err)
+		}
+		log.Printf("[DEBUG] Successfully got metadata security key, which will expire at: %s", c.SecurityKeyExpiresAt)
+		err = buildClientByAKSK(c)
 	}
 	if err != nil {
 		return err
 	}
 
+	if c.Region == "" {
+		return fmt.Errorf("region should be provided.")
+	}
+
 	if c.HwClient != nil && c.HwClient.ProjectID != "" {
 		c.RegionProjectIDMap[c.Region] = c.HwClient.ProjectID
 	}
+	log.Printf("[DEBUG] init region and project map: %#v", c.RegionProjectIDMap)
 
 	// set DomainID for IAM resource
 	if c.DomainID == "" {
@@ -111,7 +163,24 @@ func (c *Config) LoadAndValidate() error {
 		}
 	}
 
+	if c.UserID == "" && c.Username != "" {
+		if userID, err := c.getUserIDbyName(c.Username); err == nil {
+			c.UserID = userID
+		} else {
+			log.Printf("[WARN] get user id failed: %s", err)
+		}
+	}
+
 	return nil
+}
+
+func (c *Config) reloadSecurityKey() error {
+	err := getAuthConfigByMeta(c)
+	if err != nil {
+		return fmt.Errorf("Error reloading Auth credentials from ECS Metadata API: %s", err)
+	}
+	log.Printf("Successfully reload metadata security key, which will expire at: %s", c.SecurityKeyExpiresAt)
+	return buildClientByAKSK(c)
 }
 
 func generateTLSConfig(c *Config) (*tls.Config, error) {
@@ -189,7 +258,10 @@ func genClient(c *Config, ao golangsdk.AuthOptionsProvider) (*golangsdk.Provider
 	if err != nil {
 		return nil, err
 	}
-	transport := &http.Transport{Proxy: http.ProxyFromEnvironment, TLSClientConfig: config}
+	transport := &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: config,
+	}
 
 	client.HTTPClient = http.Client{
 		Transport: &LogRoundTripper{
@@ -200,8 +272,9 @@ func genClient(c *Config, ao golangsdk.AuthOptionsProvider) (*golangsdk.Provider
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if client.AKSKAuthOptions.AccessKey != "" {
 				golangsdk.ReSign(req, golangsdk.SignOptions{
-					AccessKey: client.AKSKAuthOptions.AccessKey,
-					SecretKey: client.AKSKAuthOptions.SecretKey,
+					AccessKey:  client.AKSKAuthOptions.AccessKey,
+					SecretKey:  client.AKSKAuthOptions.SecretKey,
+					RegionName: client.AKSKAuthOptions.Region,
 				})
 			}
 			return nil
@@ -294,12 +367,73 @@ func buildClientByAKSK(c *Config) error {
 		ao.IdentityEndpoint = c.IdentityEndpoint
 		ao.AccessKey = c.AccessKey
 		ao.SecretKey = c.SecretKey
+		if c.Region != "" {
+			ao.Region = c.Region
+		}
 		if c.SecurityToken != "" {
 			ao.SecurityToken = c.SecurityToken
 			ao.WithUserCatalog = true
 		}
 	}
 	return genClients(c, pao, dao)
+}
+
+func buildClientByConfig(c *Config) error {
+	profilePath, err := homedir.Expand(c.SharedConfigFile)
+	if err != nil {
+		return err
+	}
+
+	current := c.Profile
+	var providerConfig Profile
+	_, err = os.Stat(profilePath)
+	if !os.IsNotExist(err) {
+		data, err := ioutil.ReadFile(profilePath)
+		if err != nil {
+			return fmt.Errorf("Err reading from shared config file: %s", err)
+		}
+		sharedConfig := SharedConfig{}
+		err = json.Unmarshal(data, &sharedConfig)
+		if err != nil {
+			return err
+		}
+
+		// fetch current from shared config if not specified with provider
+		if current == "" {
+			current = sharedConfig.Current
+		}
+
+		// fetch the current profile config
+		for _, v := range sharedConfig.Profiles {
+			if current == v.Name {
+				providerConfig = v
+				break
+			}
+		}
+		if (providerConfig == Profile{}) {
+			return fmt.Errorf("Error finding profile %s from shared config file", current)
+		}
+	} else {
+		return fmt.Errorf("The specified shared config file %s does not exist", profilePath)
+	}
+
+	if providerConfig.Mode == "AKSK" {
+		c.AccessKey = providerConfig.AccessKeyId
+		c.SecretKey = providerConfig.SecretAccessKey
+		if providerConfig.Region != "" {
+			c.Region = providerConfig.Region
+		}
+		// non required fields
+		if providerConfig.DomainId != "" {
+			c.DomainID = providerConfig.DomainId
+		}
+		if providerConfig.ProjectId != "" {
+			c.TenantID = providerConfig.ProjectId
+		}
+	} else {
+		return fmt.Errorf("Unsupported mode %s in shared config file", providerConfig.Mode)
+	}
+	return buildClientByAKSK(c)
 }
 
 func buildClientByPassword(c *Config) error {
@@ -357,6 +491,63 @@ func genClients(c *Config, pao, dao golangsdk.AuthOptionsProvider) error {
 	return err
 }
 
+func getAuthConfigByMeta(c *Config) error {
+	req, err := http.NewRequest("GET", securityKeyURL, nil)
+	if err != nil {
+		return fmt.Errorf("Error building metadata API request: %s", err.Error())
+	}
+
+	httpClient := &http.Client{}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("Error requesting metadata API: %s", err.Error())
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Error requesting metadata API: status code = %d", resp.StatusCode)
+	}
+
+	var parsedBody interface{}
+
+	defer resp.Body.Close()
+	rawBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Error parsing metadata API response: %s", err.Error())
+	}
+
+	err = json.Unmarshal(rawBody, &parsedBody)
+	if err != nil {
+		return fmt.Errorf("Error unmarshal metadata API, agency_name is empty: %s", err.Error())
+	}
+
+	expiresAt, err := jmespath.Search("credential.expires_at", parsedBody)
+	if err != nil {
+		return fmt.Errorf("Error fetching metadata expires_at: %s", err.Error())
+	}
+	accessKey, err := jmespath.Search("credential.access", parsedBody)
+	if err != nil {
+		return fmt.Errorf("Error fetching metadata access: %s", err.Error())
+	}
+	secretKey, err := jmespath.Search("credential.secret", parsedBody)
+	if err != nil {
+		return fmt.Errorf("Error fetching metadata secret: %s", err.Error())
+	}
+	securityToken, err := jmespath.Search("credential.securitytoken", parsedBody)
+	if err != nil {
+		return fmt.Errorf("Error fetching metadata securitytoken: %s", err.Error())
+	}
+
+	if accessKey == nil || secretKey == nil || securityToken == nil || expiresAt == nil {
+		return fmt.Errorf("Error fetching metadata authentication information.")
+	}
+	expairesTime, err := time.Parse(time.RFC3339, expiresAt.(string))
+	if err != nil {
+		return err
+	}
+	c.AccessKey, c.SecretKey, c.SecurityToken, c.SecurityKeyExpiresAt = accessKey.(string), secretKey.(string), securityToken.(string), expairesTime
+
+	return nil
+}
+
 func getObsEndpoint(c *Config, region string) string {
 	if endpoint, ok := c.Endpoints["obs"]; ok {
 		return endpoint
@@ -396,6 +587,16 @@ func (c *Config) ObjectStorageClient(region string) (*obs.ObsClient, error) {
 		}
 	}
 
+	if !c.SecurityKeyExpiresAt.IsZero() {
+		c.SecurityKeyLock.Lock()
+		defer c.SecurityKeyLock.Unlock()
+		timeNow := time.Now().Unix()
+		expairesAtInt := c.SecurityKeyExpiresAt.Unix()
+		if timeNow+keyExpiresDuration > expairesAtInt {
+			c.reloadSecurityKey()
+		}
+	}
+
 	obsEndpoint := getObsEndpoint(c, region)
 	if c.SecurityToken != "" {
 		return obs.New(c.AccessKey, c.SecretKey, obsEndpoint, obs.WithSecurityToken(c.SecurityToken))
@@ -412,6 +613,16 @@ func (c *Config) NewServiceClient(srv, region string) (*golangsdk.ServiceClient,
 		return nil, fmt.Errorf("service type %s is invalid or not supportted", srv)
 	}
 
+	if !c.SecurityKeyExpiresAt.IsZero() {
+		c.SecurityKeyLock.Lock()
+		defer c.SecurityKeyLock.Unlock()
+		timeNow := time.Now().Unix()
+		expairesAtInt := c.SecurityKeyExpiresAt.Unix()
+		if timeNow+keyExpiresDuration > expairesAtInt {
+			c.reloadSecurityKey()
+		}
+	}
+
 	client := c.HwClient
 	if serviceCatalog.Admin {
 		client = c.DomainClient
@@ -424,8 +635,8 @@ func (c *Config) NewServiceClient(srv, region string) (*golangsdk.ServiceClient,
 }
 
 func (c *Config) newServiceClientByName(client *golangsdk.ProviderClient, catalog ServiceCatalog, region string) (*golangsdk.ServiceClient, error) {
-	if catalog.Name == "" || catalog.Version == "" {
-		return nil, fmt.Errorf("must specify the service name and api version")
+	if catalog.Name == "" {
+		return nil, fmt.Errorf("must specify the service name")
 	}
 
 	// Custom Resource-level region only supports AK/SK authentication.
@@ -446,14 +657,16 @@ func (c *Config) newServiceClientByName(client *golangsdk.ProviderClient, catalo
 		projectID, _ = c.RegionProjectIDMap[region]
 	}
 
-	sc := new(golangsdk.ServiceClient)
-
+	// update ProjectID and region in ProviderClient
 	clone := new(golangsdk.ProviderClient)
 	*clone = *client
 	clone.ProjectID = projectID
 	clone.AKSKAuthOptions.ProjectId = projectID
 	clone.AKSKAuthOptions.Region = region
-	sc.ProviderClient = clone
+
+	sc := &golangsdk.ServiceClient{
+		ProviderClient: clone,
+	}
 
 	if catalog.Scope == "global" && !c.RegionClient {
 		sc.Endpoint = fmt.Sprintf("https://%s.%s/", catalog.Name, c.Cloud)
@@ -461,7 +674,10 @@ func (c *Config) newServiceClientByName(client *golangsdk.ProviderClient, catalo
 		sc.Endpoint = fmt.Sprintf("https://%s.%s.%s/", catalog.Name, region, c.Cloud)
 	}
 
-	sc.ResourceBase = sc.Endpoint + catalog.Version + "/"
+	sc.ResourceBase = sc.Endpoint
+	if catalog.Version != "" {
+		sc.ResourceBase = sc.ResourceBase + catalog.Version + "/"
+	}
 	if !catalog.WithOutProjectID {
 		sc.ResourceBase = sc.ResourceBase + projectID + "/"
 	}
@@ -484,7 +700,11 @@ func (c *Config) newServiceClientByEndpoint(client *golangsdk.ProviderClient, sr
 		ProviderClient: client,
 		Endpoint:       endpoint,
 	}
-	sc.ResourceBase = sc.Endpoint + catalog.Version + "/"
+
+	sc.ResourceBase = sc.Endpoint
+	if catalog.Version != "" {
+		sc.ResourceBase = sc.ResourceBase + catalog.Version + "/"
+	}
 	if !catalog.WithOutProjectID {
 		sc.ResourceBase = sc.ResourceBase + client.ProjectID + "/"
 	}
@@ -524,10 +744,40 @@ func (c *Config) getDomainID() (string, error) {
 	return all[0].ID, nil
 }
 
+func (c *Config) getUserIDbyName(name string) (string, error) {
+	identityClient, err := c.IdentityV3Client(c.Region)
+	if err != nil {
+		return "", fmt.Errorf("Error creating IAM client: %s", err)
+	}
+
+	opts := users.ListOpts{
+		Name: name,
+	}
+	allPages, err := users.List(identityClient, opts).AllPages()
+	if err != nil {
+		return "", fmt.Errorf("query IAM user %s failed, err=%s", name, err)
+	}
+
+	all, err := users.ExtractUsers(allPages)
+	if err != nil {
+		return "", fmt.Errorf("Extract users failed, err=%s", err)
+	}
+
+	if len(all) == 0 {
+		return "", fmt.Errorf("IAM user %s was not found", name)
+	}
+
+	if name != "" && name != all[0].Name {
+		return "", fmt.Errorf("IAM user %s was not found, got %s", name, all[0].Name)
+	}
+
+	return all[0].ID, nil
+}
+
 // loadUserProjects will query the region-projectId pair and store it into RegionProjectIDMap
 func (c *Config) loadUserProjects(client *golangsdk.ProviderClient, region string) error {
 
-	log.Printf("Load projectID for region: %s", region)
+	log.Printf("[DEBUG] Load project ID for region: %s", region)
 	domainID := client.DomainID
 	opts := projects.ListOpts{
 		DomainID: domainID,
@@ -551,6 +801,7 @@ func (c *Config) loadUserProjects(client *golangsdk.ProviderClient, region strin
 	}
 
 	for _, item := range all {
+		log.Printf("[DEBUG] add %s/%s to region and project map", item.Name, item.ID)
 		c.RegionProjectIDMap[item.Name] = item.ID
 	}
 	return nil
@@ -578,6 +829,20 @@ func (c *Config) GetEnterpriseProjectID(d *schema.ResourceData) string {
 	return c.EnterpriseProjectID
 }
 
+// DataGetEnterpriseProjectID returns the enterprise_project_id that was specified in the data source.
+// If it was not set, the provider-level value is checked. The provider-level value can
+// either be set by the `enterprise_project_id` argument or by HW_ENTERPRISE_PROJECT_ID.
+// If the provider-level value is also not set, `all_granted_eps` will be returned.
+func (c *Config) DataGetEnterpriseProjectID(d *schema.ResourceData) string {
+	if v, ok := d.GetOk("enterprise_project_id"); ok {
+		return v.(string)
+	}
+	if c.EnterpriseProjectID != "" {
+		return c.EnterpriseProjectID
+	}
+	return "all_granted_eps"
+}
+
 // ********** client for Global Service **********
 func (c *Config) IAMV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("iam", region)
@@ -585,6 +850,10 @@ func (c *Config) IAMV3Client(region string) (*golangsdk.ServiceClient, error) {
 
 func (c *Config) IdentityV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("identity", region)
+}
+
+func (c *Config) IAMNoVersionClient(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("iam_no_version", region)
 }
 
 func (c *Config) CdnV1Client(region string) (*golangsdk.ServiceClient, error) {
@@ -616,6 +885,10 @@ func (c *Config) ImageV2Client(region string) (*golangsdk.ServiceClient, error) 
 	return c.NewServiceClient("ims", region)
 }
 
+func (c *Config) CceV1Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("ccev1", region)
+}
+
 func (c *Config) CceV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("cce", region)
 }
@@ -633,11 +906,11 @@ func (c *Config) CciV1BetaClient(region string) (*golangsdk.ServiceClient, error
 }
 
 func (c *Config) CciV1Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("cciv1", region)
+	return c.NewServiceClient("cci", region)
 }
 
 func (c *Config) FgsV2Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("fgsv2", region)
+	return c.NewServiceClient("fgs", region)
 }
 
 func (c *Config) SwrV2Client(region string) (*golangsdk.ServiceClient, error) {
@@ -649,11 +922,11 @@ func (c *Config) BmsV1Client(region string) (*golangsdk.ServiceClient, error) {
 }
 
 // ********** client for Storage **********
-func (c *Config) BlockStorageV2Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("volumev2", region)
+func (c *Config) BlockStorageV21Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("evsv21", region)
 }
 
-func (c *Config) BlockStorageV3Client(region string) (*golangsdk.ServiceClient, error) {
+func (c *Config) BlockStorageV2Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("evs", region)
 }
 
@@ -688,6 +961,10 @@ func (c *Config) NetworkingV2Client(region string) (*golangsdk.ServiceClient, er
 	return c.NewServiceClient("networkv2", region)
 }
 
+func (c *Config) NetworkingV3Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("vpcv3", region)
+}
+
 func (c *Config) SecurityGroupV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("security_group", region)
 }
@@ -702,23 +979,19 @@ func (c *Config) NatGatewayClient(region string) (*golangsdk.ServiceClient, erro
 	return c.NewServiceClient("nat", region)
 }
 
-func (c *Config) ElasticLBClient(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("elb", region)
-}
-
-// client for v2.0 api
+// ElbV2Client is the client for elb v2.0 (openstack) api
 func (c *Config) ElbV2Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("elbv2", region)
 }
 
-// client for v3 api
+// ElbV3Client is the client for elb v3 api
 func (c *Config) ElbV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("elbv3", region)
 }
 
-// client for v2 api
+// LoadBalancerClient is the client for elb v2 api
 func (c *Config) LoadBalancerClient(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("loadbalancer", region)
+	return c.NewServiceClient("elb", region)
 }
 
 func (c *Config) FwV2Client(region string) (*golangsdk.ServiceClient, error) {
@@ -759,6 +1032,10 @@ func (c *Config) KmsKeyV1Client(region string) (*golangsdk.ServiceClient, error)
 	return c.NewServiceClient("kms", region)
 }
 
+func (c *Config) KmsV1Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("kmsv1", region)
+}
+
 // WafV1Client is not avaliable in HuaweiCloud, will be imported by other clouds
 func (c *Config) WafV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("waf", region)
@@ -781,12 +1058,24 @@ func (c *Config) DwsV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("dws", region)
 }
 
+func (c *Config) DwsV2Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("dwsv2", region)
+}
+
 func (c *Config) DliV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("dli", region)
 }
 
+func (c *Config) DliV2Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("dliv2", region)
+}
+
 func (c *Config) DisV2Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("disv2", region)
+	return c.NewServiceClient("dis", region)
+}
+
+func (c *Config) DisV3Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("disv3", region)
 }
 
 func (c *Config) CssV1Client(region string) (*golangsdk.ServiceClient, error) {
@@ -809,13 +1098,21 @@ func (c *Config) GesV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("ges", region)
 }
 
+func (c *Config) ModelArtsV1Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("modelarts", region)
+}
+
+func (c *Config) ModelArtsV2Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("modelartsv2", region)
+}
+
 // ********** client for Application **********
 func (c *Config) ApiGatewayV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("apig", region)
 }
 
 func (c *Config) ApigV2Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("apig_v2", region)
+	return c.NewServiceClient("apigv2", region)
 }
 
 func (c *Config) BcsV2Client(region string) (*golangsdk.ServiceClient, error) {
@@ -827,7 +1124,7 @@ func (c *Config) DcsV1Client(region string) (*golangsdk.ServiceClient, error) {
 }
 
 func (c *Config) DcsV2Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("dcsv2", region)
+	return c.NewServiceClient("dcs", region)
 }
 
 func (c *Config) DmsV1Client(region string) (*golangsdk.ServiceClient, error) {
@@ -855,12 +1152,20 @@ func (c *Config) GeminiDBV3Client(region string) (*golangsdk.ServiceClient, erro
 	return c.NewServiceClient("geminidb", region)
 }
 
+func (c *Config) GeminiDBV31Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("geminidbv31", region)
+}
+
 func (c *Config) OpenGaussV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("opengauss", region)
 }
 
 func (c *Config) GaussdbV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("gaussdb", region)
+}
+
+func (c *Config) DrsV3Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("drs", region)
 }
 
 // ********** client for edge / IoT **********
@@ -881,10 +1186,6 @@ func (c *Config) BssV2Client(region string) (*golangsdk.ServiceClient, error) {
 
 func (c *Config) MaasV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("oms", region)
-}
-
-func (c *Config) OrchestrationV1Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("rts", region)
 }
 
 func (c *Config) MlsV1Client(region string) (*golangsdk.ServiceClient, error) {

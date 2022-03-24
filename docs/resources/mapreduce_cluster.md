@@ -260,6 +260,64 @@ resource "huaweicloud_mapreduce_cluster" "test" {
 
 ```
 
+### Create an analysis cluster and bind public IP
+
+```hcl
+data "huaweicloud_availability_zones" "test" {}
+
+variable "cluster_name" {}
+variable "password" {}
+variable "vpc_id" {}
+variable "subnet_id" {}
+variable "public_ip" {}
+
+resource "huaweicloud_mapreduce_cluster" "test" {
+  availability_zone  = data.huaweicloud_availability_zones.test.names[0]
+  name               = var.cluster_name
+  version            = "MRS 1.9.2"
+  type               = "ANALYSIS"
+  component_list     = ["Hadoop", "Hive", "Tez"]
+  manager_admin_pass = var.password
+  node_admin_pass    = var.password
+  vpc_id             = var.vpc_id
+  subnet_id          = var.subnet_id
+  public_ip          = var.public_ip
+
+  master_nodes {
+    flavor            = "c6.2xlarge.4.linux.bigdata"
+    node_number       = 2
+    root_volume_type  = "SAS"
+    root_volume_size  = 300
+    data_volume_type  = "SAS"
+    data_volume_size  = 480
+    data_volume_count = 1
+  }
+  analysis_core_nodes {
+    flavor            = "c6.2xlarge.4.linux.bigdata"
+    node_number       = 2
+    root_volume_type  = "SAS"
+    root_volume_size  = 300
+    data_volume_type  = "SAS"
+    data_volume_size  = 480
+    data_volume_count = 1
+  }
+  analysis_task_nodes {
+    flavor            = "c6.2xlarge.4.linux.bigdata"
+    node_number       = 1
+    root_volume_type  = "SAS"
+    root_volume_size  = 300
+    data_volume_type  = "SAS"
+    data_volume_size  = 480
+    data_volume_count = 1
+  }
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
@@ -299,8 +357,13 @@ The following arguments are supported:
 * `enterprise_project_id` - (Optional, String, ForceNew) Specifies a unique ID in UUID format of enterprise project.
   Changing this will create a new MapReduce cluster resource.
 
-* `eip_id` - (Optional, String, ForceNew) Specifies the EIP ID which bound to the MapReduce cluster. Changing this will
-  create a new MapReduce cluster resource.
+* `public_ip` - (Optional, String, ForceNew) Specifies the EIP address which bound to the MapReduce cluster.
+The EIP must have been created and must be in the same region as the cluster.
+ Changing this will create a new MapReduce cluster resource.
+
+* `eip_id` - (Optional, String, ForceNew) Specifies the EIP ID which bound to the MapReduce cluster.
+The EIP must have been created and must be in the same region as the cluster.
+ Changing this will create a new MapReduce cluster resource.
 
 * `log_collection` - (Optional, Bool, ForceNew) Specifies whether logs are collected when cluster installation fails.
   Default to true. If `log_collection` set true, the OBS buckets will be created and only used to collect logs that
@@ -383,13 +446,7 @@ The `nodes` block supports:
 * `root_volume_size` - (Required, Int, ForceNew) Specifies the system disk size of the nodes. Changing this will create
   a new MapReduce cluster resource.
 
-* `data_volume_type` - (Optional, String, ForceNew) Specifies the data disk flavor of the nodes. Required
-  if `data_volume_count` is not empty. Changing this will create a new MapReduce cluster resource.
-
-* `data_volume_size` - (Optional, Int, ForceNew) Specifies the data disk size of the nodes. Required
-  if `data_volume_count` is not empty. Changing this will create a new MapReduce cluster resource.
-
-* `data_volume_count` - (Optional, Int, ForceNew) Specifies the data disk number of the nodes. The number configuration
+* `data_volume_count` - (Required, Int, ForceNew) Specifies the data disk number of the nodes. The number configuration
   of each node are as follows:
   + master_nodes: 1.
   + analysis_core_nodes: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
@@ -398,6 +455,35 @@ The `nodes` block supports:
   + streaming_task_nodes: minimum is zero and the maximum is subject to the configuration of the corresponding flavor.
 
   Changing this will create a new MapReduce cluster resource.
+  
+* `data_volume_type` - (Optional, String, ForceNew) Specifies the data disk flavor of the nodes.
+  Required if `data_volume_count` is greater than zero. Changing this will create a new MapReduce cluster resource.
+   The following disk types are supported:
+  + `SATA`: common I/O disk
+  + `SAS`: high I/O disk
+  + `SSD`: ultra-high I/O disk
+
+* `data_volume_size` - (Optional, Int, ForceNew) Specifies the data disk size of the nodes,in GB. The value range is 10
+  to 32768. Required if `data_volume_count` is greater than zero. Changing this will create a new MapReduce
+  cluster resource.
+
+* `assigned_roles` - (Optional, List, ForceNew) Specifies the roles deployed in a node group.This argument is mandatory
+ when the cluster type is CUSTOM. Each character string represents a role expression.
+
+  **Role expression definition:**
+
+   + If the role is deployed on all nodes in the node group, set this parameter to role_name, for example: `DataNode`.
+   + If the role is deployed on a specified subscript node in the node group: role_name:index1,index2..., indexN,
+ for example: `DataNode:1,2`. The subscript starts from 1.
+   + Some roles support multi-instance deployment (that is, multiple instances of the same role are deployed on a node):
+  role_name[instance_count], for example: `EsNode[9]`.
+  
+  [For details about components](https://support.huaweicloud.com/intl/en-us/productdesc-mrs/mrs_08_0005.html)
+
+  [Mapping between roles and components](https://support.huaweicloud.com/intl/en-us/api-mrs/mrs_02_0106.html)
+
+  -> `DBService` is a basic component of a cluster. Components such as Hive, Hue, Oozie, Loader, and Redis, and Loader
+   store their metadata in DBService, and provide the metadata backup and restoration functions by using DBService.
 
 ## Attributes Reference
 
@@ -433,7 +519,7 @@ terraform import huaweicloud_mapreduce_cluster.test b11b407c-e604-4e8d-8bc4-9239
 
 Note that the imported state may not be identical to your resource definition, due to some attrubutes missing from the
 API response, security or some other reason. The missing attributes include:
-`manager_admin_pass`, `node_admin_pass`,`template_id`,`eip_id` and `assigned_roles`.
+`manager_admin_pass`, `node_admin_pass`,`template_id` and `assigned_roles`.
 It is generally recommended running `terraform plan` after importing a cluster.
 You can then decide if changes should be applied to the cluster, or the resource definition
 should be updated to align with the cluster. Also you can ignore changes as below.
@@ -444,7 +530,7 @@ resource "huaweicloud_mapreduce_cluster" "test" {
 
   lifecycle {
     ignore_changes = [
-      manager_admin_pass, node_admin_pass, eip_id,
+      manager_admin_pass, node_admin_pass,
     ]
   }
 }

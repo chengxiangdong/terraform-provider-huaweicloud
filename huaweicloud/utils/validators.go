@@ -31,23 +31,6 @@ func ValidateJsonString(v interface{}, k string) (ws []string, errors []error) {
 	return
 }
 
-func looksLikeJsonString(s interface{}) bool {
-	return regexp.MustCompile(`^\s*{`).MatchString(s.(string))
-}
-
-func ValidateStackTemplate(v interface{}, k string) (ws []string, errors []error) {
-	if looksLikeJsonString(v) {
-		if _, err := NormalizeJsonString(v); err != nil {
-			errors = append(errors, fmt.Errorf("%q contains an invalid JSON: %s", k, err))
-		}
-	} else {
-		if _, err := checkYamlString(v); err != nil {
-			errors = append(errors, fmt.Errorf("%q contains an invalid YAML: %s", k, err))
-		}
-	}
-	return
-}
-
 //lintignore:V001
 func ValidateName(v interface{}, k string) (ws []string, errors []error) {
 	value := v.(string)
@@ -238,20 +221,6 @@ func ValidateVBSBackupDescription(v interface{}, k string) (ws []string, errors 
 		errors = append(errors, fmt.Errorf(
 			"%q doesn't comply with restrictions (%q): %q",
 			k, pattern, value))
-	}
-	return
-}
-
-//lintignore:V001
-func ValidateECSTagValue(v interface{}, k string) (ws []string, errors []error) {
-	tagmap := v.(map[string]interface{})
-	vv := regexp.MustCompile(`^[0-9a-zA-Z-_]+$`)
-	for k, v := range tagmap {
-		value := v.(string)
-		if !vv.MatchString(value) {
-			errors = append(errors, fmt.Errorf("Tag value must be string only contains digits, letters, underscores(_) and hyphens(-), but got %s=%s", k, value))
-			break
-		}
 	}
 	return
 }

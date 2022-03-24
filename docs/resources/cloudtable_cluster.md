@@ -1,29 +1,35 @@
 ---
-subcategory: "Cloud Table"
+subcategory: "CloudTable"
 ---
 
 # huaweicloud_cloudtable_cluster
 
-Cloud table cluster management This is an alternative to `huaweicloud_cloudtable_cluster_v2`
+Manages a CloudTable cluster resource within HuaweiCloud.
 
 ## Example Usage
 
-### create a CloudTable cluster
-
 ```hcl
-resource "huaweicloud_networking_secgroup" "secgroup" {
-  name        = "terraform_test_security_group"
-  description = "terraform security group acceptance test"
+variable "cluster_name" {}
+variable "vpc_id" {}
+variable "network_id" {}
+variable "security_group_id" {}
+
+data "huaweicloud_availability_zones" "test" {}
+
+resource "huaweicloud_vpc_subnet" "test" {
+  vpc_id = var.vpc_id
+  ...
 }
 
-resource "huaweicloud_cloudtable_cluster" "cluster" {
-  availability_zone = "{{ availability_zone }}"
-  name              = "terraform-test-cluster"
-  rs_num            = 2
-  security_group_id = huaweicloud_networking_secgroup.secgroup.id
-  subnet_id         = "{{ network_id }}"
-  vpc_id            = "{{ vpc_id }}"
-  storage_type      = "COMMON"
+resource "huaweicloud_cloudtable_cluster" "test" {
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  name              = var.cluster_name
+  storage_type      = "ULTRAHIGH"
+  vpc_id            = var.vpc_id
+  network_id        = huaweicloud_vpc_subnet.test.id
+  security_group_id = var.security_group_id
+  hbase_version     = "1.0.6"
+  rs_num            = 4
 }
 ```
 
@@ -31,71 +37,91 @@ resource "huaweicloud_cloudtable_cluster" "cluster" {
 
 The following arguments are supported:
 
-* `availability_zone` - (Required, String, ForceNew) Availability zone (AZ). Changing this parameter will create a new
-  resource.
+* `region` - (Optional, String, ForceNew) Specifies the region in which to create the cluster.
+  If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
-* `name` - (Required, String, ForceNew) Cluster name. The value must be between 4 and 64 characters long and start with
-  a letter. Only letters, digits, and hyphens (-) are allowed. It is case insensitive. Changing this parameter will
-  create a new resource.
+* `availability_zone` - (Required, String, ForceNew) Specifies the availability zone in which to create the cluster.
+  Please following [reference](https://developer.huaweicloud.com/en-us/endpoint/?CloudTable) for the values.
+  Changing this parameter will create a new resource.
 
-* `rs_num` - (Required, Int, ForceNew) Number of computing units. Value range: 2 to 10. Changing this parameter will
-  create a new resource.
+* `name` - (Required, String, ForceNew) Specifies the cluster name. The name consists of 4 to 64 characters, including
+  lowercase letters, numbers and hyphens (-). Changing this parameter will create a new resource.
 
-* `security_group_id` - (Required, String, ForceNew) Security group ID. Changing this parameter will create a new
-  resource.
+* `storage_type` - (Required, String, ForceNew) Specifies the storage type.
+  The valid values are **COMMON** and **ULTRAHIGH**. Changing this parameter will create a new resource.
 
-* `storage_type` - (Required, String, ForceNew) Storage I/O type. The value are ULTRAHIGH and COMMON. Changing this
-  parameter will create a new resource.
+* `vpc_id` - (Required, String, ForceNew) Specifies the VPC ID to which the cluster belongs.
+  Changing this parameter will create a new resource.
 
-* `subnet_id` - (Required, String, ForceNew) Subnet ID. Changing this parameter will create a new resource.
+* `network_id` - (Required, String, ForceNew) Specifies the ID of the network to which the cluster belongs.
+  Changing this parameter will create a new resource.
 
-* `vpc_id` - (Required, String, ForceNew) VPC of the cluster. Changing this parameter will create a new resource.
+* `security_group_id` - (Required, String, ForceNew) Specifies the security group ID of the cluster.
+  Changing this parameter will create a new resource.
 
-* `enable_iam_auth` - (Optional, Bool, ForceNew) Whether to enable IAM authentication for OpenTSDB. Changing this
-  parameter will create a new resource.
+* `hbase_version` - (Required, String, ForceNew) Specifies the version of HBase datastore.
 
-* `lemon_num` - (Optional, Int, ForceNew) Number of Lemon nodes Value range: 2 to 10. Changing this parameter will
-  create a new resource.
+* `iam_auth_enabled` - (Optional, Bool, ForceNew) Specifies whether IAM authorization is enabled.
+  Changing this parameter will create a new resource.
 
-* `opentsdb_num` - (Optional, Int, ForceNew) Number of OpenTSDB nodes Value range: 2 to 10. Changing this parameter will
-  create a new resource.
+* `opentsdb_num` - (Optional, Int, ForceNew) Specifies the TSD nodes number of the cluster.
+  Changing this parameter will create a new resource.
 
-* `tags` - (Optional, List, ForceNew) Enterprise project information. Structure is documented below. Changing this
-  parameter will create a new resource.
-
-The `tags` block supports:
-
-* `key` - (Optional, String, ForceNew) Tag value. Changing this parameter will create a new resource.
-
-* `value` - (Optional, String, ForceNew) Tag key. Changing this parameter will create a new resource.
-
-* `region` - (Optional, String, ForceNew) The region in which to create the cloud table cluster resource. If omitted,
-  the provider-level region will be used. Changing this creates a new cloud table cluster resource.
+* `rs_num` - (Optional, Int, ForceNew) Specifies the compute nodes number of the cluster.
+  The valid values must be greater than `2`. Defaults to `2`. Changing this parameter will create a new resource.
 
 ## Attributes Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - Specifies a resource ID in UUID format.
+* `id` - The cluster ID.
 
-* `created` - Time when the cluster was created.
+* `status` - The cluster status.
 
-* `hbase_public_endpoint` - HBase link of the public network.
+* `created_at` - The time (UTC) when the cluster was created.
 
-* `lemon_link` - Lemon link of the intranet.
+* `hbase_public_endpoint` - The HBase public network endpoint address.
 
-* `open_tsdb_link` - OpenTSDB link of the intranet.
+* `open_tsdb_link` - The intranet OpenTSDB connection access address.
 
-* `opentsdb_public_endpoint` - OpenTSDB link of the public network.
+* `opentsdb_public_endpoint` - The OpenTSDB public network endpoint address.
 
-* `storage_quota` - Storage quota.
+* `storage_size` - The storage size, in GB.
 
-* `used_storage_size` - Used storage space.
+* `storage_size_used` - The currently used storage, in GB.
 
-* `zookeeper_link` - ZooKeeper link of the intranet.
+* `zookeeper_link` - The intranet zookeeper connection access address.
+
+## Import
+
+Clusters can be imported by their `id`. e.g.:
+
+```
+terraform import huaweicloud_cloudtable_cluster.test 4c2d38b6-6fb0-480c-8813-5f536b5ba6a4
+```
+
+Note that the imported state may not be identical to your resource definition, due to some attrubutes missing from the
+API response, security or some other reason.
+The missing attributes include: `availability_zone`, `network_id`.
+It is generally recommended running `terraform plan` after importing a cluster.
+You can then decide if changes should be applied to the cluster, or the resource definition should be updated to
+align with the cluster. Also you can ignore changes as below.
+
+```
+resource "huaweicloud_cloudtable_cluster" "test" {
+    ...
+
+  lifecycle {
+    ignore_changes = [
+      availability_zone, network_id,
+    ]
+  }
+}
+```
 
 ## Timeouts
 
 This resource provides the following timeouts configuration options:
 
 * `create` - Default is 30 minute.
+* `delete` - Default is 5 minute.

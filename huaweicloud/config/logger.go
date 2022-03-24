@@ -16,6 +16,9 @@ import (
 	"github.com/unknwon/com"
 )
 
+// MAXFieldLength is the maximum string length of single field when logging
+const MAXFieldLength int = 256
+
 var maxTimeout = 10 * time.Minute
 
 // LogRoundTripper satisfies the http.RoundTripper interface and is used to
@@ -112,10 +115,10 @@ func (lrt *LogRoundTripper) logRequest(original io.ReadCloser, contentType strin
 
 	// Handle request contentType
 	if strings.HasPrefix(contentType, "application/json") {
-		debugInfo := lrt.formatJSON(bs.Bytes(), true)
+		debugInfo := formatJSON(bs.Bytes(), true)
 		log.Printf("[DEBUG] API Request Body: %s", debugInfo)
 	} else {
-		log.Printf("[DEBUG] API Request Body: %s", bs.String())
+		log.Printf("[DEBUG] Not logging because the request body isn't JSON")
 	}
 
 	return ioutil.NopCloser(strings.NewReader(bs.String())), nil
@@ -131,20 +134,20 @@ func (lrt *LogRoundTripper) logResponse(original io.ReadCloser, contentType stri
 		if err != nil {
 			return nil, err
 		}
-		debugInfo := lrt.formatJSON(bs.Bytes(), false)
+		debugInfo := formatJSON(bs.Bytes(), true)
 		if debugInfo != "" {
 			log.Printf("[DEBUG] API Response Body: %s", debugInfo)
 		}
 		return ioutil.NopCloser(strings.NewReader(bs.String())), nil
 	}
 
-	log.Printf("[DEBUG] Not logging because response body isn't JSON")
+	log.Printf("[DEBUG] Not logging because the response body isn't JSON")
 	return original, nil
 }
 
 // formatJSON will try to pretty-format a JSON body.
 // It will also mask known fields which contain sensitive information.
-func (lrt *LogRoundTripper) formatJSON(raw []byte, maskBody bool) string {
+func formatJSON(raw []byte, maskBody bool) string {
 	var data map[string]interface{}
 
 	err := json.Unmarshal(raw, &data)
@@ -205,28 +208,41 @@ func FormatHeaders(headers http.Header, seperator string) string {
 	return strings.Join(redactedHeaders, seperator)
 }
 
-// "password" is apply to the most request JSON body
-// "adminPass" is apply to the ecs instance request JSON body
-// "adminPwd" is apply to the css cluster request JSON body
-// "secret" is apply to the AK/SK response JSON body
-var securityFields = []string{"password", "adminPass", "adminPwd", "secret"}
-
 func maskSecurityFields(data map[string]interface{}) bool {
-	for _, field := range securityFields {
-		if _, ok := data[field].(string); ok {
-			data[field] = "***"
-			return true
-		}
-	}
-
-	for _, v := range data {
-		switch v.(type) {
+	for k, val := range data {
+		switch val.(type) {
+		case string:
+			if isSecurityFields(k) {
+				data[k] = "***"
+			} else if len(val.(string)) > MAXFieldLength {
+				data[k] = "** large string **"
+			}
 		case map[string]interface{}:
-			subData := v.(map[string]interface{})
+			subData := val.(map[string]interface{})
 			if masked := maskSecurityFields(subData); masked {
 				return true
 			}
 		}
 	}
+	return false
+}
+
+func isSecurityFields(field string) bool {
+	// "password" is apply to the most request JSON body
+	// "secret" is apply to the AK/SK response JSON body
+	if strings.Contains(field, "password") || strings.Contains(field, "secret") {
+		return true
+	}
+
+	// "adminPass" is apply to the ecs/bms instance request JSON body
+	// "adminPwd" is apply to the css cluster request JSON body
+	// 'encrypted_user_data' is apply to the function request JSON body of FunctionGraph
+	securityFields := []string{"adminPass", "adminPwd", "encrypted_user_data"}
+	for _, key := range securityFields {
+		if key == field {
+			return true
+		}
+	}
+
 	return false
 }

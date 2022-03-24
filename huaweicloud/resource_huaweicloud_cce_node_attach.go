@@ -1,25 +1,29 @@
 package huaweicloud
 
 import (
+	"context"
 	"time"
 
 	"github.com/chnsz/golangsdk/openstack/cce/v3/nodes"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceCCENodeAttachV3() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceCCENodeAttachV3Create,
-		Read:   resourceCCENodeV3Read,
-		Update: resourceCCENodeV3Update,
-		Delete: resourceCCENodeAttachV3Delete,
+		CreateContext: resourceCCENodeAttachV3Create,
+		ReadContext:   resourceCCENodeV3Read,
+		UpdateContext: resourceCCENodeAttachV3Update,
+		DeleteContext: resourceCCENodeAttachV3Delete,
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
 			Delete: schema.DefaultTimeout(20 * time.Minute),
 		},
 
@@ -48,18 +52,15 @@ func ResourceCCENodeAttachV3() *schema.Resource {
 			"os": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"key_pair": {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ForceNew:     true,
 				ExactlyOneOf: []string{"password", "key_pair"},
 			},
 			"password": {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ForceNew:     true,
 				Sensitive:    true,
 				ExactlyOneOf: []string{"password", "key_pair"},
 			},
@@ -67,7 +68,6 @@ func ResourceCCENodeAttachV3() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
-				Default:  50,
 			},
 			"lvm_config": {
 				Type:     schema.TypeString,
@@ -78,19 +78,16 @@ func ResourceCCENodeAttachV3() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
-				Default:  10,
 			},
 			"nic_multi_queue": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
-				Default:  "[{\"queue\":4}]",
 			},
 			"nic_threshold": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
-				Default:  "0.3:0.6",
 			},
 			"image_id": {
 				Type:     schema.TypeString,
@@ -98,31 +95,48 @@ func ResourceCCENodeAttachV3() *schema.Resource {
 				ForceNew: true,
 			},
 			"preinstall": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				StateFunc: func(v interface{}) string {
-					switch v.(type) {
-					case string:
-						return installScriptHashSum(v.(string))
-					default:
-						return ""
-					}
-				},
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				StateFunc: utils.DecodeHashAndHexEncode,
 			},
 			"postinstall": {
-				Type:     schema.TypeString,
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				StateFunc: utils.DecodeHashAndHexEncode,
+			},
+			"taints": {
+				Type:     schema.TypeList,
 				Optional: true,
 				ForceNew: true,
-				StateFunc: func(v interface{}) string {
-					switch v.(type) {
-					case string:
-						return installScriptHashSum(v.(string))
-					default:
-						return ""
-					}
-				},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"key": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+						"effect": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+					}},
 			},
+			//(k8s_tags)
+			"labels": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				ForceNew: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			//(node/ecs_tags)
 			"tags": tagsSchema(),
 
 			"flavor_id": {
@@ -217,23 +231,90 @@ func ResourceCCENodeAttachV3() *schema.Resource {
 	}
 }
 
-func resourceCCENodeAttachV3Create(d *schema.ResourceData, meta interface{}) error {
+func resourceCCENodeAttachV3ServerConfig(d *schema.ResourceData) *nodes.ServerConfig {
+	if hasFilledOpt(d, "tags") || hasFilledOpt(d, "image_id") {
+		serverConfig := nodes.ServerConfig{
+			UserTags: resourceCCENodeTags(d),
+		}
+
+		if v, ok := d.GetOk("image_id"); ok {
+			rootVolume := nodes.RootVolume{
+				ImageID: v.(string),
+			}
+			serverConfig.RootVolume = &rootVolume
+		}
+		return &serverConfig
+	}
+	return nil
+}
+
+func resourceCCENodeAttachV3VolumeConfig(d *schema.ResourceData) *nodes.VolumeConfig {
+	if v, ok := d.GetOk("lmv_config"); ok {
+		volumeConfig := nodes.VolumeConfig{
+			LvmConfig: v.(string),
+		}
+		return &volumeConfig
+	}
+	return nil
+}
+
+func resourceCCENodeAttachV3RuntimeConfig(d *schema.ResourceData) *nodes.RuntimeConfig {
+	if v, ok := d.GetOk("docker_base_size"); ok {
+		runtimeConfig := nodes.RuntimeConfig{
+			DockerBaseSize: v.(int),
+		}
+		return &runtimeConfig
+	}
+	return nil
+}
+
+func resourceCCENodeAttachV3K8sOptions(d *schema.ResourceData) *nodes.K8sOptions {
+	if hasFilledOpt(d, "labels") || hasFilledOpt(d, "taints") || hasFilledOpt(d, "max_pods") ||
+		hasFilledOpt(d, "nic_multi_queue") || hasFilledOpt(d, "nic_threshold") {
+		k8sOptions := nodes.K8sOptions{
+			Labels:        resourceCCENodeK8sTags(d),
+			Taints:        resourceCCETaint(d),
+			MaxPods:       d.Get("max_pods").(int),
+			NicMultiQueue: d.Get("nic_multi_queue").(string),
+			NicThreshold:  d.Get("nic_threshold").(string),
+		}
+		return &k8sOptions
+	}
+
+	return nil
+}
+
+func resourceCCENodeAttachV3Lifecycle(d *schema.ResourceData) *nodes.Lifecycle {
+	if hasFilledOpt(d, "preinstall") || hasFilledOpt(d, "postinstall") {
+		lifecycle := nodes.Lifecycle{
+			Preinstall:  d.Get("preinstall").(string),
+			PostInstall: d.Get("postinstall").(string),
+		}
+		return &lifecycle
+	}
+	return nil
+}
+
+func resourceCCENodeAttachV3Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	config := meta.(*config.Config)
 	nodeClient, err := config.CceV3Client(GetRegion(d, config))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud CCE Node client: %s", err)
+		return fmtp.DiagErrorf("Error creating HuaweiCloud CCE Node client: %s", err)
 	}
 
 	// wait for the cce cluster to become available
-	clusterid := d.Get("cluster_id").(string)
+	clusterID := d.Get("cluster_id").(string)
 	stateCluster := &resource.StateChangeConf{
 		Target:       []string{"Available"},
-		Refresh:      waitForClusterAvailable(nodeClient, clusterid),
+		Refresh:      waitForClusterAvailable(nodeClient, clusterID),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        5 * time.Second,
 		PollInterval: 5 * time.Second,
 	}
-	_, err = stateCluster.WaitForState()
+	_, err = stateCluster.WaitForStateContext(ctx)
+	if err != nil {
+		return fmtp.DiagErrorf("Error waiting for HuaweiCloud CCE cluster to be Available: %s", err)
+	}
 
 	addOpts := nodes.AddOpts{
 		Kind:       "List",
@@ -243,45 +324,14 @@ func resourceCCENodeAttachV3Create(d *schema.ResourceData, meta interface{}) err
 	addNode := nodes.AddNode{
 		ServerID: d.Get("server_id").(string),
 		Spec: nodes.AddNodeSpec{
-			Os: d.Get("os").(string),
+			Os:            d.Get("os").(string),
+			Name:          d.Get("name").(string),
+			ServerConfig:  resourceCCENodeAttachV3ServerConfig(d),
+			VolumeConfig:  resourceCCENodeAttachV3VolumeConfig(d),
+			RuntimeConfig: resourceCCENodeAttachV3RuntimeConfig(d),
+			K8sOptions:    resourceCCENodeAttachV3K8sOptions(d),
+			Lifecycle:     resourceCCENodeAttachV3Lifecycle(d),
 		},
-	}
-
-	if v, ok := d.GetOk("lmv_config"); ok {
-		volumeConfig := nodes.VolumeConfig{
-			LvmConfig: v.(string),
-		}
-		addNode.Spec.VolumeConfig = &volumeConfig
-	}
-	if v, ok := d.GetOk("docker_base_size"); ok {
-		runtimeConfig := nodes.RuntimeConfig{
-			DockerBaseSize: v.(int),
-		}
-		addNode.Spec.RuntimeConfig = &runtimeConfig
-	}
-
-	k8sOptions := nodes.K8sOptions{
-		MaxPods:       d.Get("max_pods").(int),
-		NicMultiQueue: d.Get("nic_multi_queue").(string),
-		NicThreshold:  d.Get("nic_threshold").(string),
-	}
-	if (k8sOptions != nodes.K8sOptions{}) {
-		addNode.Spec.K8sOptions = &k8sOptions
-	}
-
-	if v, ok := d.GetOk("image_id"); ok {
-		extendParam := map[string]interface{}{
-			"alpha.cce/NodeImageID": v.(int),
-		}
-		addNode.Spec.ExtendParam = extendParam
-	}
-
-	if hasFilledOpt(d, "preinstall") || hasFilledOpt(d, "postinstall") {
-		lifecycle := nodes.Lifecycle{
-			Preinstall:  d.Get("preinstall").(string),
-			PostInstall: d.Get("postinstall").(string),
-		}
-		addNode.Spec.Lifecycle = &lifecycle
 	}
 
 	addOpts.NodeList = append(addOpts.NodeList, addNode)
@@ -293,67 +343,154 @@ func resourceCCENodeAttachV3Create(d *schema.ResourceData, meta interface{}) err
 		loginSpec = nodes.LoginSpec{
 			SshKey: d.Get("key_pair").(string),
 		}
-	} else if hasFilledOpt(d, "password") {
+	} else {
+		password, err := utils.TryPasswordEncrypt(d.Get("password").(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		loginSpec = nodes.LoginSpec{
 			UserPassword: nodes.UserPassword{
 				Username: "root",
-				Password: d.Get("password").(string),
+				Password: password,
 			},
 		}
 	}
 	addOpts.NodeList[0].Spec.Login = loginSpec
 
-	s, err := nodes.Add(nodeClient, clusterid, addOpts).ExtractAddNode()
-
+	s, err := nodes.Add(nodeClient, clusterID, addOpts).ExtractAddNode()
 	if err != nil {
-		return fmtp.Errorf("Error adding HuaweiCloud Node: %s", err)
+		return fmtp.DiagErrorf("Error adding HuaweiCloud Node: %s", err)
 	}
 
-	nodeID, err := getResourceIDFromJob(nodeClient, s.JobID, "CreateNode", "InstallNode",
+	nodeID, err := getResourceIDFromJob(ctx, nodeClient, s.JobID, "CreateNode", "InstallNode",
 		d.Timeout(schema.TimeoutCreate))
-
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	d.SetId(nodeID)
 
 	stateConf := &resource.StateChangeConf{
 		Pending:      []string{"Build", "Installing"},
 		Target:       []string{"Active"},
-		Refresh:      waitForCceNodeActive(nodeClient, clusterid, nodeID),
+		Refresh:      waitForCceNodeActive(nodeClient, clusterID, nodeID),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        20 * time.Second,
 		PollInterval: 20 * time.Second,
 	}
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
-		return fmtp.Errorf("Error adding HuaweiCloud CCE Node: %s", err)
+		return fmtp.DiagErrorf("Error adding HuaweiCloud CCE Node: %s", err)
 	}
 
-	return resourceCCENodeV3Update(d, meta)
+	return resourceCCENodeV3Read(ctx, d, meta)
 }
 
-func resourceCCENodeAttachV3Delete(d *schema.ResourceData, meta interface{}) error {
+func resourceCCENodeAttachV3Update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	config := meta.(*config.Config)
+	if d.HasChanges("os", "key_pair", "password") {
+		nodeClient, err := config.CceV3Client(GetRegion(d, config))
+		if err != nil {
+			return fmtp.DiagErrorf("Error creating HuaweiCloud CCE client: %s", err)
+		}
+		clusterID := d.Get("cluster_id").(string)
+		resetOpts := nodes.ResetOpts{
+			Kind:       "List",
+			ApiVersion: "v3",
+		}
+
+		resetNode := nodes.ResetNode{
+			NodeID: d.Id(),
+			Spec: nodes.AddNodeSpec{
+				Os:            d.Get("os").(string),
+				Name:          d.Get("name").(string),
+				ServerConfig:  resourceCCENodeAttachV3ServerConfig(d),
+				VolumeConfig:  resourceCCENodeAttachV3VolumeConfig(d),
+				RuntimeConfig: resourceCCENodeAttachV3RuntimeConfig(d),
+				K8sOptions:    resourceCCENodeAttachV3K8sOptions(d),
+				Lifecycle:     resourceCCENodeAttachV3Lifecycle(d),
+			},
+		}
+
+		resetOpts.NodeList = append(resetOpts.NodeList, resetNode)
+
+		logp.Printf("[DEBUG] Reset node Options: %#v", resetOpts)
+		// Add loginSpec here so it wouldn't go in the above log entry
+		var loginSpec nodes.LoginSpec
+		if hasFilledOpt(d, "key_pair") {
+			loginSpec = nodes.LoginSpec{
+				SshKey: d.Get("key_pair").(string),
+			}
+		} else {
+			password, err := utils.TryPasswordEncrypt(d.Get("password").(string))
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			loginSpec = nodes.LoginSpec{
+				UserPassword: nodes.UserPassword{
+					Username: "root",
+					Password: password,
+				},
+			}
+		}
+		resetOpts.NodeList[0].Spec.Login = loginSpec
+
+		s, err := nodes.Reset(nodeClient, clusterID, resetOpts).ExtractAddNode()
+		if err != nil {
+			return fmtp.DiagErrorf("Error resetting HuaweiCloud Node: %s", err)
+		}
+
+		nodeID, err := getResourceIDFromJob(ctx, nodeClient, s.JobID, "CreateNode", "InstallNode",
+			d.Timeout(schema.TimeoutUpdate))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId(nodeID)
+
+		stateConf := &resource.StateChangeConf{
+			Pending:      []string{"Build", "Installing"},
+			Target:       []string{"Active"},
+			Refresh:      waitForCceNodeActive(nodeClient, clusterID, nodeID),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        20 * time.Second,
+			PollInterval: 20 * time.Second,
+		}
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			return fmtp.DiagErrorf("Error resetting HuaweiCloud CCE Node: %s", err)
+		}
+
+		return resourceCCENodeV3Read(ctx, d, config)
+
+	} else {
+		return resourceCCENodeV3Update(ctx, d, config)
+	}
+}
+
+func resourceCCENodeAttachV3Delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	config := meta.(*config.Config)
 	nodeClient, err := config.CceV3Client(GetRegion(d, config))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud CCE client: %s", err)
+		return fmtp.DiagErrorf("Error creating HuaweiCloud CCE client: %s", err)
 	}
 
-	clusterid := d.Get("cluster_id").(string)
+	clusterID := d.Get("cluster_id").(string)
 
 	var removeOpts nodes.RemoveOpts
-
 	var loginSpec nodes.LoginSpec
+
 	if hasFilledOpt(d, "key_pair") {
 		loginSpec = nodes.LoginSpec{
 			SshKey: d.Get("key_pair").(string),
 		}
-	} else if hasFilledOpt(d, "password") {
+	} else {
+		password, err := utils.TryPasswordEncrypt(d.Get("password").(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		loginSpec = nodes.LoginSpec{
 			UserPassword: nodes.UserPassword{
 				Username: "root",
-				Password: d.Get("password").(string),
+				Password: password,
 			},
 		}
 	}
@@ -364,23 +501,23 @@ func resourceCCENodeAttachV3Delete(d *schema.ResourceData, meta interface{}) err
 	}
 	removeOpts.Spec.Nodes = append(removeOpts.Spec.Nodes, nodeItem)
 
-	err = nodes.Remove(nodeClient, clusterid, removeOpts).ExtractErr()
+	err = nodes.Remove(nodeClient, clusterID, removeOpts).ExtractErr()
 	if err != nil {
-		return fmtp.Errorf("Error removing HuaweiCloud CCE node: %s", err)
+		return fmtp.DiagErrorf("Error removing HuaweiCloud CCE node: %s", err)
 	}
 
 	stateConf := &resource.StateChangeConf{
 		Pending:      []string{"Deleting"},
 		Target:       []string{"Deleted"},
-		Refresh:      waitForCceNodeDelete(nodeClient, clusterid, d.Id()),
+		Refresh:      waitForCceNodeDelete(nodeClient, clusterID, d.Id()),
 		Timeout:      d.Timeout(schema.TimeoutDelete),
 		Delay:        60 * time.Second,
 		PollInterval: 20 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
-		return fmtp.Errorf("Error deleting HuaweiCloud CCE Node: %s", err)
+		return fmtp.DiagErrorf("Error deleting HuaweiCloud CCE Node: %s", err)
 	}
 
 	d.SetId("")

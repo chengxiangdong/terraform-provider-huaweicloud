@@ -17,7 +17,7 @@ type CreateOpts struct {
 	// all
 	// NOTE:
 	// If the type is not specified, the default value sql is used.
-	QueueType string `json:"queue_type ,omitempty"`
+	QueueType string `json:"queue_type,omitempty"`
 
 	// Description of a queue.
 	Description string `json:"description,omitempty"`
@@ -72,6 +72,10 @@ type ActionOpts struct {
 	Force     bool   `json:"force,omitempty"`        //when action= restart,can Specifies whether to forcibly restart
 	CuCount   int    `json:"cu_count,omitempty"`     // Number of CUs to be scaled in or out.
 	QueueName string `json:"-" required:"true"`
+}
+
+type UpdateCidrOpts struct {
+	Cidr string `json:"cidr_in_vpc,omitempty"`
 }
 
 // CreateOptsBuilder allows extensions to add additional parameters to the
@@ -192,4 +196,15 @@ func ScaleOrRestart(c *golangsdk.ServiceClient, opts ActionOpts) (r PutResult) {
 	reqOpt := &golangsdk.RequestOpts{OkCodes: []int{200}}
 	_, r.Err = c.Put(ActionURL(c, opts.QueueName), requstbody, &r.Body, reqOpt)
 	return
+}
+
+func UpdateCidr(c *golangsdk.ServiceClient, queueName string, opts UpdateCidrOpts) (*UpdateCidrResp, error) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var rst UpdateCidrResp
+	_, err = c.Put(resourceURL(c, queueName), b, &rst, nil)
+	return &rst, err
 }

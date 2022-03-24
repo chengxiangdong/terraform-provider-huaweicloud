@@ -36,18 +36,18 @@ type CreateMetaData struct {
 
 // Specifications to create a network
 type Spec struct {
-	// Network CIDR
-	Cidr string `json:"type,omitempty"`
 	// Network VPC ID
 	AttachedVPC string `json:"attachedVPC" required:"true"`
 	// Network Type
 	NetworkType string `json:"networkType" required:"true"`
 	// Network ID
 	NetworkID string `json:"networkID" required:"true"`
-	// Subnet ID
-	SubnetID string `json:"subnetID" required:"true"`
 	// Network AZ
 	AvailableZone string `json:"availableZone" required:"true"`
+	// Network CIDR
+	Cidr string `json:"cidr,omitempty"`
+	// Subnet ID
+	SubnetID string `json:"subnetID,omitempty"`
 }
 
 // ToNetworkCreateMap builds a create request body from CreateOpts.
@@ -74,6 +74,18 @@ func Get(c *golangsdk.ServiceClient, ns, id string) (r GetResult) {
 		MoreHeaders: RequestOpts.MoreHeaders, JSONBody: nil,
 	})
 	return
+}
+
+// List is a method to obtain namespace networks.
+func List(c *golangsdk.ServiceClient, ns string) ([]Network, error) {
+	var rst golangsdk.Result
+	_, err := c.Get(rootURL(c, ns), &rst.Body, nil)
+	if err == nil {
+		var r []Network
+		rst.ExtractIntoSlicePtr(&r, "items")
+		return r, nil
+	}
+	return nil, err
 }
 
 // Delete will permanently delete a particular network based on its unique ID.
