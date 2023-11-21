@@ -66,6 +66,9 @@ var (
 	HW_RAM_SHARE_UPDATE_ACCOUNT_ID   = os.Getenv("HW_RAM_SHARE_UPDATE_ACCOUNT_ID")
 	HW_RAM_SHARE_UPDATE_RESOURCE_URN = os.Getenv("HW_RAM_SHARE_UPDATE_RESOURCE_URN")
 
+	HW_CDN_DOMAIN_NAME              = os.Getenv("HW_CDN_DOMAIN_NAME")
+	HW_CDN_CERT_PATH                = os.Getenv("HW_CDN_CERT_PATH")
+	HW_CDN_PRIVATE_KEY_PATH         = os.Getenv("HW_CDN_PRIVATE_KEY_PATH")
 	HW_CERTIFICATE_KEY_PATH         = os.Getenv("HW_CERTIFICATE_KEY_PATH")
 	HW_CERTIFICATE_CHAIN_PATH       = os.Getenv("HW_CERTIFICATE_CHAIN_PATH")
 	HW_CERTIFICATE_PRIVATE_KEY_PATH = os.Getenv("HW_CERTIFICATE_PRIVATE_KEY_PATH")
@@ -95,6 +98,7 @@ var (
 	HW_VOD_WATERMARK_FILE   = os.Getenv("HW_VOD_WATERMARK_FILE")
 	HW_VOD_MEDIA_ASSET_FILE = os.Getenv("HW_VOD_MEDIA_ASSET_FILE")
 
+	HW_LTS_ENABLE_FLAG                 = os.Getenv("HW_LTS_ENABLE_FLAG")
 	HW_LTS_STRUCT_CONFIG_TEMPLATE_ID   = os.Getenv("HW_LTS_STRUCT_CONFIG_TEMPLATE_ID")
 	HW_LTS_STRUCT_CONFIG_TEMPLATE_NAME = os.Getenv("HW_LTS_STRUCT_CONFIG_TEMPLATE_NAME")
 
@@ -118,7 +122,8 @@ var (
 
 	HW_FGS_TRIGGER_LTS_AGENCY = os.Getenv("HW_FGS_TRIGGER_LTS_AGENCY")
 
-	HW_KMS_ENVIRONMENT = os.Getenv("HW_KMS_ENVIRONMENT")
+	HW_KMS_ENVIRONMENT    = os.Getenv("HW_KMS_ENVIRONMENT")
+	HW_KMS_HSM_CLUSTER_ID = os.Getenv("HW_KMS_HSM_CLUSTER_ID")
 
 	HW_MULTI_ACCOUNT_ENVIRONMENT            = os.Getenv("HW_MULTI_ACCOUNT_ENVIRONMENT")
 	HW_ORGANIZATIONS_OPEN                   = os.Getenv("HW_ORGANIZATIONS_OPEN")
@@ -173,6 +178,9 @@ var (
 
 	HW_MODELARTS_HAS_SUBSCRIBE_MODEL = os.Getenv("HW_MODELARTS_HAS_SUBSCRIBE_MODEL")
 
+	// The CMDB sub-application ID of AOM service
+	HW_AOM_SUB_APPLICATION_ID = os.Getenv("HW_AOM_SUB_APPLICATION_ID")
+
 	// Deprecated
 	HW_SRC_ACCESS_KEY = os.Getenv("HW_SRC_ACCESS_KEY")
 	HW_SRC_SECRET_KEY = os.Getenv("HW_SRC_SECRET_KEY")
@@ -194,6 +202,8 @@ var (
 	HW_EG_CHANNEL_ID = os.Getenv("HW_EG_CHANNEL_ID")
 
 	HW_KOOGALLERY_ASSET = os.Getenv("HW_KOOGALLERY_ASSET")
+
+	HW_CCI_NAMESPACE = os.Getenv("HW_CCI_NAMESPACE")
 )
 
 // TestAccProviders is a static map containing only the main provider instance.
@@ -464,6 +474,13 @@ func TestAccPreCheckProjectId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDestProjectIds(t *testing.T) {
+	if HW_DEST_PROJECT_ID == "" || HW_DEST_PROJECT_ID_TEST == "" {
+		t.Skip("HW_DEST_PROJECT_ID and HW_DEST_PROJECT_ID_TEST must be set for acceptance test.")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckProject(t *testing.T) {
 	if HW_ENTERPRISE_PROJECT_ID_TEST != "" {
 		t.Skip("This environment does not support project tests")
@@ -688,6 +705,13 @@ func TestAccPreCheckKms(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckKmsHsmClusterId(t *testing.T) {
+	if HW_KMS_HSM_CLUSTER_ID == "" {
+		t.Skip("HW_KMS_HSM_CLUSTER_ID must be set for KMS dedicated keystore acceptance tests.")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckProjectID(t *testing.T) {
 	if HW_PROJECT_ID == "" {
 		t.Skip("HW_PROJECT_ID must be set for acceptance tests")
@@ -870,6 +894,13 @@ func TestAccPreCheckLtsAomAccessUpdate(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckAomSubApplicationId(t *testing.T) {
+	if HW_AOM_SUB_APPLICATION_ID == "" {
+		t.Skip("HW_AOM_SUB_APPLICATION_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPrecheckKooGallery(t *testing.T) {
 	if HW_KOOGALLERY_ASSET == "" {
 		t.Skip("Skip the KooGallery acceptance tests.")
@@ -881,5 +912,33 @@ func TestAccPreCheckLtsStructConfigCustom(t *testing.T) {
 	if HW_LTS_STRUCT_CONFIG_TEMPLATE_ID == "" || HW_LTS_STRUCT_CONFIG_TEMPLATE_NAME == "" {
 		t.Skip("HW_LTS_STRUCT_CONFIG_TEMPLATE_ID and HW_LTS_STRUCT_CONFIG_TEMPLATE_NAME must be" +
 			" set for LTS struct config custom acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckLtsEnableFlag(t *testing.T) {
+	if HW_LTS_ENABLE_FLAG == "" {
+		t.Skip("Skip the LTS acceptance tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCCINamespace(t *testing.T) {
+	if HW_CCI_NAMESPACE == "" {
+		t.Skip("This environment does not support CCI Namespace tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCDN(t *testing.T) {
+	if HW_CDN_DOMAIN_NAME == "" {
+		t.Skip("This environment does not support CDN tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCERT(t *testing.T) {
+	if HW_CDN_CERT_PATH == "" || HW_CDN_PRIVATE_KEY_PATH == "" {
+		t.Skip("This environment does not support CDN certificate tests")
 	}
 }

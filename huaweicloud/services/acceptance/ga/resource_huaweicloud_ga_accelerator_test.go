@@ -5,23 +5,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-func getAcceleratorResourceFunc(config *config.Config, state *terraform.ResourceState) (interface{}, error) {
+func getAcceleratorResourceFunc(conf *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	region := acceptance.HW_REGION_NAME
 	// getAccelerator: Query the GA accelerator detail
 	var (
 		getAcceleratorHttpUrl = "v1/accelerators/{id}"
 		getAcceleratorProduct = "ga"
 	)
-	getAcceleratorClient, err := config.NewServiceClient(getAcceleratorProduct, region)
+	getAcceleratorClient, err := conf.NewServiceClient(getAcceleratorProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Accelerator Client: %s", err)
 	}

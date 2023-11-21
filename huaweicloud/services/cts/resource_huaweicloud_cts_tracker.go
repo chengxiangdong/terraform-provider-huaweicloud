@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -78,6 +79,11 @@ func ResourceCTSTracker() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+			},
+			"organization_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
 			},
 
 			"name": {
@@ -167,11 +173,12 @@ func resourceCTSTrackerUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 		trackerType := cts.GetUpdateTrackerRequestBodyTrackerTypeEnum().SYSTEM
 		updateBody := cts.UpdateTrackerRequestBody{
-			TrackerName:       "system",
-			TrackerType:       trackerType,
-			IsLtsEnabled:      utils.Bool(d.Get("lts_enabled").(bool)),
-			IsSupportValidate: utils.Bool(d.Get("validate_file").(bool)),
-			ObsInfo:           &obsInfo,
+			TrackerName:           "system",
+			TrackerType:           trackerType,
+			IsLtsEnabled:          utils.Bool(d.Get("lts_enabled").(bool)),
+			IsOrganizationTracker: utils.Bool(d.Get("organization_enabled").(bool)),
+			IsSupportValidate:     utils.Bool(d.Get("validate_file").(bool)),
+			ObsInfo:               &obsInfo,
 		}
 
 		var encryption bool
@@ -214,33 +221,44 @@ func resourceCTSTrackerRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.SetId("system")
 	}
 
-	d.Set("region", region)
-	d.Set("name", ctsTracker.TrackerName)
-	d.Set("lts_enabled", ctsTracker.Lts.IsLtsEnabled)
-	d.Set("validate_file", ctsTracker.IsSupportValidate)
-	d.Set("kms_id", ctsTracker.KmsId)
+	mErr := multierror.Append(
+		nil,
+		d.Set("region", region),
+		d.Set("name", ctsTracker.TrackerName),
+		d.Set("lts_enabled", ctsTracker.Lts.IsLtsEnabled),
+		d.Set("organization_enabled", ctsTracker.IsOrganizationTracker),
+		d.Set("validate_file", ctsTracker.IsSupportValidate),
+		d.Set("kms_id", ctsTracker.KmsId),
+	)
 
 	if ctsTracker.ObsInfo != nil {
 		bucketName := ctsTracker.ObsInfo.BucketName
-		d.Set("bucket_name", bucketName)
-		d.Set("file_prefix", ctsTracker.ObsInfo.FilePrefixName)
+		mErr = multierror.Append(
+			mErr,
+			d.Set("bucket_name", bucketName),
+			d.Set("file_prefix", ctsTracker.ObsInfo.FilePrefixName),
+		)
+
 		if *bucketName != "" {
-			d.Set("transfer_enabled", true)
+			mErr = multierror.Append(mErr, d.Set("transfer_enabled", true))
 		} else {
-			d.Set("transfer_enabled", false)
+			mErr = multierror.Append(mErr, d.Set("transfer_enabled", false))
 		}
 	}
 
 	if ctsTracker.TrackerType != nil {
-		d.Set("type", formatValue(ctsTracker.TrackerType))
+		mErr = multierror.Append(mErr, d.Set("type", formatValue(ctsTracker.TrackerType)))
 	}
 	if ctsTracker.Status != nil {
 		status := formatValue(ctsTracker.Status)
-		d.Set("status", status)
-		d.Set("enabled", status == "enabled")
+		mErr = multierror.Append(
+			mErr,
+			d.Set("status", status),
+			d.Set("enabled", status == "enabled"),
+		)
 	}
 
-	return nil
+	return diag.FromErr(mErr.ErrorOrNil())
 }
 
 func resourceCTSTrackerDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -306,11 +324,12 @@ func createSystemTracker(d *schema.ResourceData, ctsClient *client.CtsClient) er
 
 	trackerType := cts.GetCreateTrackerRequestBodyTrackerTypeEnum().SYSTEM
 	reqBody := cts.CreateTrackerRequestBody{
-		TrackerName:       "system",
-		TrackerType:       trackerType,
-		IsLtsEnabled:      utils.Bool(d.Get("lts_enabled").(bool)),
-		IsSupportValidate: utils.Bool(d.Get("validate_file").(bool)),
-		ObsInfo:           &obsInfo,
+		TrackerName:           "system",
+		TrackerType:           trackerType,
+		IsLtsEnabled:          utils.Bool(d.Get("lts_enabled").(bool)),
+		IsOrganizationTracker: utils.Bool(d.Get("organization_enabled").(bool)),
+		IsSupportValidate:     utils.Bool(d.Get("validate_file").(bool)),
+		ObsInfo:               &obsInfo,
 	}
 
 	if v, ok := d.GetOk("kms_id"); ok {

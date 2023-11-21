@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/chnsz/golangsdk/openstack/dli/v2/batches"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/chnsz/golangsdk/openstack/dli/v2/batches"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
@@ -53,8 +55,8 @@ func TestAccDliSparkJobV2_basic(t *testing.T) {
 }
 
 func testAccCheckDliSparkJobDestroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	client, err := config.DliV2Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	client, err := cfg.DliV2Client(acceptance.HW_REGION_NAME)
 	if err != nil {
 		return fmt.Errorf("error creating Dli v2 client: %s", err)
 	}
@@ -67,7 +69,7 @@ func testAccCheckDliSparkJobDestroy(s *terraform.State) error {
 		resp, err := batches.GetState(client, rs.Primary.ID)
 		// If the status of the spark job is "dead" or "success", it means that the life cycle of the job has ended.
 		if err == nil && resp != nil && (resp.State != batches.StateDead && resp.State != batches.StateSuccess) {
-			return fmt.Errorf("spark job (%s) still exists.", rs.Primary.ID)
+			return fmt.Errorf("spark job (%s) still exists", rs.Primary.ID)
 		}
 	}
 

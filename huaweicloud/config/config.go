@@ -10,13 +10,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/identity/v3/domains"
 	"github.com/chnsz/golangsdk/openstack/identity/v3/projects"
 	"github.com/chnsz/golangsdk/openstack/identity/v3/users"
 	"github.com/chnsz/golangsdk/openstack/obs"
-	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/mutexkv"
 )
 
@@ -515,6 +517,14 @@ func (c *Config) EnterpriseProjectClient(region string) (*golangsdk.ServiceClien
 	return c.NewServiceClient("eps", region)
 }
 
+func (c *Config) TmsV1Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("tms", region)
+}
+
+func (c *Config) TmsV2Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("tmsv2", region)
+}
+
 // ********** client for Compute **********
 func (c *Config) ComputeV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("ecs", region)
@@ -944,4 +954,8 @@ func (c *Config) NatV2Client(region string) (*golangsdk.ServiceClient, error) {
 // KooGalleryV1Client has the endpoint: https://mkt.{{cloud}}/v1/
 func (c *Config) KooGalleryV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("mkt", region)
+}
+
+func (c *Config) VpnV5Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("vpn", region)
 }

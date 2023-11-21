@@ -59,6 +59,7 @@ func getKmsGrantResourceFunc(cfg *config.Config, state *terraform.ResourceState)
 
 	return r, nil
 }
+
 func TestAccKmsGrant_basic(t *testing.T) {
 	var obj interface{}
 
@@ -127,13 +128,13 @@ func testKmsGrantImportState(name string) resource.ImportStateIdFunc {
 	return func(s *terraform.State) (string, error) {
 		rs, ok := s.RootModule().Resources[name]
 		if !ok {
-			return "", fmt.Errorf("Resource (%s) not found: %s", name, rs)
+			return "", fmt.Errorf("resource (%s) not found: %s", name, rs)
 		}
 		if rs.Primary.Attributes["key_id"] == "" {
-			return "", fmt.Errorf("Attribute (key_id) of Resource (%s) not found: %s", name, rs)
+			return "", fmt.Errorf("attribute (key_id) of Resource (%s) not found: %s", name, rs)
 		}
 		if rs.Primary.ID == "" {
-			return "", fmt.Errorf("Attribute (ID) of Resource (%s) not found: %s", name, rs)
+			return "", fmt.Errorf("attribute (ID) of Resource (%s) not found: %s", name, rs)
 		}
 
 		return rs.Primary.Attributes["key_id"] + "/" +

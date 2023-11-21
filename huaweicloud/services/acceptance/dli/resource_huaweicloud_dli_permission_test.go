@@ -5,17 +5,18 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/chnsz/golangsdk/openstack/dli/v1/auth"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/dli"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/chnsz/golangsdk/openstack/dli/v1/auth"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/dli"
 )
 
-func getDliAuthResourceFunc(config *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := config.DliV1Client(acceptance.HW_REGION_NAME)
+func getDliAuthResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+	client, err := cfg.DliV1Client(acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Dli v1 client, err=%s", err)
 	}
@@ -327,7 +328,7 @@ func TestAccResourceDliAuth_queue(t *testing.T) {
 }
 
 func testAccDliAuthResource_queue(name string, projectId string, privileges string) string {
-	queue := testAccDliQueue_basic(name, dli.CU_16)
+	queue := testAccDliQueue_basic(name, dli.CU16)
 	userConfig := testAccDliAuthUserConfig(name, projectId)
 
 	return fmt.Sprintf(`

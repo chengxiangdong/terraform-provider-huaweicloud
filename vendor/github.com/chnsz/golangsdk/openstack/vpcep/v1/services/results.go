@@ -3,6 +3,7 @@ package services
 import (
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/common/tags"
+	"github.com/chnsz/golangsdk/pagination"
 )
 
 // Service contains the response of the VPC endpoint service
@@ -39,6 +40,8 @@ type Service struct {
 	Error []ErrorInfo `json:"error"`
 	// the description of the VPC endpoint service
 	Description string `json:"description"`
+	// whether the VPC endpoint policy is enabled.
+	EnablePolicy bool `json:"enable_policy"`
 	// the creation time of the VPC endpoint service
 	Created string `json:"created_at"`
 	// the update time of the VPC endpoint service
@@ -194,6 +197,8 @@ type Permission struct {
 	ID string `json:"id"`
 	// the whitelist records.
 	Permission string `json:"permission"`
+	// the type of the whitelist.
+	PermissionType string `json:"permission_type"`
 	// the time of adding the whitelist record
 	Created string `json:"created_at"`
 }
@@ -219,4 +224,16 @@ func (r ListPermResult) ExtractPermissions() ([]Permission, error) {
 		return nil, err
 	}
 	return s.Permissions, nil
+}
+
+// PublicServicePage is a single page maximum result representing a query by offset page.
+type PublicServicePage struct {
+	pagination.OffsetPageBase
+}
+
+// extractPublicService is a method to extract the list of tags supported PublicService.
+func extractPublicService(r pagination.Page) ([]PublicService, error) {
+	var s []PublicService
+	err := r.(PublicServicePage).Result.ExtractIntoSlicePtr(&s, "endpoint_services")
+	return s, err
 }

@@ -11,16 +11,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/jmespath/go-jmespath"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"github.com/jmespath/go-jmespath"
 )
 
 func ResourceRepository() *schema.Resource {
@@ -166,7 +168,7 @@ func waitForRepositoryActive(ctx context.Context, cfg *config.Config, d *schema.
 	}
 
 	getRepositoryPath := getRepositoryClient.Endpoint + getRepositoryHttpUrl
-	getRepositoryPath = strings.Replace(getRepositoryPath, "{repository_uuid}", d.Id(), -1)
+	getRepositoryPath = strings.ReplaceAll(getRepositoryPath, "{repository_uuid}", d.Id())
 
 	createRepositoryOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -180,6 +182,8 @@ func waitForRepositoryActive(ctx context.Context, cfg *config.Config, d *schema.
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        5 * time.Second,
 		PollInterval: 5 * time.Second,
+		// We can't query the repository after it becomes ACTIVE immediately
+		ContinuousTargetOccurence: 2,
 	}
 	_, err = stateConf.WaitForStateContext(ctx)
 	return err
@@ -226,7 +230,7 @@ func resourceRepositoryCreate(ctx context.Context, d *schema.ResourceData, meta 
 			200,
 		},
 	}
-	createRepositoryOpt.JSONBody = buildCreateRepositoryBodyParams(d, cfg)
+	createRepositoryOpt.JSONBody = buildCreateRepositoryBodyParams(d)
 	createRepositoryResp, err := createRepositoryClient.Request("POST", createRepositoryPath, &createRepositoryOpt)
 	if err != nil {
 		return diag.Errorf("error creating CodeHub repository: %s", err)
@@ -248,7 +252,7 @@ func resourceRepositoryCreate(ctx context.Context, d *schema.ResourceData, meta 
 	return resourceRepositoryRead(ctx, d, meta)
 }
 
-func buildCreateRepositoryBodyParams(d *schema.ResourceData, config *config.Config) map[string]interface{} {
+func buildCreateRepositoryBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"name":             utils.ValueIngoreEmpty(d.Get("name")),
 		"project_uuid":     utils.ValueIngoreEmpty(d.Get("project_id")),
@@ -263,7 +267,7 @@ func buildCreateRepositoryBodyParams(d *schema.ResourceData, config *config.Conf
 	return bodyParams
 }
 
-func resourceRepositoryRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceRepositoryRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// getRepository: Query the resource detail of the CodeHub repository
 	var (
 		getRepositoryHttpUrl = "v2/repositories/{repository_uuid}"
@@ -279,7 +283,7 @@ func resourceRepositoryRead(ctx context.Context, d *schema.ResourceData, meta in
 	}
 
 	getRepositoryPath := getRepositoryClient.Endpoint + getRepositoryHttpUrl
-	getRepositoryPath = strings.Replace(getRepositoryPath, "{repository_uuid}", d.Id(), -1)
+	getRepositoryPath = strings.ReplaceAll(getRepositoryPath, "{repository_uuid}", d.Id())
 
 	getRepositoryOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -326,7 +330,7 @@ func parseRepositoryRequestError(respErr error) error {
 	return respErr
 }
 
-func resourceRepositoryDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceRepositoryDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// deleteRepository: Remove an existing CodeHub repository
 	var (
 		deleteRepositoryHttpUrl = "v1/repositories/{repository_uuid}"
@@ -341,7 +345,7 @@ func resourceRepositoryDelete(ctx context.Context, d *schema.ResourceData, meta 
 	}
 
 	deleteRepositoryPath := deleteRepositoryClient.Endpoint + deleteRepositoryHttpUrl
-	deleteRepositoryPath = strings.Replace(deleteRepositoryPath, "{repository_uuid}", d.Id(), -1)
+	deleteRepositoryPath = strings.ReplaceAll(deleteRepositoryPath, "{repository_uuid}", d.Id())
 
 	deleteRepositoryOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,

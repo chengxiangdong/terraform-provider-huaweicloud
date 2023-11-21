@@ -9,19 +9,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-func getEndpointGroupResourceFunc(config *config.Config, state *terraform.ResourceState) (interface{}, error) {
+func getEndpointGroupResourceFunc(conf *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	region := acceptance.HW_REGION_NAME
 	// getEndpointGroup: Query the GA Endpoint Group detail
 	var (
 		getEndpointGroupHttpUrl = "v1/endpoint-groups/{id}"
 		getEndpointGroupProduct = "ga"
 	)
-	getEndpointGroupClient, err := config.NewServiceClient(getEndpointGroupProduct, region)
+	getEndpointGroupClient, err := conf.NewServiceClient(getEndpointGroupProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating EndpointGroup Client: %s", err)
 	}

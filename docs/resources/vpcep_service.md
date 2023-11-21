@@ -56,10 +56,17 @@ The following arguments are supported:
 
 * `approval` - (Optional, Bool) Specifies whether connection approval is required. The default value is false.
 
-* `permissions` - (Optional, List) Specifies the list of accounts to access the VPC endpoint service. The record is in
-  the `iam:domain::domain_id` format, while `*` allows all users to access the VPC endpoint service.
+* `permissions` - (Optional, List) Specifies the list of accounts to access the VPC endpoint service.
+  The record is in the `iam:domain::domain_id` format, while `*` allows all users to access the VPC endpoint service.
+
+* `organization_permissions` - (Optional, List) Specifies the list of organizations to access the VPC endpoint service.
+  The record is in the `organizations:orgPath::org_path` format, while `organizations:orgPath::*` allows all users in
+  organizations to access the VPC endpoint service.
 
 * `description` - (Optional, String) Specifies the description of the VPC endpoint service.
+
+* `enable_policy` - (Optional, Bool, ForceNew) Specifies whether the VPC endpoint policy is enabled. Defaults to **false**.
+  Changing this creates a new VPC endpoint service resource.
 
 * `tags` - (Optional, Map) The key/value pairs to associate with the VPC endpoint service.
 

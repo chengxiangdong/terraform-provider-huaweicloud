@@ -80,6 +80,11 @@ func ResourceComputeInstance() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"hostname": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
 			"image_id": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -223,6 +228,11 @@ func ResourceComputeInstance() *schema.Resource {
 				ForceNew: true,
 				Computed: true,
 			},
+			"system_disk_dss_pool_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"data_disks": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -257,6 +267,11 @@ func ResourceComputeInstance() *schema.Resource {
 						},
 						"throughput": {
 							Type:     schema.TypeInt,
+							Optional: true,
+							ForceNew: true,
+						},
+						"dss_pool_id": {
+							Type:     schema.TypeString,
 							Optional: true,
 							ForceNew: true,
 						},
@@ -693,6 +708,18 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
+	// Update the hostname if necessary.
+	if v, ok := d.GetOk("hostname"); ok {
+		hostname := v.(string)
+		if err := updateInstanceHostname(ecsClient, hostname, d.Id()); err != nil {
+			return diag.FromErr(err)
+		}
+
+		if err = doPowerAction(ecsClient, d, "REBOOT"); err != nil {
+			return diag.Errorf("doing power reboot for instance (%s) failed: %s", d.Id(), err)
+		}
+	}
+
 	// Create an instance in the shutdown state.
 	if action, ok := d.GetOk("power_action"); ok {
 		action := action.(string)
@@ -777,6 +804,7 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 	d.Set("availability_zone", server.AvailabilityZone)
 	d.Set("name", server.Name)
 	d.Set("description", server.Description)
+	d.Set("hostname", server.Hostname)
 	d.Set("status", server.Status)
 	d.Set("agency_name", server.Metadata.AgencyName)
 	d.Set("agent_list", server.Metadata.AgentList)
@@ -1059,12 +1087,13 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	if d.HasChange("enterprise_project_id") {
-		epsClient, err := cfg.EnterpriseProjectClient(region)
-		if err != nil {
-			return diag.Errorf("error creating EPS client: %s", err)
+		migrateOpts := enterpriseprojects.MigrateResourceOpts{
+			ResourceId:   d.Id(),
+			ResourceType: "ecs",
+			RegionId:     region,
+			ProjectId:    ecsClient.ProjectID,
 		}
-
-		if err := migrateEnterpriseProject(ctx, d, ecsClient, epsClient, region); err != nil {
+		if err := common.MigrateEnterpriseProject(ctx, cfg, d, migrateOpts); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1165,7 +1194,37 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
-	return resourceComputeInstanceRead(ctx, d, meta)
+	var diags diag.Diagnostics
+	if d.HasChanges("hostname") {
+		hostname := d.Get("hostname").(string)
+		if err := updateInstanceHostname(ecsClient, hostname, serverID); err != nil {
+			return diag.FromErr(err)
+		}
+
+		hostnameDiag := diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Parameters Changed",
+			Detail:   "Parameters hostname changed which needs reboot.",
+		}
+		diags = append(diags, hostnameDiag)
+	}
+
+	readDiags := resourceComputeInstanceRead(ctx, d, meta)
+	diags = append(diags, readDiags...)
+
+	return diags
+}
+
+func updateInstanceHostname(ecsClient *golangsdk.ServiceClient, hostname, serverID string) error {
+	updateOpts := cloudservers.UpdateOpts{
+		Hostname: hostname,
+	}
+	err := cloudservers.Update(ecsClient, serverID, updateOpts).ExtractErr()
+	if err != nil {
+		return fmt.Errorf("error updating service (%s) hostname (%s): %s", serverID, hostname, err)
+	}
+
+	return nil
 }
 
 func updateInstanceMetaData(d *schema.ResourceData, client *golangsdk.ServiceClient, serverID string) error {
@@ -1765,6 +1824,11 @@ func buildInstanceRootVolume(d *schema.ResourceData) cloudservers.RootVolume {
 		volRequest.Metadata = &matadata
 	}
 
+	if v, ok := d.GetOk("system_disk_dss_pool_id"); ok {
+		volRequest.ClusterType = "DSS"
+		volRequest.ClusterId = v.(string)
+	}
+
 	return volRequest
 }
 
@@ -1796,61 +1860,12 @@ func buildInstanceDataVolumes(d *schema.ResourceData) []cloudservers.DataVolume 
 			volRequest.Metadata = &matadata
 		}
 
+		if vol["dss_pool_id"] != "" {
+			volRequest.ClusterType = "DSS"
+			volRequest.ClusterId = vol["dss_pool_id"].(string)
+		}
+
 		volRequests = append(volRequests, volRequest)
 	}
 	return volRequests
-}
-
-func waitForEnterpriseProjectIdChanged(client *golangsdk.ServiceClient, instanceID, epsID string) resource.StateRefreshFunc {
-	return func() (interface{}, string, error) {
-		s, err := cloudservers.Get(client, instanceID).Extract()
-		if err != nil {
-			return nil, "ERROR", err
-		}
-
-		// get fault message when status is ERROR
-		if s.Status == "ERROR" {
-			fault := fmt.Errorf("error code: %d, message: %s", s.Fault.Code, s.Fault.Message)
-			return s, "ERROR", fault
-		}
-
-		if s.EnterpriseProjectID == epsID {
-			return s, "Success", nil
-		}
-		return s, "Pending", nil
-	}
-}
-
-func migrateEnterpriseProject(ctx context.Context, d *schema.ResourceData,
-	ecsClient, epsClient *golangsdk.ServiceClient, region string) error {
-	resourceID := d.Id()
-	targetEPSId := d.Get("enterprise_project_id").(string)
-
-	migrateOpts := enterpriseprojects.MigrateResourceOpts{
-		RegionId:     region,
-		ProjectId:    ecsClient.ProjectID,
-		ResourceType: "ecs",
-		ResourceId:   resourceID,
-	}
-
-	if err := common.MigrateEnterpriseProject(epsClient, targetEPSId, migrateOpts); err != nil {
-		return err
-	}
-
-	// wait for the Enterprise Project ID changed
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"Pending"},
-		Target:       []string{"Success"},
-		Refresh:      waitForEnterpriseProjectIdChanged(ecsClient, resourceID, targetEPSId),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		Delay:        10 * time.Second,
-		PollInterval: 5 * time.Second,
-	}
-
-	_, err := stateConf.WaitForStateContext(ctx)
-	if err != nil {
-		return fmt.Errorf("error waiting for migrating Enterprise Project ID: %s", err)
-	}
-
-	return nil
 }

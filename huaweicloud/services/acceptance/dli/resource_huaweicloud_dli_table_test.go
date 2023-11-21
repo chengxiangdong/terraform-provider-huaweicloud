@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/chnsz/golangsdk/openstack/dli/v1/tables"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/dli"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/chnsz/golangsdk/openstack/dli/v1/tables"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/dli"
 )
 
-func getDliTableResourceFunc(config *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := config.DliV1Client(acceptance.HW_REGION_NAME)
+func getDliTableResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+	client, err := cfg.DliV1Client(acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Dli v1 client, err=%s", err)
 	}
@@ -24,13 +25,13 @@ func getDliTableResourceFunc(config *config.Config, state *terraform.ResourceSta
 
 // check the dli table
 func TestAccResourceDliTable_basic(t *testing.T) {
-	var TableObj tables.CreateTableOpts
+	var tableObj tables.CreateTableOpts
 	resourceName := "huaweicloud_dli_table.test"
 	name := acceptance.RandomAccResourceName()
 
 	rc := acceptance.InitResourceCheck(
 		resourceName,
-		&TableObj,
+		&tableObj,
 		getDliTableResourceFunc,
 	)
 
@@ -60,7 +61,6 @@ func TestAccResourceDliTable_basic(t *testing.T) {
 }
 
 func testAccDliTableResource_basic(name string) string {
-
 	return fmt.Sprintf(`
 resource "huaweicloud_dli_database" "test" {
   name        = "%s"
@@ -89,14 +89,14 @@ resource "huaweicloud_dli_table" "test" {
 }
 
 func TestAccResourceDliTable_OBS(t *testing.T) {
-	var TableObj tables.CreateTableOpts
+	var tableObj tables.CreateTableOpts
 	resourceName := "huaweicloud_dli_table.test"
 	name := acceptance.RandomAccResourceName()
 	obsBucketName := acceptance.RandomAccResourceNameWithDash()
 
 	rc := acceptance.InitResourceCheck(
 		resourceName,
-		&TableObj,
+		&tableObj,
 		getDliTableResourceFunc,
 	)
 
@@ -128,7 +128,6 @@ func TestAccResourceDliTable_OBS(t *testing.T) {
 }
 
 func testAccDliTableResource_OBS(name string, obsBucketName string) string {
-
 	return fmt.Sprintf(`
 resource "huaweicloud_obs_bucket" "test" {
   bucket = "%s"

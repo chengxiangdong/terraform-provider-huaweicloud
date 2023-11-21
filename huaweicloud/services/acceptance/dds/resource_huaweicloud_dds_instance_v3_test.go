@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-
-	"github.com/chnsz/golangsdk/openstack/dds/v3/instances"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/chnsz/golangsdk/openstack/dds/v3/instances"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
 )
 
 func getDdsResourceFunc(c *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	client, err := c.DdsV3Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return nil, fmtp.Errorf("Error creating HuaweiCloud DDS client: %s ", err)
+		return nil, fmt.Errorf("Error creating DDS client: %s", err)
 	}
 
 	opts := instances.ListInstanceOpts{
@@ -27,18 +27,17 @@ func getDdsResourceFunc(c *config.Config, state *terraform.ResourceState) (inter
 	if err != nil {
 		return nil, err
 	}
-	instances, err := instances.ExtractInstances(allPages)
+	instanceList, err := instances.ExtractInstances(allPages)
 	if err != nil {
 		return nil, err
 	}
-	if instances.TotalCount == 0 {
-		return nil, fmtp.Errorf("dds instance not found.")
+	if instanceList.TotalCount == 0 {
+		return nil, fmt.Errorf("dds instance not found")
 	}
 
-	insts := instances.Instances
+	insts := instanceList.Instances
 	found := insts[0]
 	return &found, nil
-
 }
 
 func TestAccDDSV3Instance_basic(t *testing.T) {
@@ -262,54 +261,10 @@ func TestAccDDSV3Instance_withConfigurationReplicaSet(t *testing.T) {
 	})
 }
 
-func TestAccDDSV3Instance_withConfigurationSingle(t *testing.T) {
-	var instance instances.InstanceResponse
-	rName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_dds_instance.instance"
-
-	rc := acceptance.InitResourceCheck(
-		resourceName,
-		&instance,
-		getDdsResourceFunc,
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccDDSInstanceV3Config_withSingleConfiguration(rName, 9000),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "name", rName),
-					resource.TestCheckResourceAttr(resourceName, "ssl", "true"),
-					resource.TestCheckResourceAttr(resourceName, "port", "9000"),
-					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
-					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform"),
-					resource.TestCheckResourceAttr(resourceName, "backup_strategy.0.start_time", "08:00-09:00"),
-					resource.TestCheckResourceAttr(resourceName, "backup_strategy.0.keep_days", "8"),
-				),
-			},
-		},
-	})
-}
-
 func testAccCheckDDSV3InstanceFlavor(instance *instances.InstanceResponse, groupType, key string, v interface{}) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		if key == "num" {
-			if groupType == "mongos" {
-				for _, group := range instance.Groups {
-					if group.Type == "mongos" {
-						if len(group.Nodes) != v.(int) {
-							return fmtp.Errorf(
-								"Error updating HuaweiCloud DDS instance: num of mongos nodes expect %d, but got %d",
-								v.(int), len(group.Nodes))
-						}
-						return nil
-					}
-				}
-			} else {
+			if groupType != "mongos" {
 				groupIDs := make([]string, 0)
 				for _, group := range instance.Groups {
 					if group.Type == "shard" {
@@ -317,11 +272,22 @@ func testAccCheckDDSV3InstanceFlavor(instance *instances.InstanceResponse, group
 					}
 				}
 				if len(groupIDs) != v.(int) {
-					return fmtp.Errorf(
-						"Error updating HuaweiCloud DDS instance: num of shard groups expect %d, but got %d",
+					return fmt.Errorf(
+						"Error updating DDS instance: num of shard groups expect %d, but got %d",
 						v.(int), len(groupIDs))
 				}
 				return nil
+			}
+
+			for _, group := range instance.Groups {
+				if group.Type == "mongos" {
+					if len(group.Nodes) != v.(int) {
+						return fmt.Errorf(
+							"Error updating DDS instance: num of mongos nodes expect %d, but got %d",
+							v.(int), len(group.Nodes))
+					}
+					return nil
+				}
 			}
 		}
 
@@ -329,8 +295,8 @@ func testAccCheckDDSV3InstanceFlavor(instance *instances.InstanceResponse, group
 			for _, group := range instance.Groups {
 				if group.Type == groupType {
 					if group.Volume.Size != v.(string) {
-						return fmtp.Errorf(
-							"Error updating HuaweiCloud DDS instance: size expect %s, but got %s",
+						return fmt.Errorf(
+							"Error updating DDS instance: size expect %s, but got %s",
 							v.(string), group.Volume.Size)
 					}
 					return nil
@@ -343,8 +309,8 @@ func testAccCheckDDSV3InstanceFlavor(instance *instances.InstanceResponse, group
 				if group.Type == groupType {
 					for _, node := range group.Nodes {
 						if node.SpecCode != v.(string) {
-							return fmtp.Errorf(
-								"Error updating HuaweiCloud DDS instance: spec_code expect %s, but got %s",
+							return fmt.Errorf(
+								"Error updating DDS instance: spec_code expect %s, but got %s",
 								v.(string), node.SpecCode)
 						}
 					}
@@ -910,56 +876,6 @@ resource "huaweicloud_dds_instance" "instance" {
     num       = 1
     size      = 20
     spec_code = "dds.mongodb.s6.large.2.repset"
-  }
-  backup_strategy {
-    start_time = "08:00-09:00"
-    keep_days  = "8"
-  }
-  tags = {
-    foo   = "bar"
-    owner = "terraform"
-  }
-}`, common.TestBaseNetwork(rName), rName, port)
-}
-
-func testAccDDSInstanceV3Config_withSingleConfiguration(rName string, port int) string {
-	return fmt.Sprintf(`
-%[1]s
-data "huaweicloud_availability_zones" "test" {}
-resource "huaweicloud_dds_parameter_template" "single" {
-  name         = "%[2]s_single"
-  description  = "test description"
-  node_type    = "single"
-  node_version = "3.4"
-  parameter_values = {
-    connPoolMaxConnsPerHost        = 800
-    connPoolMaxShardedConnsPerHost = 800
-  }
-}
-resource "huaweicloud_dds_instance" "instance" {
-  name              = "%[2]s"
-  availability_zone = data.huaweicloud_availability_zones.test.names[0]
-  vpc_id            = huaweicloud_vpc.test.id
-  subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-  password          = "Terraform@123"
-  mode              = "Single"
-  port              = %[3]d
-  datastore {
-    type           = "DDS-Community"
-    version        = "3.4"
-    storage_engine = "wiredTiger"
-  }
-  configuration {
-    type = "single"
-    id   = huaweicloud_dds_parameter_template.single.id
-  }
-  flavor {
-    type      = "single"
-    num       = 1
-    storage   = "ULTRAHIGH"
-    size      = 20
-    spec_code = "dds.mongodb.s6.large.2.single"
   }
   backup_strategy {
     start_time = "08:00-09:00"

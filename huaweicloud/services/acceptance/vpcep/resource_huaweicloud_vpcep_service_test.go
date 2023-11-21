@@ -38,6 +38,7 @@ func TestAccVPCEPService_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "status", "available"),
 					resource.TestCheckResourceAttr(resourceName, "approval", "false"),
 					resource.TestCheckResourceAttr(resourceName, "description", "test description"),
+					resource.TestCheckResourceAttr(resourceName, "enable_policy", "false"),
 					resource.TestCheckResourceAttr(resourceName, "server_type", "VM"),
 					resource.TestCheckResourceAttr(resourceName, "service_type", "interface"),
 					resource.TestCheckResourceAttr(resourceName, "tags.owner", "tf-acc"),
@@ -45,6 +46,7 @@ func TestAccVPCEPService_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.service_port", "8080"),
 					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.terminal_port", "80"),
 					resource.TestCheckResourceAttr(resourceName, "permissions.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "organization_permissions.#", "2"),
 				),
 			},
 			{
@@ -58,7 +60,51 @@ func TestAccVPCEPService_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.protocol", "TCP"),
 					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.service_port", "8088"),
 					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.terminal_port", "80"),
-					resource.TestCheckResourceAttr(resourceName, "permissions.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "permissions.0", "*"),
+					resource.TestCheckResourceAttr(resourceName, "organization_permissions.0", "organizations:orgPath::*"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccVPCEPService_enablePolicy(t *testing.T) {
+	var service services.Service
+
+	rName := acceptance.RandomAccResourceNameWithDash()
+	resourceName := "huaweicloud_vpcep_service.test"
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&service,
+		getVpcepServiceResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVPCEPService_enablePolicy(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "status", "available"),
+					resource.TestCheckResourceAttr(resourceName, "approval", "false"),
+					resource.TestCheckResourceAttr(resourceName, "description", "test description"),
+					resource.TestCheckResourceAttr(resourceName, "enable_policy", "true"),
+					resource.TestCheckResourceAttr(resourceName, "server_type", "VM"),
+					resource.TestCheckResourceAttr(resourceName, "service_type", "interface"),
+					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.protocol", "TCP"),
+					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.service_port", "8080"),
+					resource.TestCheckResourceAttr(resourceName, "port_mapping.0.terminal_port", "80"),
+					resource.TestCheckResourceAttr(resourceName, "permissions.#", "2"),
 				),
 			},
 			{
@@ -113,6 +159,7 @@ resource "huaweicloud_vpcep_service" "test" {
   approval    = false
   description = "test description"
   permissions = ["iam:domain::1234", "iam:domain::5678"]
+  organization_permissions = ["organizations:orgPath::1234", "organizations:orgPath::5678"]
 
   port_mapping {
     service_port  = 8080
@@ -136,7 +183,8 @@ resource "huaweicloud_vpcep_service" "test" {
   port_id     = huaweicloud_compute_instance.ecs.network[0].port
   approval    = true
   description = "test description update"
-  permissions = ["iam:domain::abcd"]
+  permissions = ["*"]
+  organization_permissions = ["organizations:orgPath::*"]
 
   port_mapping {
     service_port  = 8088
@@ -144,6 +192,28 @@ resource "huaweicloud_vpcep_service" "test" {
   }
   tags = {
     owner = "tf-acc-update"
+  }
+}
+`, testAccVPCEPService_Precondition(rName), rName)
+}
+
+func testAccVPCEPService_enablePolicy(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_vpcep_service" "test" {
+  name          = "%s"
+  server_type   = "VM"
+  vpc_id        = data.huaweicloud_vpc.myvpc.id
+  port_id       = huaweicloud_compute_instance.ecs.network[0].port
+  approval      = false
+  description   = "test description"
+  enable_policy = true
+  permissions   = ["iam:domain::1234", "iam:domain::5678"]
+
+  port_mapping {
+    service_port  = 8080
+    terminal_port = 80
   }
 }
 `, testAccVPCEPService_Precondition(rName), rName)
