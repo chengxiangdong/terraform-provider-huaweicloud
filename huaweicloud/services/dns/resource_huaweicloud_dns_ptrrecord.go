@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/dns/v2/ptrrecords"
@@ -21,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API DNS POST /v2/{project_id}/DNS-ptr_record/{resource_id}/tags/action
+// @API DNS GET /v2/{project_id}/DNS-ptr_record/{resource_id}/tags
+// @API DNS GET /v2/reverse/floatingips/{region}:{floatingip_id}
+// @API DNS PATCH /v2/reverse/floatingips/{region}:{floatingip_id}
 func ResourceDNSPtrRecord() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDNSPtrRecordCreate,
@@ -58,9 +61,8 @@ func ResourceDNSPtrRecord() *schema.Resource {
 				Optional: true,
 			},
 			"ttl": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(1, 2147483647),
+				Type:     schema.TypeInt,
+				Optional: true,
 			},
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
@@ -78,9 +80,9 @@ func ResourceDNSPtrRecord() *schema.Resource {
 }
 
 func resourceDNSPtrRecordCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	conf := meta.(*config.Config)
-	region := conf.GetRegion(d)
-	dnsClient, err := conf.DnsV2Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	dnsClient, err := cfg.DnsV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DNS client: %s", err)
 	}
@@ -90,7 +92,7 @@ func resourceDNSPtrRecordCreate(ctx context.Context, d *schema.ResourceData, met
 		Description:         d.Get("description").(string),
 		TTL:                 d.Get("ttl").(int),
 		Tags:                getPtrRecordsTagList(d),
-		EnterpriseProjectID: common.GetEnterpriseProjectID(d, conf),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 	}
 
 	log.Printf("[DEBUG] Create options: %#v", createOpts)

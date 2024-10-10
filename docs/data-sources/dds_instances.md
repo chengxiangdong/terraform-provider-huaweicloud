@@ -1,5 +1,8 @@
 ---
 subcategory: "Document Database Service (DDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dds_instances"
+description: ""
 ---
 
 # huaweicloud_dds_instances
@@ -39,7 +42,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `instances` - Indicates the list of DDS instances.
   The [Instance](#DdsInstance_Instance) structure is documented below.
@@ -71,14 +74,14 @@ The `Instance` block supports:
 
 * `mode` - Specifies the mode of the database instance.
 
-* `db_username` - Indicates the DB Administator name.
+* `db_username` - Indicates the DB Administrator name.
 
 * `status` - Indicates the the DB instance status.
 
 * `enterprise_project_id` - Indicates the enterprise project id of the dds instance.
 
-* `nodes` - Indicates the instance nodes information.
-  The [Node](#DdsInstance_InstanceNode) structure is documented below.
+* `groups` - Indicates the instance groups information.
+  The [group](#DdsInstance_InstanceGroup) structure is documented below.
 
 * `tags` - Indicates the key/value pairs to associate with the DDS instance.
 
@@ -98,8 +101,26 @@ The `InstanceBackupStrategy` block supports:
 
 * `keep_days` - Indicates the number of days to retain the generated backup files.
 
-<a name="DdsInstance_InstanceNode"></a>
-The `nodes` block supports:
+<a name="DdsInstance_InstanceGroup"></a>
+The `group` block supports:
+
+* `type` - Indicates the node type.
+
+* `id` - Indicates the group ID.
+
+* `name` - Indicates the group name.
+
+* `status` - Indicates the group status.
+
+* `size` - Indicates the disk size.
+
+* `used` - Indicates the disk usage.
+
+* `nodes` - Indicates the nodes info.
+  The [node](#DdsInstance_InstanceGroupNode) structure is documented below.
+
+<a name="DdsInstance_InstanceGroupNode"></a>
+The `node` block supports:
 
 * `id` - Indicates the node ID.
 

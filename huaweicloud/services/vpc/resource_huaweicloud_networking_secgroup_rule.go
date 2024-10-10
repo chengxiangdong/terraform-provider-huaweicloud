@@ -25,6 +25,11 @@ import (
 // Some parameters are only support creation in ver.3 API.
 var advancedParams = []string{"ports", "remote_address_group_id", "action", "priority"}
 
+// @API VPC POST /v3/{project_id}/vpc/security-group-rules
+// @API VPC DELETE /v1/{project_id}/security-group-rules/{ruleId}
+// @API VPC GET /v1/{project_id}/security-group-rules/{ruleId}
+// @API VPC POST /v1/{project_id}/security-group-rules
+// @API VPC GET /v3/{project_id}/vpc/security-group-rules/{ruleId}
 func ResourceNetworkingSecGroupRule() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceNetworkingSecGroupRuleCreate,
@@ -102,11 +107,10 @@ func ResourceNetworkingSecGroupRule() *schema.Resource {
 				),
 			},
 			"remote_group_id": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				Computed:     true,
-				ExactlyOneOf: []string{"remote_address_group_id", "remote_ip_prefix"},
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
 			},
 			"remote_address_group_id": {
 				Type:          schema.TypeString,
@@ -140,7 +144,6 @@ func ResourceNetworkingSecGroupRule() *schema.Resource {
 				Optional:      true,
 				Computed:      true,
 				ForceNew:      true,
-				ValidateFunc:  validation.IntBetween(1, 100),
 				ConflictsWith: []string{"port_range_min", "port_range_max"},
 			},
 			"description": {

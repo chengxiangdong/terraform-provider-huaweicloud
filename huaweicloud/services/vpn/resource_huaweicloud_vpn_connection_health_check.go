@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -21,6 +20,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPN POST /v5/{project_id}/connection-monitors
+// @API VPN DELETE /v5/{project_id}/connection-monitors/{id}
+// @API VPN GET /v5/{project_id}/connection-monitors/{id}
 func ResourceConnectionHealthCheck() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceConnectionHealthCheckCreate,
@@ -73,7 +75,7 @@ func resourceConnectionHealthCheckCreate(ctx context.Context, d *schema.Resource
 	)
 	createConnectionHealthCheckClient, err := cfg.NewServiceClient(createConnectionHealthCheckProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating VPN Client: %s", err)
+		return diag.Errorf("error creating VPN client: %s", err)
 	}
 
 	createConnectionHealthCheckPath := createConnectionHealthCheckClient.Endpoint + createConnectionHealthCheckHttpUrl
@@ -82,15 +84,12 @@ func resourceConnectionHealthCheckCreate(ctx context.Context, d *schema.Resource
 
 	createConnectionHealthCheckOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			201,
-		},
 	}
 	createConnectionHealthCheckOpt.JSONBody = utils.RemoveNil(buildCreateConnectionHealthCheckBodyParams(d))
 	createConnectionHealthCheckResp, err := createConnectionHealthCheckClient.Request("POST",
 		createConnectionHealthCheckPath, &createConnectionHealthCheckOpt)
 	if err != nil {
-		return diag.Errorf("error creating ConnectionHealthCheck: %s", err)
+		return diag.Errorf("error creating VPN connection health check: %s", err)
 	}
 
 	createConnectionHealthCheckRespBody, err := utils.FlattenResponse(createConnectionHealthCheckResp)
@@ -98,11 +97,11 @@ func resourceConnectionHealthCheckCreate(ctx context.Context, d *schema.Resource
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("connection_monitor.id", createConnectionHealthCheckRespBody)
-	if err != nil {
-		return diag.Errorf("error creating ConnectionHealthCheck: ID is not found in API response")
+	id := utils.PathSearch("connection_monitor.id", createConnectionHealthCheckRespBody, "").(string)
+	if id == "" {
+		return diag.Errorf("error creating VPN connection health check: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceConnectionHealthCheckRead(ctx, d, meta)
 }
@@ -110,7 +109,7 @@ func resourceConnectionHealthCheckCreate(ctx context.Context, d *schema.Resource
 func buildCreateConnectionHealthCheckBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"connection_monitor": map[string]interface{}{
-			"vpn_connection_id": utils.ValueIngoreEmpty(d.Get("connection_id")),
+			"vpn_connection_id": utils.ValueIgnoreEmpty(d.Get("connection_id")),
 		},
 	}
 	return bodyParams
@@ -129,7 +128,7 @@ func resourceConnectionHealthCheckRead(_ context.Context, d *schema.ResourceData
 	)
 	getConnectionHealthCheckClient, err := cfg.NewServiceClient(getConnectionHealthCheckProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating VPN Client: %s", err)
+		return diag.Errorf("error creating VPN client: %s", err)
 	}
 
 	getConnectionHealthCheckPath := getConnectionHealthCheckClient.Endpoint + getConnectionHealthCheckHttpUrl
@@ -139,15 +138,12 @@ func resourceConnectionHealthCheckRead(_ context.Context, d *schema.ResourceData
 
 	getConnectionHealthCheckOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	getConnectionHealthCheckResp, err := getConnectionHealthCheckClient.Request("GET",
 		getConnectionHealthCheckPath, &getConnectionHealthCheckOpt)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving ConnectionHealthCheck")
+		return common.CheckDeletedDiag(d, err, "error retrieving VPN connection health check")
 	}
 
 	getConnectionHealthCheckRespBody, err := utils.FlattenResponse(getConnectionHealthCheckResp)
@@ -178,7 +174,7 @@ func resourceConnectionHealthCheckDelete(_ context.Context, d *schema.ResourceDa
 	)
 	deleteConnectionHealthCheckClient, err := cfg.NewServiceClient(deleteConnectionHealthCheckProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating VPN Client: %s", err)
+		return diag.Errorf("error creating VPN client: %s", err)
 	}
 
 	deleteConnectionHealthCheckPath := deleteConnectionHealthCheckClient.Endpoint + deleteConnectionHealthCheckHttpUrl
@@ -188,14 +184,14 @@ func resourceConnectionHealthCheckDelete(_ context.Context, d *schema.ResourceDa
 
 	deleteConnectionHealthCheckOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			204,
-		},
 	}
 	_, err = deleteConnectionHealthCheckClient.Request("DELETE", deleteConnectionHealthCheckPath,
 		&deleteConnectionHealthCheckOpt)
 	if err != nil {
-		return diag.Errorf("error deleting ConnectionHealthCheck: %s", err)
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected400ErrInto404Err(err, "error_code", "VPN.0001"),
+			"error deleting VPN connection health check",
+		)
 	}
 
 	return nil

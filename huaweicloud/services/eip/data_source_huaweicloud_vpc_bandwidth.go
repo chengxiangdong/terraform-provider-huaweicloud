@@ -14,6 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API EIP GET /v1/{project_id}/bandwidths
 func DataSourceBandWidth() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceBandWidthRead,
@@ -69,7 +70,7 @@ func dataSourceBandWidthRead(_ context.Context, d *schema.ResourceData, meta int
 
 	listOpts := bandwidths.ListOpts{
 		ShareType:           "WHOLE",
-		EnterpriseProjectID: cfg.DataGetEnterpriseProjectID(d),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d, "all_granted_eps"),
 	}
 
 	allBWs, err := bandwidths.List(bwClient, listOpts).Extract()

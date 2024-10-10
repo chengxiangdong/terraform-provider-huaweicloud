@@ -1,10 +1,13 @@
 ---
-subcategory: "GaussDB NoSQL"
+subcategory: "GeminiDB"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_gaussdb_cassandra_dedicated_resource"
+description: ""
 ---
 
 # huaweicloud_gaussdb_cassandra_dedicated_resource
 
-Use this data source to get available HuaweiCloud gaussdb cassandra dedicated resource.
+Use this data source to get available HuaweiCloud GeminiDB Cassandra dedicated resource.
 
 ## Example Usage
 

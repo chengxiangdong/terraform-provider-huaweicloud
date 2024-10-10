@@ -1,5 +1,8 @@
 ---
 subcategory: "Server Migration Service (SMS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_sms_task"
+description: ""
 ---
 
 # huaweicloud_sms_task
@@ -88,7 +91,7 @@ The `target_server_disks` block supports:
 
 * `used_size` - (Optional, Int, ForceNew) Specifies the used space in MB. Changing this parameter will create a new resource.
 
-* `physical_volumes` - (Optional, List, ForceNew) Specifies an array of physical volume informations.
+* `physical_volumes` - (Optional, List, ForceNew) Specifies an array of physical volume information.
   The [object](#physical_volumes_object) is documented below. Changing this parameter will create a new resource.
 
 <a name="physical_volumes_object"></a>
@@ -148,7 +151,7 @@ It is generally recommended running `terraform plan` after importing a migration
 You can then decide if changes should be applied to the task, or the resource definition should be
 updated to align with the task. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_sms_task" "demo" {
     ...
 

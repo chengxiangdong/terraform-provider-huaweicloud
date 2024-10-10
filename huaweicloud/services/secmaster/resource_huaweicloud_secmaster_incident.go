@@ -1,21 +1,14 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product SecMaster
-// ---------------------------------------------------------------
-
 package secmaster
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -24,6 +17,14 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+const (
+	GetIncidentNotFound = "SecMaster.20030005"
+)
+
+// @API SecMaster GET /v1/{project_id}/workspaces/{workspace_id}/soc/incidents/{id}
+// @API SecMaster PUT /v1/{project_id}/workspaces/{workspace_id}/soc/incidents/{id}
+// @API SecMaster DELETE /v1/{project_id}/workspaces/{workspace_id}/soc/incidents
+// @API SecMaster POST /v1/{project_id}/workspaces/{workspace_id}/soc/incidents
 func ResourceIncident() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIncidentCreate,
@@ -122,7 +123,7 @@ func ResourceIncident() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Computed:    true,
-				Description: `Specifies whether it's a debugging data.`,
+				Description: `Specifies whether it's debugging data.`,
 			},
 			"labels": {
 				Type:        schema.TypeString,
@@ -145,17 +146,17 @@ func ResourceIncident() *schema.Resource {
 			"creator": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `The name creator name.`,
+				Description: `The creator.`,
 			},
 			"created_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `The created time.`,
+				Description: `The creation time.`,
 			},
 			"updated_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `The updated time.`,
+				Description: `The update time.`,
 			},
 		},
 	}
@@ -231,9 +232,6 @@ func resourceIncidentCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	createIncidentOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 
 	createOpts, err := buildIncidentBodyParams(d, cfg)
@@ -243,7 +241,7 @@ func resourceIncidentCreate(ctx context.Context, d *schema.ResourceData, meta in
 	createIncidentOpt.JSONBody = utils.RemoveNil(createOpts)
 	createIncidentResp, err := createIncidentClient.Request("POST", createIncidentPath, &createIncidentOpt)
 	if err != nil {
-		return diag.Errorf("error creating Incident: %s", err)
+		return diag.Errorf("error creating SecMaster incident: %s", err)
 	}
 
 	createIncidentRespBody, err := utils.FlattenResponse(createIncidentResp)
@@ -251,30 +249,30 @@ func resourceIncidentCreate(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("data.id", createIncidentRespBody)
-	if err != nil {
-		return diag.Errorf("error creating Incident: ID is not found in API response")
+	id := utils.PathSearch("data.id", createIncidentRespBody, "").(string)
+	if id == "" {
+		return diag.Errorf("error creating SecMaster incident: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceIncidentRead(ctx, d, meta)
 }
 
 func buildIncidentBodyParams(d *schema.ResourceData, cfg *config.Config) (map[string]interface{}, error) {
 	dataObject := map[string]interface{}{
-		"title":              utils.ValueIngoreEmpty(d.Get("name")),
-		"description":        utils.ValueIngoreEmpty(d.Get("description")),
+		"title":              utils.ValueIgnoreEmpty(d.Get("name")),
+		"description":        utils.ValueIgnoreEmpty(d.Get("description")),
 		"incident_type":      buildIncidentRequestBodyType(d.Get("type")),
-		"severity":           utils.ValueIngoreEmpty(d.Get("level")),
-		"handle_status":      utils.ValueIngoreEmpty(d.Get("status")),
-		"owner":              utils.ValueIngoreEmpty(d.Get("owner")),
-		"data_source":        buildIncidentRequestBodyDataSource(d.Get("data_source")),
-		"verification_state": utils.ValueIngoreEmpty(d.Get("verification_status")),
-		"ipdrr_phase":        utils.ValueIngoreEmpty(d.Get("stage")),
-		"simulation":         utils.ValueIngoreEmpty(d.Get("debugging_data")),
-		"labels":             utils.ValueIngoreEmpty(d.Get("labels")),
-		"close_reason":       utils.ValueIngoreEmpty(d.Get("close_reason")),
-		"close_comment":      utils.ValueIngoreEmpty(d.Get("close_comment")),
+		"severity":           utils.ValueIgnoreEmpty(d.Get("level")),
+		"handle_status":      utils.ValueIgnoreEmpty(d.Get("status")),
+		"owner":              utils.ValueIgnoreEmpty(d.Get("owner")),
+		"data_source":        buildIncidentRequestBodyDataSource(d, cfg),
+		"verification_state": utils.ValueIgnoreEmpty(d.Get("verification_status")),
+		"ipdrr_phase":        utils.ValueIgnoreEmpty(d.Get("stage")),
+		"simulation":         utils.ValueIgnoreEmpty(d.Get("debugging_data")),
+		"labels":             utils.ValueIgnoreEmpty(d.Get("labels")),
+		"close_reason":       utils.ValueIgnoreEmpty(d.Get("close_reason")),
+		"close_comment":      utils.ValueIgnoreEmpty(d.Get("close_comment")),
 		"environment":        buildEnvironmentOpts(d, cfg),
 		"domain_id":          cfg.DomainID,
 		"region_id":          cfg.GetRegion(d),
@@ -333,28 +331,36 @@ func buildIncidentRequestBodyType(rawParams interface{}) map[string]interface{} 
 		}
 		raw := rawArray[0].(map[string]interface{})
 		params := map[string]interface{}{
-			"category":      utils.ValueIngoreEmpty(raw["category"]),
-			"incident_type": utils.ValueIngoreEmpty(raw["incident_type"]),
+			"category":      utils.ValueIgnoreEmpty(raw["category"]),
+			"incident_type": utils.ValueIgnoreEmpty(raw["incident_type"]),
 		}
 		return params
 	}
 	return nil
 }
 
-func buildIncidentRequestBodyDataSource(rawParams interface{}) map[string]interface{} {
-	if rawArray, ok := rawParams.([]interface{}); ok {
-		if len(rawArray) == 0 {
-			return nil
-		}
-		raw := rawArray[0].(map[string]interface{})
-		params := map[string]interface{}{
-			"product_feature": utils.ValueIngoreEmpty(raw["product_feature"]),
-			"product_name":    utils.ValueIngoreEmpty(raw["product_name"]),
-			"source_type":     utils.ValueIngoreEmpty(raw["source_type"]),
-		}
-		return params
+func buildIncidentRequestBodyDataSource(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
+	rawArray := d.Get("data_source").([]interface{})
+	if len(rawArray) == 0 {
+		return nil
 	}
-	return nil
+
+	region := cfg.GetRegion(d)
+
+	raw, ok := rawArray[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	params := map[string]interface{}{
+		"domain_id":       cfg.DomainID,
+		"project_id":      cfg.GetProjectID(region),
+		"region_id":       region,
+		"product_feature": utils.ValueIgnoreEmpty(raw["product_feature"]),
+		"product_name":    utils.ValueIgnoreEmpty(raw["product_name"]),
+		"source_type":     utils.ValueIgnoreEmpty(raw["source_type"]),
+	}
+	return params
 }
 
 func buildEnvironmentOpts(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
@@ -370,47 +376,22 @@ func resourceIncidentRead(_ context.Context, d *schema.ResourceData, meta interf
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
-	var mErr *multierror.Error
-
 	// getIncident: Query the SecMaster incident detail
-	var (
-		getIncidentHttpUrl = "v1/{project_id}/workspaces/{workspace_id}/soc/incidents/{id}"
-		getIncidentProduct = "secmaster"
-	)
-	getIncidentClient, err := cfg.NewServiceClient(getIncidentProduct, region)
+	client, err := cfg.NewServiceClient("secmaster", region)
 	if err != nil {
 		return diag.Errorf("error creating SecMaster Client: %s", err)
 	}
 
-	getIncidentPath := getIncidentClient.Endpoint + getIncidentHttpUrl
-	getIncidentPath = strings.ReplaceAll(getIncidentPath, "{project_id}", getIncidentClient.ProjectID)
-	getIncidentPath = strings.ReplaceAll(getIncidentPath, "{workspace_id}", fmt.Sprintf("%v", d.Get("workspace_id")))
-	getIncidentPath = strings.ReplaceAll(getIncidentPath, "{id}", d.Id())
-
-	getIncidentOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
-	}
-	getIncidentResp, err := getIncidentClient.Request("GET", getIncidentPath, &getIncidentOpt)
-
+	dataObject, err := GetIncident(client, d.Get("workspace_id").(string), d.Id())
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving Incident")
+		// SecMaster.20010001: workspace ID not found
+		// SecMaster.20030005: the incident not found
+		err = common.ConvertExpected403ErrInto404Err(err, "code", WorkspaceNotFound)
+		err = common.ConvertExpected400ErrInto404Err(err, "code", GetIncidentNotFound)
+		return common.CheckDeletedDiag(d, err, "error retrieving SecMaster incident")
 	}
 
-	getIncidentRespBody, err := utils.FlattenResponse(getIncidentResp)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	dataObject := utils.PathSearch("data.data_object", getIncidentRespBody, nil)
-	if dataObject == nil {
-		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "error retrieving Incident")
-	}
-
-	mErr = multierror.Append(
-		mErr,
+	mErr := multierror.Append(
 		d.Set("region", region),
 		d.Set("name", utils.PathSearch("title", dataObject, nil)),
 		d.Set("description", utils.PathSearch("description", dataObject, nil)),
@@ -452,9 +433,8 @@ func resourceIncidentRead(_ context.Context, d *schema.ResourceData, meta interf
 
 func flattenGetIncidentResponseBodyType(resp interface{}) []interface{} {
 	var rst []interface{}
-	curJson, err := jmespath.Search("incident_type", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing incident_type from response= %#v", resp)
+	curJson := utils.PathSearch("incident_type", resp, nil)
+	if curJson == nil {
 		return rst
 	}
 
@@ -469,9 +449,8 @@ func flattenGetIncidentResponseBodyType(resp interface{}) []interface{} {
 
 func flattenGetIncidentResponseBodyDataSource(resp interface{}) []interface{} {
 	var rst []interface{}
-	curJson, err := jmespath.Search("data_source", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing data_source from response= %#v", resp)
+	curJson := utils.PathSearch("data_source", resp, nil)
+	if curJson == nil {
 		return rst
 	}
 
@@ -515,7 +494,7 @@ func resourceIncidentUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		)
 		updateIncidentClient, err := cfg.NewServiceClient(updateIncidentProduct, region)
 		if err != nil {
-			return diag.Errorf("error creating SecMaster Client: %s", err)
+			return diag.Errorf("error creating SecMaster client: %s", err)
 		}
 
 		updateIncidentPath := updateIncidentClient.Endpoint + updateIncidentHttpUrl
@@ -525,9 +504,6 @@ func resourceIncidentUpdate(ctx context.Context, d *schema.ResourceData, meta in
 
 		updateIncidentOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			OkCodes: []int{
-				200,
-			},
 		}
 
 		updateOpts, err := buildIncidentBodyParams(d, cfg)
@@ -537,9 +513,10 @@ func resourceIncidentUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		updateIncidentOpt.JSONBody = utils.RemoveNil(updateOpts)
 		_, err = updateIncidentClient.Request("PUT", updateIncidentPath, &updateIncidentOpt)
 		if err != nil {
-			return diag.Errorf("error updating Incident: %s", err)
+			return diag.Errorf("error updating SecMaster incident: %s", err)
 		}
 	}
+
 	return resourceIncidentRead(ctx, d, meta)
 }
 
@@ -555,7 +532,7 @@ func resourceIncidentDelete(_ context.Context, d *schema.ResourceData, meta inte
 	)
 	deleteIncidentClient, err := cfg.NewServiceClient(deleteIncidentProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SecMaster Client: %s", err)
+		return diag.Errorf("error creating SecMaster client: %s", err)
 	}
 
 	deleteIncidentPath := deleteIncidentClient.Endpoint + deleteIncidentHttpUrl
@@ -564,14 +541,18 @@ func resourceIncidentDelete(_ context.Context, d *schema.ResourceData, meta inte
 
 	deleteIncidentOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	deleteIncidentOpt.JSONBody = utils.RemoveNil(buildDeleteIncidentBodyParams(d))
 	_, err = deleteIncidentClient.Request("DELETE", deleteIncidentPath, &deleteIncidentOpt)
 	if err != nil {
-		return diag.Errorf("error deleting Incident: %s", err)
+		// "SecMaster.20010001": workspace ID not found
+		err = common.ConvertExpected403ErrInto404Err(err, "code", WorkspaceNotFound)
+		return common.CheckDeletedDiag(d, err, "error deleting SecMaster incident")
+	}
+
+	dataObject, _ := GetIncident(deleteIncidentClient, d.Get("workspace_id").(string), d.Id())
+	if dataObject != nil {
+		return diag.Errorf("error deleting SecMaster incident, the incident still exists")
 	}
 
 	return nil
@@ -579,9 +560,38 @@ func resourceIncidentDelete(_ context.Context, d *schema.ResourceData, meta inte
 
 func buildDeleteIncidentBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"batch_ids": utils.ValueIngoreEmpty(d.Id()),
+		"batch_ids": utils.ValueIgnoreEmpty(d.Id()),
 	}
 	return bodyParams
+}
+
+func GetIncident(client *golangsdk.ServiceClient, workspaceId, id string) (interface{}, error) {
+	// getIncident: Query the SecMaster incident detail
+	getIncidentHttpUrl := "v1/{project_id}/workspaces/{workspace_id}/soc/incidents/{id}"
+	getIncidentPath := client.Endpoint + getIncidentHttpUrl
+	getIncidentPath = strings.ReplaceAll(getIncidentPath, "{project_id}", client.ProjectID)
+	getIncidentPath = strings.ReplaceAll(getIncidentPath, "{workspace_id}", workspaceId)
+	getIncidentPath = strings.ReplaceAll(getIncidentPath, "{id}", id)
+
+	getIncidentOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	getIncidentResp, err := client.Request("GET", getIncidentPath, &getIncidentOpt)
+	if err != nil {
+		return nil, err
+	}
+
+	getIncidentRespBody, err := utils.FlattenResponse(getIncidentResp)
+	if err != nil {
+		return nil, err
+	}
+
+	dataObject := utils.PathSearch("data.data_object", getIncidentRespBody, nil)
+	if dataObject == nil {
+		return nil, golangsdk.ErrDefault404{}
+	}
+
+	return dataObject, nil
 }
 
 func resourceIncidentImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
@@ -592,10 +602,7 @@ func resourceIncidentImportState(_ context.Context, d *schema.ResourceData, _ in
 
 	d.SetId(parts[1])
 
-	err := d.Set("workspace_id", parts[0])
-	if err != nil {
-		return nil, err
-	}
+	mErr := multierror.Append(d.Set("workspace_id", parts[0]))
 
-	return []*schema.ResourceData{d}, nil
+	return []*schema.ResourceData{d}, mErr.ErrorOrNil()
 }

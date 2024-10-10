@@ -26,6 +26,25 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CCE POST /api/v3/projects/{project_id}/clusters
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{id}
+// @API CCE PUT /api/v3/projects/{project_id}/clusters/{id}
+// @API CCE DELETE /api/v3/projects/{project_id}/clusters/{id}
+// @API CCE GET /api/v3/projects/{project_id}/jobs/{job_id}
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{id}/operation/{action}
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{id}/clustercert
+// @API CCE PUT /api/v3/projects/{project_id}/clusters/{id}/mastereip
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{id}/tags/{action}
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{id}/operation/resize
+// @API BSS GET /V2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/suscriptions/resources/query
+// @API BSS POST /v2/orders/subscriptions/resources/autorenew/{id}
+// @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{id}
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
+// @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/resources-migrate
+// @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/resources/filter
+// @API AOM POST /svcstg/icmgr/v1/{project_id}/agents
+
 // ResourceCCEClusterV3 defines the CCE cluster resource schema and functions.
 // Deprecated: It's a deprecated function, please refer to the function 'ResourceCluster'.
 func ResourceCCEClusterV3() *schema.Resource {
@@ -84,13 +103,11 @@ func ResourceCluster() *schema.Resource {
 			"flavor_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"cluster_version": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				ForceNew:         true,
 				DiffSuppressFunc: utils.SuppressVersionDiffs,
 			},
 			"cluster_type": {
@@ -242,7 +259,6 @@ func ResourceCluster() *schema.Resource {
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 			"extend_param": {
@@ -301,18 +317,15 @@ func ResourceCluster() *schema.Resource {
 			"component_configurations": {
 				Type:     schema.TypeList,
 				Optional: true,
-				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
-							ForceNew: true,
 						},
 						"configurations": {
 							Type:     schema.TypeString,
 							Optional: true,
-							ForceNew: true,
 						},
 					},
 				},
@@ -356,6 +369,10 @@ func ResourceCluster() *schema.Resource {
 				ValidateFunc: validation.StringInSlice([]string{
 					"true", "try", "false",
 				}, true),
+			},
+			"lts_reclaim_policy": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"status": {
 				Type:     schema.TypeString,
@@ -465,12 +482,12 @@ func resourceClusterExtendParams(extendParamsRaw []interface{}) map[string]inter
 
 	if extendParams, ok := extendParamsRaw[0].(map[string]interface{}); ok {
 		res := map[string]interface{}{
-			"clusterAZ":                      utils.ValueIngoreEmpty(extendParams["cluster_az"]),
-			"dssMasterVolumes":               utils.ValueIngoreEmpty(extendParams["dss_master_volumes"]),
-			"alpha.cce/fixPoolMask":          utils.ValueIngoreEmpty(extendParams["fix_pool_mask"]),
-			"decMasterFlavor":                utils.ValueIngoreEmpty(extendParams["dec_master_flavor"]),
-			"dockerUmaskMode":                utils.ValueIngoreEmpty(extendParams["docker_umask_mode"]),
-			"kubernetes.io/cpuManagerPolicy": utils.ValueIngoreEmpty(extendParams["cpu_manager_policy"]),
+			"clusterAZ":                      utils.ValueIgnoreEmpty(extendParams["cluster_az"]),
+			"dssMasterVolumes":               utils.ValueIgnoreEmpty(extendParams["dss_master_volumes"]),
+			"alpha.cce/fixPoolMask":          utils.ValueIgnoreEmpty(extendParams["fix_pool_mask"]),
+			"decMasterFlavor":                utils.ValueIgnoreEmpty(extendParams["dec_master_flavor"]),
+			"dockerUmaskMode":                utils.ValueIgnoreEmpty(extendParams["docker_umask_mode"]),
+			"kubernetes.io/cpuManagerPolicy": utils.ValueIgnoreEmpty(extendParams["cpu_manager_policy"]),
 		}
 
 		return res
@@ -674,19 +691,25 @@ func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta int
 				Mode:                d.Get("authentication_mode").(string),
 				AuthenticatingProxy: authenticating_proxy,
 			},
-			BillingMode:          billingMode,
-			ExtendParam:          buildResourceClusterExtendParams(d, config),
-			KubernetesSvcIPRange: d.Get("service_network_cidr").(string),
-			ClusterTags:          resourceClusterTags(d),
-			CustomSan:            utils.ExpandToStringList(d.Get("custom_san").([]interface{})),
-			IPv6Enable:           d.Get("ipv6_enable").(bool),
-			KubeProxyMode:        d.Get("kube_proxy_mode").(string),
-			SupportIstio:         d.Get("support_istio").(bool),
+			BillingMode:   billingMode,
+			ExtendParam:   buildResourceClusterExtendParams(d, config),
+			ClusterTags:   resourceClusterTags(d),
+			CustomSan:     utils.ExpandToStringList(d.Get("custom_san").([]interface{})),
+			IPv6Enable:    d.Get("ipv6_enable").(bool),
+			KubeProxyMode: d.Get("kube_proxy_mode").(string),
+			SupportIstio:  d.Get("support_istio").(bool),
 		},
 	}
 
 	if _, ok := d.GetOk("enable_distribute_management"); ok {
 		createOpts.Spec.EnableDistMgt = d.Get("enable_distribute_management").(bool)
+	}
+
+	if v, ok := d.GetOk("service_network_cidr"); ok {
+		serviceNetwork := clusters.ServiceNetwork{
+			IPv4Cidr: v.(string),
+		}
+		createOpts.Spec.ServiceNetwork = &serviceNetwork
 	}
 
 	masters, err := resourceClusterMasters(d)
@@ -812,7 +835,7 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 		d.Set("authentication_mode", n.Spec.Authentication.Mode),
 		d.Set("security_group_id", n.Spec.HostNetwork.SecurityGroup),
 		d.Set("enterprise_project_id", n.Spec.ExtendParam["enterpriseProjectId"]),
-		d.Set("service_network_cidr", n.Spec.KubernetesSvcIPRange),
+		d.Set("service_network_cidr", n.Spec.ServiceNetwork.IPv4Cidr),
 		d.Set("billing_mode", n.Spec.BillingMode),
 		d.Set("tags", utils.TagsToMap(n.Spec.ClusterTags)),
 		d.Set("ipv6_enable", n.Spec.IPv6Enable),
@@ -826,7 +849,9 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 		mErr = multierror.Append(mErr, d.Set("charging_mode", "prePaid"))
 	}
 
-	r := clusters.GetCert(cceClient, d.Id())
+	// duration -1 is equal to the maximum value 1827 days
+	opts := clusters.GetCertOpts{Duration: -1}
+	r := clusters.GetCert(cceClient, d.Id(), opts)
 
 	kubeConfigRaw, err := utils.JsonMarshal(r.Body)
 
@@ -909,13 +934,15 @@ func flattenEniSubnetID(eniNetwork *clusters.EniNetworkSpec) string {
 }
 
 func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	cceClient, err := config.CceV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	cceClient, err := cfg.CceV3Client(region)
 	if err != nil {
 		return diag.Errorf("error creating CCE v3 client: %s", err)
 	}
 
-	var updateOpts = clusters.UpdateOpts{}
+	clusterId := d.Id()
+	updateOpts := clusters.UpdateOpts{}
 
 	if d.HasChange("alias") {
 		updateOpts.Metadata = &clusters.UpdateMetadata{
@@ -959,9 +986,16 @@ func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if !reflect.DeepEqual(updateOpts, clusters.UpdateOpts{}) {
-		_, err = clusters.Update(cceClient, d.Id(), updateOpts).Extract()
+		_, err = clusters.Update(cceClient, clusterId, updateOpts).Extract()
 		if err != nil {
 			return diag.Errorf("error updating CCE cluster: %s", err)
+		}
+	}
+
+	if d.HasChange("flavor_id") {
+		err := resourceClusterResize(ctx, cfg, d, cceClient)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -980,20 +1014,20 @@ func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if d.HasChange("eip") {
-		eipClient, err := config.NetworkingV1Client(config.GetRegion(d))
+		eipClient, err := cfg.NetworkingV1Client(region)
 		if err != nil {
 			return diag.Errorf("error creating VPC v1 client: %s", err)
 		}
 
 		oldEip, newEip := d.GetChange("eip")
 		if oldEip.(string) != "" {
-			err = resourceClusterEipAction(cceClient, eipClient, d.Id(), oldEip.(string), "unbind")
+			err = resourceClusterEipAction(cceClient, eipClient, clusterId, oldEip.(string), "unbind")
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		}
 		if newEip.(string) != "" {
-			err = resourceClusterEipAction(cceClient, eipClient, d.Id(), newEip.(string), "bind")
+			err = resourceClusterEipAction(cceClient, eipClient, clusterId, newEip.(string), "bind")
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -1006,31 +1040,108 @@ func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		oldTagsRaw := oldTags.(map[string]interface{})
 		if len(oldTagsRaw) > 0 {
 			taglist := utils.ExpandResourceTags(oldTagsRaw)
-			if tagErr := clusters.RemoveTags(cceClient, d.Id(), taglist).ExtractErr(); tagErr != nil {
-				return diag.Errorf("error deleting tags of CCE cluster %s: %s", d.Id(), tagErr)
+			if tagErr := clusters.RemoveTags(cceClient, clusterId, taglist).ExtractErr(); tagErr != nil {
+				return diag.Errorf("error deleting tags of CCE cluster %s: %s", clusterId, tagErr)
 			}
 		}
 
 		newTagsRaw := newTags.(map[string]interface{})
 		if len(newTagsRaw) > 0 {
 			taglist := utils.ExpandResourceTags(newTagsRaw)
-			if tagErr := clusters.AddTags(cceClient, d.Id(), taglist).ExtractErr(); tagErr != nil {
-				return diag.Errorf("error setting tags of CCE cluster %s: %s", d.Id(), tagErr)
+			if tagErr := clusters.AddTags(cceClient, clusterId, taglist).ExtractErr(); tagErr != nil {
+				return diag.Errorf("error setting tags of CCE cluster %s: %s", clusterId, tagErr)
 			}
 		}
 	}
 
+	if d.HasChange("component_configurations") {
+		var (
+			updateClusterConfigurationsHttpUrl = "api/v3/projects/{project_id}/clusters/{cluster_id}/nodepools/master/configuration"
+		)
+
+		updateClusterConfigurationsPath := cceClient.Endpoint + updateClusterConfigurationsHttpUrl
+		updateClusterConfigurationsPath = strings.ReplaceAll(updateClusterConfigurationsPath, "{project_id}", cfg.GetProjectID(region))
+		updateClusterConfigurationsPath = strings.ReplaceAll(updateClusterConfigurationsPath, "{cluster_id}", clusterId)
+
+		updateClusterConfigurationsOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+
+		bodyParams, err := buildUpdateClusterConfigurationsBodyParams(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		updateClusterConfigurationsOpt.JSONBody = bodyParams
+		_, err = cceClient.Request("PUT", updateClusterConfigurationsPath, &updateClusterConfigurationsOpt)
+		if err != nil {
+			return diag.Errorf("error updating CCE cluster configurations: %s", err)
+		}
+	}
+
 	if d.HasChange("auto_renew") {
-		bssClient, err := config.BssV2Client(config.GetRegion(d))
+		bssClient, err := cfg.BssV2Client(region)
 		if err != nil {
 			return diag.Errorf("error creating BSS v2 client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
-			return diag.Errorf("error updating the auto-renew of the CCE cluster (%s): %s", d.Id(), err)
+		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), clusterId); err != nil {
+			return diag.Errorf("error updating the auto-renew of the CCE cluster (%s): %s", clusterId, err)
+		}
+	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   clusterId,
+			ResourceType: "cce-cluster",
+			RegionId:     region,
+			ProjectId:    cceClient.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
 	return resourceClusterRead(ctx, d, meta)
+}
+
+func buildUpdateClusterConfigurationsBodyParams(d *schema.ResourceData) (map[string]interface{}, error) {
+	configurationsPackages, err := buildConfigurationsPackagesBodyParams(d)
+	if err != nil {
+		return nil, err
+	}
+	bodyParams := map[string]interface{}{
+		"apiVersion": "v3",
+		"kind":       "Configuration",
+		"metadata": map[string]interface{}{
+			"name": "configuration",
+		},
+		"spec": map[string]interface{}{
+			"packages": configurationsPackages,
+		},
+	}
+	return bodyParams, nil
+}
+
+func buildConfigurationsPackagesBodyParams(d *schema.ResourceData) ([]map[string]interface{}, error) {
+	packagesRaw := d.Get("component_configurations").([]interface{})
+	bodyParams := make([]map[string]interface{}, len(packagesRaw))
+	for i, v := range packagesRaw {
+		packageRaw := v.(map[string]interface{})
+		bodyParams[i] = map[string]interface{}{
+			"name": packageRaw["name"],
+		}
+
+		if configurationsRaw := packageRaw["configurations"].(string); configurationsRaw != "" {
+			var configurations interface{}
+			err := json.Unmarshal([]byte(configurationsRaw), &configurations)
+			if err != nil {
+				err = fmt.Errorf("error unmarshalling configurations of %s: %s", packageRaw["name"].(string), err)
+				return nil, err
+			}
+			bodyParams[i]["configurations"] = configurations
+		}
+	}
+
+	return bodyParams, nil
 }
 
 func resourceClusterDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1064,6 +1175,8 @@ func resourceClusterDelete(ctx context.Context, d *schema.ResourceData, meta int
 			deleteOpts.DeleteSfs = d.Get("delete_sfs").(string)
 			deleteOpts.DeleteSfs30 = d.Get("delete_sfs").(string)
 		}
+
+		deleteOpts.LtsReclaimPolicy = d.Get("lts_reclaim_policy").(string)
 		err = clusters.DeleteWithOpts(cceClient, d.Id(), deleteOpts).ExtractErr()
 		if err != nil {
 			return diag.Errorf("error deleting CCE cluster: %s", err)
@@ -1142,6 +1255,59 @@ func getClusterIDFromJob(ctx context.Context, client *golangsdk.ServiceClient, j
 		return "", fmt.Errorf("error fetching CCE cluster ID")
 	}
 	return clusterID, nil
+}
+
+func resourceClusterResize(ctx context.Context, cfg *config.Config, d *schema.ResourceData, cceClient *golangsdk.ServiceClient) error {
+	clusterID := d.Id()
+
+	var decMasterFlavor string
+	extendParams := resourceClusterExtendParams(d.Get("extend_params").([]interface{}))
+	if v, ok := extendParams["decMasterFlavor"]; ok {
+		decMasterFlavor = v.(string)
+	}
+
+	opts := clusters.ResizeOpts{
+		FavorResize: d.Get("flavor_id").(string),
+		ExtendParam: &clusters.ResizeExtendParam{
+			DecMasterFlavor: decMasterFlavor,
+		},
+	}
+
+	if d.Get("charging_mode").(string) == "prePaid" {
+		opts.ExtendParam.IsAutoPay = common.GetAutoPay(d)
+	}
+
+	resp, err := clusters.Resize(cceClient, clusterID, opts)
+	if err != nil {
+		return fmt.Errorf("error resizing CCE cluster: %s", err)
+	}
+
+	if resp.OrderID != "" {
+		bssClient, err := cfg.BssV2Client(cfg.GetRegion(d))
+		if err != nil {
+			return fmt.Errorf("error creating BSS v2 client: %s", err)
+		}
+		err = common.WaitOrderComplete(ctx, bssClient, resp.OrderID, d.Timeout(schema.TimeoutUpdate))
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Printf("[DEBUG] Waiting for CCE cluster (%s) to become available", d.Id())
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      clusterStateRefreshFunc(cceClient, d.Id(), []string{"Available"}),
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		Delay:        20 * time.Second,
+		PollInterval: 20 * time.Second,
+	}
+
+	_, err = stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error resizing CCE cluster: %s", err)
+	}
+	return nil
 }
 
 func resourceClusterHibernate(ctx context.Context, d *schema.ResourceData, cceClient *golangsdk.ServiceClient) error {

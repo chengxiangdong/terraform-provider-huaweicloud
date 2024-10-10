@@ -12,7 +12,7 @@ type ShowHistoryTaskDetailsResponse struct {
 	// 任务id。
 	Id *string `json:"id,omitempty"`
 
-	// 任务类型，REFRESH：刷新任务；PREHEATING：预热任务。
+	// 任务类型，refresh：刷新任务；preheating：预热任务。
 	TaskType *string `json:"task_type,omitempty"`
 
 	// 任务执行结果,task_done:成功，task_inprocess:处理中。
@@ -37,7 +37,9 @@ type ShowHistoryTaskDetailsResponse struct {
 	Total *int32 `json:"total,omitempty"`
 
 	// 文件类型，file：文件；directory：目录，默认是文件file,
-	FileType       *string `json:"file_type,omitempty"`
+	FileType *string `json:"file_type,omitempty"`
+
+	XRequestId     *string `json:"X-Request-Id,omitempty"`
 	HttpStatusCode int     `json:"-"`
 }
 

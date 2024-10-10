@@ -1,5 +1,9 @@
 ---
-subcategory: "Data Warehouse Service (DWS)"
+subcategory: "GaussDB(DWS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dws_flavors"
+description: |-
+  Use this data source to get available flavors of DWS cluster node.
 ---
 
 # huaweicloud_dws_flavors
@@ -38,7 +42,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `flavors` - The list of flavor detail.
   The [Flavors](#dwsFlavors_Flavors) structure is documented below.
@@ -55,6 +59,8 @@ The `Flavors` block supports:
     - **hybrid**: a single data warehouse used for transaction and analytics workloads,
        in single-node or cluster mode.
     - **stream**: built-in time series operators; up to 40:1 compression ratio; applicable to IoT services.
+
+* `datastore_version` - The version of datastore.
 
 * `vcpus` - The vcpus of the dws node flavor.
 

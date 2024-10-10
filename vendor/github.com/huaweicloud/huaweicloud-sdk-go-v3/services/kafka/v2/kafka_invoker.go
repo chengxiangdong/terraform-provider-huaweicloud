@@ -53,6 +53,18 @@ func (i *BatchDeleteInstanceUsersInvoker) Invoke() (*model.BatchDeleteInstanceUs
 	}
 }
 
+type BatchDeleteMessageDiagnosisReportsInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *BatchDeleteMessageDiagnosisReportsInvoker) Invoke() (*model.BatchDeleteMessageDiagnosisReportsResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.BatchDeleteMessageDiagnosisReportsResponse), nil
+	}
+}
+
 type BatchRestartOrDeleteInstancesInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -74,30 +86,6 @@ func (i *CloseKafkaManagerInvoker) Invoke() (*model.CloseKafkaManagerResponse, e
 		return nil, err
 	} else {
 		return result.(*model.CloseKafkaManagerResponse), nil
-	}
-}
-
-type CreateConnectorInvoker struct {
-	*invoker.BaseInvoker
-}
-
-func (i *CreateConnectorInvoker) Invoke() (*model.CreateConnectorResponse, error) {
-	if result, err := i.BaseInvoker.Invoke(); err != nil {
-		return nil, err
-	} else {
-		return result.(*model.CreateConnectorResponse), nil
-	}
-}
-
-type CreateDeleteConnectorOrderInvoker struct {
-	*invoker.BaseInvoker
-}
-
-func (i *CreateDeleteConnectorOrderInvoker) Invoke() (*model.CreateDeleteConnectorOrderResponse, error) {
-	if result, err := i.BaseInvoker.Invoke(); err != nil {
-		return nil, err
-	} else {
-		return result.(*model.CreateDeleteConnectorOrderResponse), nil
 	}
 }
 
@@ -149,15 +137,27 @@ func (i *CreateKafkaConsumerGroupInvoker) Invoke() (*model.CreateKafkaConsumerGr
 	}
 }
 
-type CreatePartitionInvoker struct {
+type CreateKafkaUserClientQuotaTaskInvoker struct {
 	*invoker.BaseInvoker
 }
 
-func (i *CreatePartitionInvoker) Invoke() (*model.CreatePartitionResponse, error) {
+func (i *CreateKafkaUserClientQuotaTaskInvoker) Invoke() (*model.CreateKafkaUserClientQuotaTaskResponse, error) {
 	if result, err := i.BaseInvoker.Invoke(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.CreatePartitionResponse), nil
+		return result.(*model.CreateKafkaUserClientQuotaTaskResponse), nil
+	}
+}
+
+type CreateMessageDiagnosisTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *CreateMessageDiagnosisTaskInvoker) Invoke() (*model.CreateMessageDiagnosisTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.CreateMessageDiagnosisTaskResponse), nil
 	}
 }
 
@@ -185,18 +185,6 @@ func (i *CreateReassignmentTaskInvoker) Invoke() (*model.CreateReassignmentTaskR
 	}
 }
 
-type CreateSinkTaskInvoker struct {
-	*invoker.BaseInvoker
-}
-
-func (i *CreateSinkTaskInvoker) Invoke() (*model.CreateSinkTaskResponse, error) {
-	if result, err := i.BaseInvoker.Invoke(); err != nil {
-		return nil, err
-	} else {
-		return result.(*model.CreateSinkTaskResponse), nil
-	}
-}
-
 type DeleteBackgroundTaskInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -206,18 +194,6 @@ func (i *DeleteBackgroundTaskInvoker) Invoke() (*model.DeleteBackgroundTaskRespo
 		return nil, err
 	} else {
 		return result.(*model.DeleteBackgroundTaskResponse), nil
-	}
-}
-
-type DeleteConnectorInvoker struct {
-	*invoker.BaseInvoker
-}
-
-func (i *DeleteConnectorInvoker) Invoke() (*model.DeleteConnectorResponse, error) {
-	if result, err := i.BaseInvoker.Invoke(); err != nil {
-		return nil, err
-	} else {
-		return result.(*model.DeleteConnectorResponse), nil
 	}
 }
 
@@ -233,15 +209,15 @@ func (i *DeleteInstanceInvoker) Invoke() (*model.DeleteInstanceResponse, error) 
 	}
 }
 
-type DeleteSinkTaskInvoker struct {
+type DeleteKafkaUserClientQuotaTaskInvoker struct {
 	*invoker.BaseInvoker
 }
 
-func (i *DeleteSinkTaskInvoker) Invoke() (*model.DeleteSinkTaskResponse, error) {
+func (i *DeleteKafkaUserClientQuotaTaskInvoker) Invoke() (*model.DeleteKafkaUserClientQuotaTaskResponse, error) {
 	if result, err := i.BaseInvoker.Invoke(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.DeleteSinkTaskResponse), nil
+		return result.(*model.DeleteKafkaUserClientQuotaTaskResponse), nil
 	}
 }
 
@@ -317,6 +293,18 @@ func (i *ListInstancesInvoker) Invoke() (*model.ListInstancesResponse, error) {
 	}
 }
 
+type ListMessageDiagnosisReportsInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ListMessageDiagnosisReportsInvoker) Invoke() (*model.ListMessageDiagnosisReportsResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ListMessageDiagnosisReportsResponse), nil
+	}
+}
+
 type ListProductsInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -326,18 +314,6 @@ func (i *ListProductsInvoker) Invoke() (*model.ListProductsResponse, error) {
 		return nil, err
 	} else {
 		return result.(*model.ListProductsResponse), nil
-	}
-}
-
-type ListSinkTasksInvoker struct {
-	*invoker.BaseInvoker
-}
-
-func (i *ListSinkTasksInvoker) Invoke() (*model.ListSinkTasksResponse, error) {
-	if result, err := i.BaseInvoker.Invoke(); err != nil {
-		return nil, err
-	} else {
-		return result.(*model.ListSinkTasksResponse), nil
 	}
 }
 
@@ -365,6 +341,18 @@ func (i *ListTopicProducersInvoker) Invoke() (*model.ListTopicProducersResponse,
 	}
 }
 
+type ModifyInstanceConfigsInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ModifyInstanceConfigsInvoker) Invoke() (*model.ModifyInstanceConfigsResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ModifyInstanceConfigsResponse), nil
+	}
+}
+
 type ResetManagerPasswordInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -386,6 +374,18 @@ func (i *ResetMessageOffsetInvoker) Invoke() (*model.ResetMessageOffsetResponse,
 		return nil, err
 	} else {
 		return result.(*model.ResetMessageOffsetResponse), nil
+	}
+}
+
+type ResetMessageOffsetWithEngineInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ResetMessageOffsetWithEngineInvoker) Invoke() (*model.ResetMessageOffsetWithEngineResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ResetMessageOffsetWithEngineResponse), nil
 	}
 }
 
@@ -449,6 +449,18 @@ func (i *RestartManagerInvoker) Invoke() (*model.RestartManagerResponse, error) 
 	}
 }
 
+type SendKafkaMessageInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *SendKafkaMessageInvoker) Invoke() (*model.SendKafkaMessageResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.SendKafkaMessageResponse), nil
+	}
+}
+
 type ShowBackgroundTaskInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -497,6 +509,18 @@ func (i *ShowCoordinatorsInvoker) Invoke() (*model.ShowCoordinatorsResponse, err
 	}
 }
 
+type ShowDiagnosisPreCheckInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ShowDiagnosisPreCheckInvoker) Invoke() (*model.ShowDiagnosisPreCheckResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ShowDiagnosisPreCheckResponse), nil
+	}
+}
+
 type ShowEngineInstanceExtendProductInfoInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -530,6 +554,18 @@ func (i *ShowInstanceInvoker) Invoke() (*model.ShowInstanceResponse, error) {
 		return nil, err
 	} else {
 		return result.(*model.ShowInstanceResponse), nil
+	}
+}
+
+type ShowInstanceConfigsInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ShowInstanceConfigsInvoker) Invoke() (*model.ShowInstanceConfigsResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ShowInstanceConfigsResponse), nil
 	}
 }
 
@@ -617,6 +653,18 @@ func (i *ShowKafkaTopicPartitionDiskusageInvoker) Invoke() (*model.ShowKafkaTopi
 	}
 }
 
+type ShowKafkaUserClientQuotaInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ShowKafkaUserClientQuotaInvoker) Invoke() (*model.ShowKafkaUserClientQuotaResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ShowKafkaUserClientQuotaResponse), nil
+	}
+}
+
 type ShowMaintainWindowsInvoker struct {
 	*invoker.BaseInvoker
 }
@@ -626,6 +674,18 @@ func (i *ShowMaintainWindowsInvoker) Invoke() (*model.ShowMaintainWindowsRespons
 		return nil, err
 	} else {
 		return result.(*model.ShowMaintainWindowsResponse), nil
+	}
+}
+
+type ShowMessageDiagnosisReportInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ShowMessageDiagnosisReportInvoker) Invoke() (*model.ShowMessageDiagnosisReportResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ShowMessageDiagnosisReportResponse), nil
 	}
 }
 
@@ -674,18 +734,6 @@ func (i *ShowPartitionMessageInvoker) Invoke() (*model.ShowPartitionMessageRespo
 		return nil, err
 	} else {
 		return result.(*model.ShowPartitionMessageResponse), nil
-	}
-}
-
-type ShowSinkTaskDetailInvoker struct {
-	*invoker.BaseInvoker
-}
-
-func (i *ShowSinkTaskDetailInvoker) Invoke() (*model.ShowSinkTaskDetailResponse, error) {
-	if result, err := i.BaseInvoker.Invoke(); err != nil {
-		return nil, err
-	} else {
-		return result.(*model.ShowSinkTaskDetailResponse), nil
 	}
 }
 
@@ -773,15 +821,15 @@ func (i *UpdateInstanceUserInvoker) Invoke() (*model.UpdateInstanceUserResponse,
 	}
 }
 
-type UpdateSinkTaskQuotaInvoker struct {
+type UpdateKafkaUserClientQuotaTaskInvoker struct {
 	*invoker.BaseInvoker
 }
 
-func (i *UpdateSinkTaskQuotaInvoker) Invoke() (*model.UpdateSinkTaskQuotaResponse, error) {
+func (i *UpdateKafkaUserClientQuotaTaskInvoker) Invoke() (*model.UpdateKafkaUserClientQuotaTaskResponse, error) {
 	if result, err := i.BaseInvoker.Invoke(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.UpdateSinkTaskQuotaResponse), nil
+		return result.(*model.UpdateKafkaUserClientQuotaTaskResponse), nil
 	}
 }
 
@@ -806,5 +854,113 @@ func (i *UpdateTopicReplicaInvoker) Invoke() (*model.UpdateTopicReplicaResponse,
 		return nil, err
 	} else {
 		return result.(*model.UpdateTopicReplicaResponse), nil
+	}
+}
+
+type CreateConnectorInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *CreateConnectorInvoker) Invoke() (*model.CreateConnectorResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.CreateConnectorResponse), nil
+	}
+}
+
+type CreateConnectorTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *CreateConnectorTaskInvoker) Invoke() (*model.CreateConnectorTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.CreateConnectorTaskResponse), nil
+	}
+}
+
+type DeleteConnectorInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *DeleteConnectorInvoker) Invoke() (*model.DeleteConnectorResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.DeleteConnectorResponse), nil
+	}
+}
+
+type DeleteConnectorTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *DeleteConnectorTaskInvoker) Invoke() (*model.DeleteConnectorTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.DeleteConnectorTaskResponse), nil
+	}
+}
+
+type ListConnectorTasksInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ListConnectorTasksInvoker) Invoke() (*model.ListConnectorTasksResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ListConnectorTasksResponse), nil
+	}
+}
+
+type PauseConnectorTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *PauseConnectorTaskInvoker) Invoke() (*model.PauseConnectorTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.PauseConnectorTaskResponse), nil
+	}
+}
+
+type RestartConnectorTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *RestartConnectorTaskInvoker) Invoke() (*model.RestartConnectorTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.RestartConnectorTaskResponse), nil
+	}
+}
+
+type ResumeConnectorTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ResumeConnectorTaskInvoker) Invoke() (*model.ResumeConnectorTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ResumeConnectorTaskResponse), nil
+	}
+}
+
+type ShowConnectorTaskInvoker struct {
+	*invoker.BaseInvoker
+}
+
+func (i *ShowConnectorTaskInvoker) Invoke() (*model.ShowConnectorTaskResponse, error) {
+	if result, err := i.BaseInvoker.Invoke(); err != nil {
+		return nil, err
+	} else {
+		return result.(*model.ShowConnectorTaskResponse), nil
 	}
 }

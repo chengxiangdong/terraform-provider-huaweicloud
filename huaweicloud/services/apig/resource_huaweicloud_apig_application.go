@@ -3,7 +3,6 @@ package apig
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -24,6 +23,14 @@ const (
 	SecretActionReset SecretAction = "RESET"
 )
 
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/apps/{app_id}/app-codes/{app_code_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/apps/{app_id}/app-codes
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/apps/{app_id}/app-codes
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/apps/{app_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/apps/{app_id}
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}/apps/{app_id}
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/apps
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}/apps/secret/{app_id}
 func ResourceApigApplicationV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceApplicationCreate,
@@ -50,43 +57,22 @@ func ResourceApigApplicationV2() *schema.Resource {
 				Description: "The ID of the dedicated instance to which the application belongs.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5\\w]*$"),
-						"Only chinese and english letters, digits and underscores (_) are allowed, and must start "+
-							"with a chinese or english letter."),
-					validation.StringLenBetween(3, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The application name.",
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[^<>]*$`),
-						"The angle brackets (< and >) are not allowed."),
-					validation.StringLenBetween(0, 255),
-				),
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
 				Description: "The application description.",
 			},
 			"app_codes": {
-				Type:     schema.TypeSet,
-				Optional: true,
-				Computed: true,
-				MaxItems: 5,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.All(
-						validation.StringMatch(
-							regexp.MustCompile(`^[A-Za-z0-9+=][\w!@#$%+-/=]*$`),
-							"The code consists of 64 to 180 characters, starting with a letter, digit, "+
-								"plus sign (+) or slash (/). Only letters, digits and following special special "+
-								"characters are allowed: !@#$%+-_/="),
-						validation.StringLenBetween(64, 180),
-					),
-				},
+				Type:        schema.TypeSet,
+				Optional:    true,
+				Computed:    true,
+				MaxItems:    5,
+				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "The array of one or more application codes that the application has.",
 			},
 			"secret_action": {
@@ -323,7 +309,7 @@ func resourceApplicationDelete(_ context.Context, d *schema.ResourceData, meta i
 	)
 	err = applications.Delete(client, instanceId, appId).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting application (%s) from the instance (%s): %s", appId, instanceId, err)
+		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error deleting application (%s) from the instance (%s)", appId, instanceId))
 	}
 
 	return nil

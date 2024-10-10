@@ -1,5 +1,8 @@
 ---
 subcategory: "Domain Name Service (DNS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dns_zone"
+description: ""
 ---
 
 # huaweicloud_dns_zone
@@ -54,14 +57,23 @@ The following arguments are supported:
 * `router` - (Optional, List) Router configuration block which is required if zone_type is private. The router
   structure is documented below.
 
-* `ttl` - (Optional, Int) The time to live (TTL) of the zone.
+* `ttl` - (Optional, Int) The time to live (TTL) of the zone.  
+  The valid value is range from `1` to `2,147,483,647`.
 
-* `description` - (Optional, String) A description of the zone.
+* `description` - (Optional, String) A description of the zone.  
+  A maximum of `255` characters are allowed.
 
 * `tags` - (Optional, Map) The key/value pairs to associate with the zone.
 
 * `enterprise_project_id` - (Optional, String, ForceNew) The enterprise project id of the zone. Changing this creates a
   new zone.
+
+* `status` - (Optional, String) Specifies the status of the zone.  
+  The valid values are as follows:
+  + **ENABLE**
+  + **DISABLE**
+
+  -> This parameter is only supported by the public zone, and it is a one-time action.
 
 The `router` block supports:
 
@@ -89,6 +101,6 @@ This resource provides the following timeouts configuration options:
 
 This resource can be imported by specifying the zone ID:
 
-```
+```bash
 $ terraform import huaweicloud_dns_zone.zone_1 <zone_id>
 ```

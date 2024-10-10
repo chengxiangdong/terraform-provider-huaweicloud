@@ -91,11 +91,13 @@ type Instance struct {
 	Ipv6ConnectAddresses       []string           `json:"ipv6_connect_addresses"`
 	ConnectorEnalbe            bool               `json:"connector_enable"`
 	ConnectorID                string             `json:"connector_id"`
+	ConnectorNodeNum           int                `json:"connector_node_num"`
 	RestEnable                 bool               `json:"rest_enable"`
 	RestConnectAddress         string             `json:"rest_connect_address"`
 	MessageQueryInstEnable     bool               `json:"message_query_inst_enable"`
 	VpcClientPlain             bool               `json:"vpc_client_plain"`
 	SupportFeatures            string             `json:"support_features"`
+	Task                       Task               `json:"task"`
 	TraceEnable                bool               `json:"trace_enable"`
 	PodConnectAddress          string             `json:"pod_connect_address"`
 	DiskEncrypted              bool               `json:"disk_encrypted"`
@@ -103,6 +105,14 @@ type Instance struct {
 	CesVersion                 string             `json:"ces_version"`
 	AccessUser                 string             `json:"access_user"`
 	Tags                       []tags.ResourceTag `json:"tags"`
+	CertReplaced               bool               `json:"cert_replaced"`
+	SslTwoWayEnable            bool               `json:"ssl_two_way_enable"`
+}
+
+type Task struct {
+	Name      string `json:"name"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
 }
 
 // UpdateResult is a struct from which can get the result of update method
@@ -157,4 +167,96 @@ type Connection struct {
 	Success bool `json:"success"`
 	// Listeners IP.
 	ListenersIp string `json:"ip"`
+}
+
+// AutoTopicResult is a struct that contains all the return parameters of UpdateAutoTopic function
+type AutoTopicResult struct {
+	golangsdk.Result
+}
+
+// ResetPasswordResult is a struct that contains all the return parameters of ResetPassword function
+type ResetPasswordResult struct {
+	golangsdk.Result
+}
+
+type commonResult struct {
+	golangsdk.Result
+}
+
+type ModifyConfigurationResult struct {
+	commonResult
+}
+
+type GetConfigurationResult struct {
+	commonResult
+}
+
+type RebootResult struct {
+	commonResult
+}
+
+type GetTasksResult struct {
+	commonResult
+}
+
+type ModifyConfigurationResp struct {
+	JobId         string `json:"job_id"`
+	DynamicConfig int    `json:"dynamic_config"`
+	StaticConfig  int    `json:"static_config"`
+}
+
+func (r ModifyConfigurationResult) Extract() (*ModifyConfigurationResp, error) {
+	var response ModifyConfigurationResp
+	err := r.ExtractInto(&response)
+	return &response, err
+}
+
+type Result struct {
+	Result   string `json:"result"`
+	Instance string `json:"instance"`
+}
+
+type RebootResp struct {
+	Results []Result `json:"results"`
+}
+
+func (r RebootResult) Extract() (*RebootResp, error) {
+	var response RebootResp
+	err := r.ExtractInto(&response)
+	return &response, err
+}
+
+type KafkaParam struct {
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	DefaultValue string `json:"default_value"`
+	ConfigType   string `json:"config_type"`
+	ValidValues  string `json:"valid_values"`
+	ValueType    string `json:"value_type"`
+}
+
+type GetConfigurationResp struct {
+	KafkaConfigs []KafkaParam `json:"kafka_configs"`
+}
+
+func (r GetConfigurationResult) Extract() (*GetConfigurationResp, error) {
+	var response GetConfigurationResp
+	err := r.ExtractInto(&response)
+	return &response, err
+}
+
+type TaskParams struct {
+	Name   string `json:"name"`
+	Params string `json:"params"`
+	Status string `json:"status"`
+}
+
+type GetTaskResp struct {
+	Tasks []TaskParams `json:"tasks"`
+}
+
+func (r GetTasksResult) Extract() (*GetTaskResp, error) {
+	var response GetTaskResp
+	err := r.ExtractInto(&response)
+	return &response, err
 }

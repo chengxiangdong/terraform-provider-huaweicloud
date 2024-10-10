@@ -16,7 +16,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 var (
@@ -31,6 +30,10 @@ var (
 	}
 )
 
+// @API SWR GET /v2/manage/namespaces/{namespace}/repositories/{repository}/access-domains/{domain}
+// @API SWR PATCH /v2/manage/namespaces/{namespace}/repositories/{repository}/access-domains/{domain}
+// @API SWR DELETE /v2/manage/namespaces/{namespace}/repositories/{repository}/access-domains/{domain}
+// @API SWR POST /v2/manage/namespaces/{namespace}/repositories/{repository}/access-domains
 func ResourceSWRRepositorySharing() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSWRRepositorySharingCreate,
@@ -94,17 +97,17 @@ func ResourceSWRRepositorySharing() *schema.Resource {
 }
 
 func resourceSWRRepositorySharingCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.SwrV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.SwrV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Unable to create HuaweiCloud SWR client : %s", err)
+		return diag.Errorf("unable to create SWR client: %s", err)
 	}
 
 	permission := d.Get("permission").(string)
 
 	permit, ok := permissions[permission]
 	if !ok {
-		return fmtp.DiagErrorf("The permission type (%s) is not available", permission)
+		return diag.Errorf("the permission type (%s) is not available", permission)
 	}
 
 	domain := d.Get("sharing_account").(string)
@@ -120,7 +123,7 @@ func resourceSWRRepositorySharingCreate(ctx context.Context, d *schema.ResourceD
 
 	err = domains.Create(client, organization, repository, opts).ExtractErr()
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating HuaweiCloud SWR repository sharing: %w", err)
+		return diag.Errorf("error creating SWR repository sharing: %s", err)
 	}
 	d.SetId(domain)
 
@@ -128,10 +131,10 @@ func resourceSWRRepositorySharingCreate(ctx context.Context, d *schema.ResourceD
 }
 
 func resourceSWRRepositorySharingRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.SwrV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.SwrV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Unable to create HuaweiCloud SWR client : %s", err)
+		return diag.Errorf("unable to create SWR client: %s", err)
 	}
 
 	organization := d.Get("organization").(string)
@@ -139,11 +142,13 @@ func resourceSWRRepositorySharingRead(_ context.Context, d *schema.ResourceData,
 
 	domain, err := domains.Get(client, organization, repository, d.Id()).Extract()
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "Error retrieving HuaweiCloud SWR repository sharing")
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected400ErrInto404Err(err, "errorCode", "SVCSTG.SWR.4001090"),
+			"error retrieving SWR repository sharing")
 	}
 
 	mErr := multierror.Append(
-		d.Set("region", config.GetRegion(d)),
+		d.Set("region", cfg.GetRegion(d)),
 		d.Set("sharing_account", domain.AccessDomain),
 		d.Set("repository", domain.Repository),
 		d.Set("organization", domain.Organization),
@@ -156,17 +161,17 @@ func resourceSWRRepositorySharingRead(_ context.Context, d *schema.ResourceData,
 		mErr = multierror.Append(mErr, d.Set("permission", permission))
 	}
 	if err := mErr.ErrorOrNil(); err != nil {
-		return fmtp.DiagErrorf("error setting HuaweiCloud SWR repository sharing fields: %w", err)
+		return diag.Errorf("error setting SWR repository sharing fields: %v", err)
 	}
 
 	return nil
 }
 
 func resourceSWRRepositorySharingUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.SwrV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.SwrV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Unable to create HuaweiCloud SWR client : %s", err)
+		return diag.Errorf("unable to create SWR client: %s", err)
 	}
 
 	description := d.Get("description").(string)
@@ -174,7 +179,7 @@ func resourceSWRRepositorySharingUpdate(ctx context.Context, d *schema.ResourceD
 
 	permit, ok := permissions[permission]
 	if !ok {
-		return fmtp.DiagErrorf("The permission type (%s) is not available", permission)
+		return diag.Errorf("the permission type (%s) is not available", permission)
 	}
 
 	opts := domains.UpdateOpts{
@@ -188,17 +193,17 @@ func resourceSWRRepositorySharingUpdate(ctx context.Context, d *schema.ResourceD
 
 	err = domains.Update(client, organization, repository, d.Id(), opts).ExtractErr()
 	if err != nil {
-		return fmtp.DiagErrorf("Error updating HuaweiCloud SWR repository sharing: %w", err)
+		return diag.Errorf("error updating SWR repository sharing: %v", err)
 	}
 
 	return resourceSWRRepositorySharingRead(ctx, d, meta)
 }
 
 func resourceSWRRepositorySharingDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.SwrV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.SwrV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Unable to create HuaweiCloud SWR client : %s", err)
+		return diag.Errorf("unable to create SWR client: %s", err)
 	}
 
 	organization := d.Get("organization").(string)
@@ -206,10 +211,9 @@ func resourceSWRRepositorySharingDelete(_ context.Context, d *schema.ResourceDat
 
 	err = domains.Delete(client, organization, repository, d.Id()).ExtractErr()
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "Error deleting HuaweiCloud SWR repository sharing")
+		return common.CheckDeletedDiag(d, err, "error deleting SWR repository sharing")
 	}
 
-	d.SetId("")
 	return nil
 }
 
@@ -230,21 +234,22 @@ func resourceSWRRepositorySharingImport(ctx context.Context, d *schema.ResourceD
 	if err := mErr.ErrorOrNil(); err != nil {
 		return nil, err
 	}
+
 	return schema.ImportStatePassthroughContext(ctx, d, meta)
 }
 
 func deadlineTrans(deadline string) string {
 	if deadline == "forever" {
 		return deadline
-	} else {
-		return fmt.Sprintf("%sT00:00:00Z", deadline)
 	}
+
+	return fmt.Sprintf("%sT00:00:00Z", deadline)
 }
 
 func deadlineTransReverse(deadline string) string {
 	if deadline == "forever" {
 		return deadline
-	} else {
-		return deadline[:10]
 	}
+
+	return deadline[:10]
 }

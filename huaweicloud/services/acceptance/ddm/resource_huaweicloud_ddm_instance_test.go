@@ -34,9 +34,6 @@ func getDdmInstanceResourceFunc(cfg *config.Config, state *terraform.ResourceSta
 
 	getInstanceOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	getInstanceResp, err := getInstanceClient.Request("GET", getInstancePath, &getInstanceOpt)
 	if err != nil {
@@ -90,6 +87,10 @@ func TestAccDdmInstance_basic(t *testing.T) {
 						"huaweicloud_vpc_subnet.test", "id"),
 					resource.TestCheckResourceAttrPair(rName, "security_group_id",
 						"huaweicloud_networking_secgroup.test", "id"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.name", "bind_table"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.value", "test_value"),
+					resource.TestCheckResourceAttrPair(rName, "enterprise_project_id",
+						"huaweicloud_enterprise_project.test.0", "id"),
 				),
 			},
 			{
@@ -109,6 +110,10 @@ func TestAccDdmInstance_basic(t *testing.T) {
 						"huaweicloud_vpc_subnet.test", "id"),
 					resource.TestCheckResourceAttrPair(rName, "security_group_id",
 						"huaweicloud_networking_secgroup.test_update", "id"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.name", "concurrent_execution_level"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.value", "RDS_INSTANCE"),
+					resource.TestCheckResourceAttrPair(rName, "enterprise_project_id",
+						"huaweicloud_enterprise_project.test.1", "id"),
 				),
 			},
 			{
@@ -134,7 +139,7 @@ func TestAccDdmInstance_basic(t *testing.T) {
 				ResourceName:            rName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"admin_password", "engine_id", "flavor_id"},
+				ImportStateVerifyIgnore: []string{"admin_password", "engine_id", "flavor_id", "parameters"},
 			},
 		},
 	})
@@ -175,6 +180,8 @@ func TestAccDdmInstance_prepaid(t *testing.T) {
 						"huaweicloud_vpc_subnet.test", "id"),
 					resource.TestCheckResourceAttrPair(rName, "security_group_id",
 						"huaweicloud_networking_secgroup.test", "id"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.name", "bind_table"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.value", "test_value"),
 				),
 			},
 			{
@@ -194,6 +201,8 @@ func TestAccDdmInstance_prepaid(t *testing.T) {
 						"huaweicloud_vpc_subnet.test", "id"),
 					resource.TestCheckResourceAttrPair(rName, "security_group_id",
 						"huaweicloud_networking_secgroup.test_update", "id"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.name", "concurrent_execution_level"),
+					resource.TestCheckResourceAttr(rName, "parameters.0.value", "RDS_INSTANCE"),
 				),
 			},
 			{
@@ -201,7 +210,7 @@ func TestAccDdmInstance_prepaid(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{"admin_password", "engine_id", "flavor_id",
-					"charging_mode", "auto_renew", "period", "period_unit"},
+					"charging_mode", "auto_renew", "period", "period_unit", "parameters"},
 			},
 		},
 	})
@@ -228,20 +237,32 @@ func testDdmInstance_basic(name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
+resource "huaweicloud_enterprise_project" "test" {
+  count = 2
+
+  name = "%[2]s_${count.index}"
+}
+
 resource "huaweicloud_ddm_instance" "test" {
-  name              = "%[2]s"
-  flavor_id         = data.huaweicloud_ddm_flavors.test.flavors[0].id
-  node_num          = 2
-  engine_id         = data.huaweicloud_ddm_engines.test.engines[0].id
-  vpc_id            = huaweicloud_vpc.test.id
-  subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-  admin_user        = "test_user_1"
-  admin_password    = "test_password_123"
+  name                  = "%[2]s"
+  flavor_id             = data.huaweicloud_ddm_flavors.test.flavors[0].id
+  node_num              = 2
+  engine_id             = data.huaweicloud_ddm_engines.test.engines[0].id
+  vpc_id                = huaweicloud_vpc.test.id
+  subnet_id             = huaweicloud_vpc_subnet.test.id
+  security_group_id     = huaweicloud_networking_secgroup.test.id
+  admin_user            = "test_user_1"
+  admin_password        = "test_password_123"
+  enterprise_project_id = huaweicloud_enterprise_project.test[0].id
 
   availability_zones = [
     data.huaweicloud_availability_zones.test.names[0]
   ]
+
+  parameters {
+    name  = "bind_table"
+    value = "test_value"
+  }
 }
 `, testDdmInstance_base(name), name)
 }
@@ -250,24 +271,36 @@ func testDdmInstance_basic_update(name, updateName string) string {
 	return fmt.Sprintf(`
 %[1]s
 
+resource "huaweicloud_enterprise_project" "test" {
+  count = 2
+
+  name = "%[2]s_${count.index}"
+}
+
 resource "huaweicloud_networking_secgroup" "test_update" {
   name = "%[2]s"
 }
 
 resource "huaweicloud_ddm_instance" "test" {
-  name              = "%[2]s"
-  flavor_id         = data.huaweicloud_ddm_flavors.test.flavors[1].id
-  node_num          = 4
-  engine_id         = data.huaweicloud_ddm_engines.test.engines[0].id
-  vpc_id            = huaweicloud_vpc.test.id
-  subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test_update.id
-  admin_user        = "test_user_1"
-  admin_password    = "test_password_456"
+  name                  = "%[2]s"
+  flavor_id             = data.huaweicloud_ddm_flavors.test.flavors[1].id
+  node_num              = 4
+  engine_id             = data.huaweicloud_ddm_engines.test.engines[0].id
+  vpc_id                = huaweicloud_vpc.test.id
+  subnet_id             = huaweicloud_vpc_subnet.test.id
+  security_group_id     = huaweicloud_networking_secgroup.test_update.id
+  admin_user            = "test_user_1"
+  admin_password        = "test_password_456"
+  enterprise_project_id = huaweicloud_enterprise_project.test[1].id
 
   availability_zones = [
     data.huaweicloud_availability_zones.test.names[0]
   ]
+
+  parameters {
+    name  = "concurrent_execution_level"
+    value = "RDS_INSTANCE"
+  }
 }
 `, testDdmInstance_base(name), updateName)
 }
@@ -292,6 +325,11 @@ resource "huaweicloud_ddm_instance" "test" {
   availability_zones = [
     data.huaweicloud_availability_zones.test.names[0]
   ]
+
+  parameters {
+    name  = "concurrent_execution_level"
+    value = "RDS_INSTANCE"
+  }
 }
 `, testDdmInstance_base(name), updateName)
 }
@@ -319,6 +357,11 @@ resource "huaweicloud_ddm_instance" "test" {
   availability_zones = [
     data.huaweicloud_availability_zones.test.names[0]
   ]
+
+  parameters {
+    name  = "bind_table"
+    value = "test_value"
+  }
 }
 `, testDdmInstance_base(name), name)
 }
@@ -350,6 +393,11 @@ resource "huaweicloud_ddm_instance" "test" {
   availability_zones = [
     data.huaweicloud_availability_zones.test.names[0]
   ]
+
+  parameters {
+    name  = "concurrent_execution_level"
+    value = "RDS_INSTANCE"
+  }
 }
 `, testDdmInstance_base(name), updateName)
 }

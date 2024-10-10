@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Cloud (VPC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpc_route"
+description: ""
 ---
 
 # huaweicloud_vpc_route
@@ -57,7 +60,7 @@ The following arguments are supported:
   subnet in the VPC. Changing this creates a new resource.
 
 * `type` - (Required, String) Specifies the route type. Currently, the value can be:
-  **ecs**, **eni**, **vip**, **nat**, **peering**, **vpn**, **dc** and **cc**.
+  **ecs**, **eni**, **vip**, **nat**, **peering**, **vpn**, **dc**, **cc**, **egw** and **er**.
 
 * `nexthop` - (Required, String) Specifies the next hop.
   + If the route type is **ecs**, the value is an ECS instance ID in the VPC.
@@ -68,9 +71,11 @@ The following arguments are supported:
   + If the route type is **vpn**, the value is a VPN gateway ID.
   + If the route type is **dc**, the value is a Direct Connect gateway ID.
   + If the route type is **cc**, the value is a Cloud Connection ID.
+  + If the route type is **egw**, the value is a VPCEP endpoint ID.
+  + If the route type is **er**, the value is a ER instance ID.
 
 * `description` - (Optional, String) Specifies the supplementary information about the route.
-  The value is a string of no more than 255 characters and cannot contain angle brackets (< or >).
+  The value is a string of no more than `255` characters and cannot contain angle brackets (< or >).
 
 * `route_table_id` - (Optional, String, ForceNew) Specifies the route table ID for which a route is to be added.
   If the value is not set, the route will be added to the *default* route table.
@@ -94,6 +99,6 @@ This resource provides the following timeouts configuration options:
 
 VPC routes can be imported using the route table ID and their `destination` separated by a slash, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_vpc_route.test <route_table_id>/<destination>
 ```

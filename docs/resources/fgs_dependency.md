@@ -1,10 +1,16 @@
 ---
 subcategory: "FunctionGraph"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_fgs_dependency"
+description: ""
 ---
 
 # huaweicloud_fgs_dependency
 
 Manages a custom dependency package within HuaweiCloud FunctionGraph.
+
+~> This resource will be deprecated in a future version. Please use `huaweicloud_fgs_dependency_version` resource to
+replace it. For specific usage instructions, please refer to the corresponding document.
 
 ## Example Usage
 
@@ -58,8 +64,8 @@ resource "huaweicloud_fgs_dependency" "test" {
   + **Custom**
   + **http**
 
-* `name` - (Required, String) Specifies the dependeny name.
-  The name can contain a maximum of 96 characters and must start with a letter and end with a letter or digit.
+* `name` - (Required, String) Specifies the dependency name.
+  The name can contain a maximum of `96` characters and must start with a letter and end with a letter or digit.
   Only letters, digits, underscores (_), periods (.), and hyphens (-) are allowed.
 
 * `link` - (Required, String) Specifies the OBS bucket path where the dependency package is located. The OBS object URL
@@ -68,7 +74,7 @@ resource "huaweicloud_fgs_dependency" "test" {
 -> A link can only be used to create at most one dependency package.
 
 * `description` - (Optional, String) Specifies the dependency description.
-  The description can contain a maximum of 512 characters.
+  The description can contain a maximum of `512` characters.
 
 ## Attribute Reference
 
@@ -82,10 +88,12 @@ In addition to all arguments above, the following attributes are exported:
 
 * `size` - The dependency package size in bytes.
 
+* `version` - The dependency package version.
+
 ## Import
 
 Dependencies can be imported using the `id`, e.g.:
 
-```
+```bash
 $ terraform import huaweicloud_fgs_dependency.test 795e722f-0c23-41b6-a189-dcd56f889cf6
 ```

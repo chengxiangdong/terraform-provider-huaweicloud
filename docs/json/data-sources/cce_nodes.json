@@ -20,6 +20,10 @@
                 ],
                 "computed": true
               },
+              "ignore_details": {
+                "type": "string",
+                "optional": true
+              },
               "name": {
                 "type": "string",
                 "optional": true
@@ -51,7 +55,17 @@
                         ]
                       ],
                       "ecs_group_id": "string",
+                      "enterprise_project_id": "string",
                       "flavor_id": "string",
+                      "hostname_config": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      ],
                       "id": "string",
                       "key_pair": "string",
                       "name": "string",

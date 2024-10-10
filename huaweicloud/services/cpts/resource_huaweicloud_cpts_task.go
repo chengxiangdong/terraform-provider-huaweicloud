@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cpts/v1"
+	cpts "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cpts/v1"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cpts/v1/model"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
@@ -31,6 +31,11 @@ const (
 	operationStop   = "stop"
 )
 
+// @API CPTS PUT /v1/{project_id}/tasks/{task_id}
+// @API CPTS DELETE /v1/{project_id}/tasks/{task_id}
+// @API CPTS GET /v1/{project_id}/tasks/{task_id}
+// @API CPTS POST /v1/{project_id}/tasks
+// @API CPTS POST /v1/{project_id}/test-suites/{test_suite_id}/tasks/{task_id}
 func ResourceTask() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceTaskCreate,
@@ -54,9 +59,8 @@ func ResourceTask() *schema.Resource {
 			},
 
 			"name": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringLenBetween(1, 42),
+				Type:     schema.TypeString,
+				Required: true,
 			},
 
 			"project_id": {
@@ -66,10 +70,9 @@ func ResourceTask() *schema.Resource {
 			},
 
 			"benchmark_concurrency": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Default:      100,
-				ValidateFunc: validation.IntBetween(0, 2000000),
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  100,
 			},
 
 			"cluster_id": {
@@ -269,7 +272,7 @@ func resourceTaskDelete(_ context.Context, d *schema.ResourceData, meta interfac
 	return nil
 }
 
-func waitingforTaskFinished(ctx context.Context, client *v1.CptsClient, id int64, timeout time.Duration) error {
+func waitingforTaskFinished(ctx context.Context, client *cpts.CptsClient, id int64, timeout time.Duration) error {
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{fmt.Sprint(runStatusRunning), fmt.Sprint(runStatusToRunning)},
 		Target:  []string{fmt.Sprint(runStatusFinished)},

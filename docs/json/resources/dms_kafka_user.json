@@ -5,6 +5,18 @@
         "huaweicloud_dms_kafka_user": {
           "block": {
             "attributes": {
+              "created_at": {
+                "type": "string",
+                "computed": true
+              },
+              "default_app": {
+                "type": "bool",
+                "computed": true
+              },
+              "description": {
+                "type": "string",
+                "optional": true
+              },
               "id": {
                 "type": "string",
                 "computed": true
@@ -25,6 +37,10 @@
                 "sensitive": true
               },
               "region": {
+                "type": "string",
+                "computed": true
+              },
+              "role": {
                 "type": "string",
                 "computed": true
               }

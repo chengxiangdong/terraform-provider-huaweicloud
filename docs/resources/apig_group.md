@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Dedicated APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_apig_group"
+description: ""
 ---
 
 # huaweicloud_apig_group
@@ -52,6 +55,20 @@ The following arguments are supported:
 * `environment` - (Optional, List) Specifies an array of one or more environments of the associated group.  
   The [object](#group_environment) structure is documented below.
 
+ -> The `environment` paramater is conflict with `huaweicloud_apig_environment_variable` resource.
+
+* `url_domains` - (Optional, List) Specifies independent domain names of the associated with group.  
+  The [url_domains](#group_url_domains) structure is documented below.
+
+  -> Different groups under the same dedicated instance cannot be bound to the same independent domain name.
+     Each API group can be associated with up to `5` domain names.
+
+* `domain_access_enabled` - (Optional, Bool) Specifies whether to use the debugging domain name to access the APIs
+  within the group. The default value is `false`.
+
+* `force_destroy` - (Optional, Bool) Specifies whether to delete all sub-resources (for API) when deleting this group.  
+  Defaults to **false**.
+
 <a name="group_environment"></a>
 The `environment` block supports:
 
@@ -78,15 +95,33 @@ The `variable` block supports:
 
   -> **NOTE:** The variable value will be displayed in plain text on the console.
 
+<a name="group_url_domains"></a>
+The `url_domains` block supports:
+
+* `name` - (Required, String) Specifies the domain name. The valid must comply with the domian name specifications.
+
+* `min_ssl_version` - (Optional, String) Specifies the minimum TLS version that can be used to access the domain name,
+  the default value is `TLSv1.2`.
+  The valid values are as follows:
+  + **TLSv1.1**
+  + **TLSv1.2**
+
+  -> This parameter applies only to `HTTPS` and does not take effect for `HTTP` and other access modes.
+     Configure `HTTPS` cipher suites using the `ssl_ciphers` parameter on the parameters tab,
+     please refer to the [documentation](https://support.huaweicloud.com/intl/en-us/usermanual-apig/apig_03_0039.html).
+
+* `is_http_redirect_to_https` - (Optional, Bool) Specifies whether to enable redirection from `HTTP` to `HTTPS`.
+  The default value is `false`.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The group ID.
 
-* `registration_time` - The registration time, in RFC-3339 format.
+* `created_at` - The creation time of the group, in RFC3339 format.
 
-* `updated_at` - The time when the API group was last modified, in RFC-3339 format.
+* `updated_at` - The latest update time of the group, in RFC3339 format.
 
 * `environment` - The array of one or more environments of the associated group.  
   The [object](#group_environment_attr) structure is documented below.

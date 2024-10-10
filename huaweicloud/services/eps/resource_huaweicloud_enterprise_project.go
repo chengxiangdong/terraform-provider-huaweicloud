@@ -3,7 +3,6 @@ package eps
 import (
 	"context"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -17,6 +16,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API EPS POST /v1.0/enterprise-projects
+// @API EPS GET /v1.0/enterprise-projects/{enterprise_project_id}
+// @API EPS PUT /v1.0/enterprise-projects/{enterprise_project_id}
+// @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/action
 func ResourceEnterpriseProject() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceEnterpriseProjectCreate,
@@ -38,13 +41,6 @@ func ResourceEnterpriseProject() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5a-zA-Z0-9_-]{1,64}$"),
-						"The name consists of 1 to 64 characters, and only contains letters, digits, "+
-							"underscores (_), and hyphens (-)."),
-					validation.StringDoesNotMatch(regexp.MustCompile("(?i)default"),
-						"The name cannot include any form of the word 'default'"),
-				),
 			},
 			"description": {
 				Type:     schema.TypeString,

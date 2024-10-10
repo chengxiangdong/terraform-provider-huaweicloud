@@ -148,6 +148,32 @@ func ResizeInstance(c *golangsdk.ServiceClient, id string, opts ResizeInstanceOp
 	return nil, err
 }
 
+type ResizePrePaidInstanceOpts struct {
+	AutoOpenSecurityGroupRule bool    `json:"auto_open_security_group_rule,omitempty"`
+	ExecuteImmediately        bool    `json:"execute_immediately,omitempty"`
+	NewCapacity               float64 `json:"new_capacity,omitempty"`
+	Password                  string  `json:"password,omitempty"`
+	SpecCode                  string  `json:"spec_code,omitempty"`
+}
+
+func ResizePrePaidInstance(c *golangsdk.ServiceClient, id string, opts ResizePrePaidInstanceOpts) (*ResizePrePaidResponse, error) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var rst golangsdk.Result
+	_, err = c.Post(resizePrePaidResourceURL(c, id), b, &rst.Body, &golangsdk.RequestOpts{
+		MoreHeaders: RequestOpts.MoreHeaders,
+	})
+	if err == nil {
+		var r ResizePrePaidResponse
+		rst.ExtractInto(&r)
+		return &r, nil
+	}
+	return nil, err
+}
+
 func Get(c *golangsdk.ServiceClient, id string) (*DcsInstance, error) {
 	var rst golangsdk.Result
 	_, err := c.Get(resourceURL(c, id), &rst.Body, &golangsdk.RequestOpts{
@@ -241,6 +267,37 @@ func GetConfigurations(c *golangsdk.ServiceClient, instanceID string) (*Configur
 	})
 	if err == nil {
 		var r Configuration
+		rst.ExtractInto(&r)
+		return &r, nil
+	}
+	return nil, err
+}
+
+type SslOpts struct {
+	Enable *bool `json:"enabled" required:"true"`
+}
+
+func UpdateSsl(client *golangsdk.ServiceClient, id string, opts SslOpts) (*golangsdk.Result, error) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var r golangsdk.Result
+	_, err = client.Put(sslURL(client, id), b, &r.Body, &golangsdk.RequestOpts{
+		MoreHeaders: RequestOpts.MoreHeaders,
+	})
+	return &r, err
+}
+
+func GetSsl(client *golangsdk.ServiceClient, id string) (*GetSslResponse, error) {
+	var rst golangsdk.Result
+	_, err := client.Get(sslURL(client, id), &rst.Body, &golangsdk.RequestOpts{
+		OkCodes:     []int{200, 204},
+		MoreHeaders: RequestOpts.MoreHeaders,
+	})
+	if err == nil {
+		var r GetSslResponse
 		rst.ExtractInto(&r)
 		return &r, nil
 	}

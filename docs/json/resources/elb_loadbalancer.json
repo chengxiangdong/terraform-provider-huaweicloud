@@ -9,18 +9,12 @@
                 "type": "string",
                 "optional": true
               },
-              "autoscaling_enabled": {
-                "type": "bool",
-                "optional": true,
-                "computed": true
-              },
               "availability_zone": {
                 "type": [
-                  "list",
+                  "set",
                   "string"
                 ],
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "backend_subnets": {
                 "type": [
@@ -48,16 +42,27 @@
                 "computed": true,
                 "forcenew": true
               },
+              "charge_mode": {
+                "type": "string",
+                "computed": true
+              },
               "charging_mode": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
+              },
+              "created_at": {
+                "type": "string",
+                "computed": true
               },
               "cross_vpc_backend": {
                 "type": "bool",
                 "optional": true,
                 "computed": true
+              },
+              "deletion_protection_enable": {
+                "type": "bool",
+                "optional": true
               },
               "description": {
                 "type": "string",
@@ -72,6 +77,14 @@
               "force_delete": {
                 "type": "bool",
                 "optional": true
+              },
+              "guaranteed": {
+                "type": "bool",
+                "computed": true
+              },
+              "gw_flavor_id": {
+                "type": "string",
+                "computed": true
               },
               "id": {
                 "type": "string",
@@ -109,6 +122,7 @@
               },
               "ipv6_address": {
                 "type": "string",
+                "optional": true,
                 "computed": true
               },
               "ipv6_bandwidth_id": {
@@ -138,10 +152,11 @@
                 "optional": true,
                 "computed": true
               },
-              "min_l7_flavor_id": {
+              "loadbalancer_type": {
                 "type": "string",
                 "optional": true,
-                "computed": true
+                "computed": true,
+                "forcenew": true
               },
               "name": {
                 "type": "string",
@@ -149,13 +164,11 @@
               },
               "period": {
                 "type": "number",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "period_unit": {
                 "type": "string",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "protection_reason": {
                 "type": "string",
@@ -183,11 +196,20 @@
                 ],
                 "optional": true
               },
+              "updated_at": {
+                "type": "string",
+                "computed": true
+              },
               "vpc_id": {
                 "type": "string",
                 "optional": true,
                 "computed": true,
                 "forcenew": true
+              },
+              "waf_failure_action": {
+                "type": "string",
+                "optional": true,
+                "computed": true
               }
             }
           },

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/common/structs"
@@ -19,6 +20,16 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API EIP POST /v2.0/{project_id}/bandwidths/change-to-period
+// @API EIP PUT /v2.0/{project_id}/bandwidths/{ID}
+// @API EIP PUT /v1/{project_id}/bandwidths/{ID}
+// @API EIP DELETE /v2.0/{project_id}/bandwidths/{ID}
+// @API EIP GET /v1/{project_id}/bandwidths/{id}
+// @API EIP POST /v2.0/{project_id}/bandwidths
+// @API BSS GET /v2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
+// @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
+// @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{instance_id}
 func ResourceVpcBandWidthV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceVpcBandWidthV2Create,
@@ -53,7 +64,6 @@ func ResourceVpcBandWidthV2() *schema.Resource {
 			"charge_mode": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 			"enterprise_project_id": {
@@ -62,20 +72,55 @@ func ResourceVpcBandWidthV2() *schema.Resource {
 				ForceNew: true,
 				Computed: true,
 			},
-			"charging_mode": common.SchemaChargingMode(nil),
-			"period_unit":   common.SchemaPeriodUnit(nil),
-			"period":        common.SchemaPeriod(nil),
-			"auto_renew":    common.SchemaAutoRenewUpdatable(nil),
 
+			// charging_mode,  period_unit and period only support changing post-paid to pre-paid billing mode.
+			"charging_mode": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"prePaid", "postPaid",
+				}, false),
+			},
+			"period_unit": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"period"},
+				ValidateFunc: validation.StringInSlice([]string{
+					"month", "year",
+				}, false),
+			},
+			"period": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				RequiredWith: []string{"period_unit"},
+			},
+			"auto_renew": common.SchemaAutoRenewUpdatable(nil),
+			"bandwidth_type": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Optional: true,
+				ForceNew: true,
+			},
+			"public_border_group": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Optional: true,
+				ForceNew: true,
+			},
 			"share_type": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"bandwidth_type": {
+			"status": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"status": {
+			"created_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"updated_at": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -125,11 +170,18 @@ func resourceVpcBandWidthV2Create(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error creating bandwidth v1 client: %s", err)
 	}
 
+	bssClient, err := cfg.BssV2Client(region)
+	if err != nil {
+		return diag.Errorf("error creating BSS v2 client: %s", err)
+	}
+
 	size := d.Get("size").(int)
 	createOpts := bandwidths.CreateOpts{
-		Name:       d.Get("name").(string),
-		ChargeMode: d.Get("charge_mode").(string),
-		Size:       &size,
+		Name:              d.Get("name").(string),
+		ChargeMode:        d.Get("charge_mode").(string),
+		Size:              &size,
+		PublicBorderGroup: d.Get("public_border_group").(string),
+		BandwidthType:     d.Get("bandwidth_type").(string),
 	}
 
 	epsID := cfg.GetEnterpriseProjectID(d)
@@ -164,38 +216,47 @@ func resourceVpcBandWidthV2Create(ctx context.Context, d *schema.ResourceData, m
 	if d.Get("charging_mode").(string) == "prePaid" {
 		// we can not create a bandwidth with pre-paid directly due to the API does not support
 		// call the change-to-period API as a workaround
-		bssClient, err := cfg.BssV2Client(region)
+		err := changeBandwidthToPeriod(ctx, d, networkingClient, bssClient)
 		if err != nil {
-			return diag.Errorf("error creating BSS v2 client: %s", err)
-		}
-
-		changeOpts := bandwidths.ChangeToPeriodOpts{
-			BandwidthIDs: []string{b.ID},
-			ExtendParam: structs.ChargeInfo{
-				ChargeMode:  d.Get("charging_mode").(string),
-				PeriodType:  d.Get("period_unit").(string),
-				PeriodNum:   d.Get("period").(int),
-				IsAutoRenew: d.Get("auto_renew").(string),
-				IsAutoPay:   "true",
-			},
-		}
-		orderID, err := bandwidths.ChangeToPeriod(networkingClient, changeOpts).Extract()
-		if err != nil {
-			return diag.Errorf("error changing bandwidth (%s) to pre-paid billing mode: %s",
-				b.ID, err)
-		}
-
-		if err := common.WaitOrderComplete(ctx, bssClient, orderID, d.Timeout(schema.TimeoutCreate)); err != nil {
-			return diag.FromErr(err)
+			return err
 		}
 	}
 
 	return resourceVpcBandWidthV2Read(ctx, d, meta)
 }
 
+func changeBandwidthToPeriod(ctx context.Context, d *schema.ResourceData, networkingClient,
+	bssClient *golangsdk.ServiceClient) diag.Diagnostics {
+	changeOpts := bandwidths.ChangeToPeriodOpts{
+		BandwidthIDs: []string{d.Id()},
+		ExtendParam: structs.ChargeInfo{
+			ChargeMode:  "prePaid",
+			PeriodType:  d.Get("period_unit").(string),
+			PeriodNum:   d.Get("period").(int),
+			IsAutoRenew: d.Get("auto_renew").(string),
+			IsAutoPay:   "true",
+		},
+	}
+	orderID, err := bandwidths.ChangeToPeriod(networkingClient, changeOpts).Extract()
+	if err != nil {
+		return diag.Errorf("error changing bandwidth (%s) to pre-paid billing mode: %s", d.Id(), err)
+	}
+
+	if err := common.WaitOrderComplete(ctx, bssClient, orderID, d.Timeout(schema.TimeoutCreate)); err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
+}
+
 func resourceVpcBandWidthV2Update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
+	networkingV1Client, err := cfg.NetworkingV1Client(region)
+	if err != nil {
+		return diag.Errorf("error creating networking client: %s", err)
+	}
+
 	networkingClient, err := cfg.NetworkingV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
@@ -207,37 +268,55 @@ func resourceVpcBandWidthV2Update(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	bwID := d.Id()
-	if d.HasChanges("name", "size") {
-		updateOpts := bandwidths.UpdateOpts{
-			Bandwidth: bandwidths.Bandwidth{
-				Name: d.Get("name").(string),
-				Size: d.Get("size").(int),
-			},
+	if d.HasChange("charging_mode") {
+		if d.Get("charging_mode").(string) == "postPaid" {
+			return diag.Errorf("error updating the charging mode of the bandwidth (%s): %s", bwID,
+				"only support changing post-paid bandwidth to pre-paid")
 		}
-
-		// ExtendParam is valid and mandatory when changing size field in pre-paid billing mode
-		if d.HasChange("size") && d.Get("charging_mode").(string) == "prePaid" {
-			updateOpts.ExtendParam = &bandwidths.ExtendParam{
-				IsAutoPay: "true",
-			}
-		}
-
-		log.Printf("[DEBUG] bandwidth update options: %#v", updateOpts)
-		resp, err := bandwidths.Update(networkingClient, bwID, updateOpts).Extract()
+		err := changeBandwidthToPeriod(ctx, d, networkingClient, bssClient)
 		if err != nil {
-			return diag.Errorf("error updating bandwidth (%s): %s", bwID, err)
+			return err
 		}
-
-		if resp.OrderID != "" {
-			if err := common.WaitOrderComplete(ctx, bssClient, resp.OrderID, d.Timeout(schema.TimeoutUpdate)); err != nil {
-				return diag.FromErr(err)
-			}
+	} else if d.HasChange("auto_renew") {
+		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), bwID); err != nil {
+			return diag.Errorf("error updating the auto-renew of the bandwidth (%s): %s", bwID, err)
 		}
 	}
 
-	if d.HasChange("auto_renew") {
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), bwID); err != nil {
-			return diag.Errorf("error updating the auto-renew of the bandwidth (%s): %s", bwID, err)
+	if d.HasChanges("name", "size", "charge_mode") {
+		if d.Get("charging_mode").(string) == "prePaid" {
+			updateOpts := bandwidths.UpdateOpts{
+				Bandwidth: bandwidths.Bandwidth{
+					Name: d.Get("name").(string),
+					Size: d.Get("size").(int),
+				},
+				ExtendParam: &bandwidths.ExtendParam{
+					IsAutoPay: "true",
+				},
+			}
+
+			log.Printf("[DEBUG] bandwidth update options: %#v", updateOpts)
+			resp, err := bandwidths.Update(networkingClient, bwID, updateOpts).Extract()
+			if err != nil {
+				return diag.Errorf("error updating pre-paid bandwidth (%s): %s", bwID, err)
+			}
+
+			if resp.OrderID != "" {
+				if err := common.WaitOrderComplete(ctx, bssClient, resp.OrderID, d.Timeout(schema.TimeoutUpdate)); err != nil {
+					return diag.FromErr(err)
+				}
+			}
+		} else {
+			updateOpts := bandwidthsv1.UpdateOpts{
+				Name:       d.Get("name").(string),
+				Size:       d.Get("size").(int),
+				ChargeMode: d.Get("charge_mode").(string),
+			}
+			log.Printf("[DEBUG] bandwidth update options: %#v", updateOpts)
+			_, err := bandwidthsv1.Update(networkingV1Client, bwID, updateOpts).Extract()
+			if err != nil {
+				return diag.Errorf("error updating post-paid bandwidth (%s): %s", bwID, err)
+			}
 		}
 	}
 
@@ -264,7 +343,10 @@ func resourceVpcBandWidthV2Read(_ context.Context, d *schema.ResourceData, meta 
 		d.Set("enterprise_project_id", b.EnterpriseProjectID),
 		d.Set("share_type", b.ShareType),
 		d.Set("bandwidth_type", b.BandwidthType),
+		d.Set("public_border_group", b.PublicBorderGroup),
 		d.Set("status", b.Status),
+		d.Set("created_at", b.CreatedAt),
+		d.Set("updated_at", b.UpdatedAt),
 		d.Set("charging_mode", normalizeChargingMode(b.BillingInfo)),
 		d.Set("publicips", flattenPublicIPs(b)),
 	)

@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/networking/v1/routetables"
@@ -23,6 +21,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPC GET /v2.0/vpc/routes/{id}
+// @API VPC GET /v1/{project_id}/routetables/{id}
+// @API VPC PUT /v1/{project_id}/routetables/{id}
+// @API VPC GET /v1/{project_id}/routetables
 func ResourceVPCRouteTableRoute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceVpcRTBRouteCreate,
@@ -68,11 +70,6 @@ func ResourceVPCRouteTableRoute() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile("^[^<>]*$"),
-						"The angle brackets (< and >) are not allowed."),
-				),
 			},
 			"route_table_id": {
 				Type:     schema.TypeString,

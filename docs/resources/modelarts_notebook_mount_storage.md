@@ -1,5 +1,8 @@
 ---
 subcategory: "AI Development Platform (ModelArts)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_modelarts_notebook_mount_storage"
+description: ""
 ---
 
 # huaweicloud_modelarts_notebook_mount_storage
@@ -45,10 +48,10 @@ In addition to all arguments above, the following attributes are exported:
 
 * `mount_id` - The mount ID.
 
-* `status` -  mount status. Valid values include: `MOUNTING`, `MOUNT_FAILED`, `MOUNTED`, `UNMOUNTING`,
+* `status` - mount status. Valid values include: `MOUNTING`, `MOUNT_FAILED`, `MOUNTED`, `UNMOUNTING`,
  `UNMOUNT_FAILED`, `UNMOUNTED`.
 
-* `type` -  The type of storage system.  The value is `OBSFS`.
+* `type` - The type of storage system.  The value is `OBSFS`.
 
 ## Import
 

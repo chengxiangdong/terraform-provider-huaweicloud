@@ -1,5 +1,8 @@
 ---
 subcategory: "Advanced Anti-DDoS"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_aad_forward_rule"
+description: ""
 ---
 
 # huaweicloud_aad_forward_rule
@@ -29,17 +32,17 @@ The following arguments are supported:
 * `instance_id` - (Required, String, ForceNew) Specifies the ID of advanced Anti-DDoS instance.
   Changing this will create a new rule resource.
 
-* `ip` - (Required, String, ForceNew) Specifies the public IP addresss to which Advanced Anti-DDoS instance
+* `ip` - (Required, String, ForceNew) Specifies the public IP address to which Advanced Anti-DDoS instance
   belongs. Changing this will create a new rule resource.
 
 * `forward_protocol` - (Required, String) Specifies the forward protocol.
   The valid values are **tcp** and **udp**.
 
 * `forward_port` - (Required, Int) Specifies the forward port.
-  The valid value is range from **1** to **65535**.
+  The valid value is range from `1` to `65,535`.
 
 * `source_port` - (Required, Int) Specifies the source port.
-  The valid value is range from **1** to **65535**.
+  The valid value is range from `1` to `65,535`.
 
 * `source_ip` - (Required, String) Specifies the source IP addresses, separated by commas (,).
 
@@ -58,6 +61,6 @@ In addition to all arguments above, the following attributes are exported:
 Rule can be imported using the `id` (combination of `instance_id`, `ip`, `forward_protocol` and `forward_port`),
 separated by slashes (/), e.g.
 
-```
-terraform import huaweicloud_dds_database_user.test &ltinstance_id&gt/&ltip&gt/&ltforward_protocol&gt/&ltforward_port&gt
+```bash
+terraform import huaweicloud_dds_database_user.test <instance_id>/<ip>/<forward_protocol>/<forward_port>
 ```

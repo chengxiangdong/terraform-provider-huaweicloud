@@ -1,20 +1,43 @@
 package gaussdb
 
 import (
+	"context"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 )
 
+// @API GaussDBforNoSQL GET /v3/{project_id}/instances
+// @API GaussDBforNoSQL GET /v3/{project_id}/dedicated-resources
+// @API GaussDBforNoSQL POST /v3/{project_id}/instances
+// @API GaussDBforNoSQL POST /v3/{project_id}/instances/{instance_id}/tags/action
+// @API GaussDBforNoSQL GET /v3/{project_id}/instances/{instance_id}/tags
+// @API GaussDBforNoSQL PUT /v3/{project_id}/instances/{instance_id}/name
+// @API GaussDBforNoSQL PUT /v3/{project_id}/instances/{instance_id}/password
+// @API GaussDBforNoSQL PUT /v3/{project_id}/configurations/{config_id}/apply
+// @API GaussDBforNoSQL GET /v3/{project_id}/configurations/{config_id}
+// @API GaussDBforNoSQL GET /v3/{project_id}/instances/{instance_id}/configurations
+// @API GaussDBforNoSQL POST /v3/{project_id}/instances/{instance_id}/extend-volume
+// @API GaussDBforNoSQL POST /v3/{project_id}/instances/{instance_id}/enlarge-node
+// @API GaussDBforNoSQL POST /v3/{project_id}/instances/{instance_id}/reduce-node
+// @API GaussDBforNoSQL PUT /v3/{project_id}/instances/{instance_id}/resize
+// @API GaussDBforNoSQL PUT /v3/{project_id}/instances/{instance_id}/security-group
+// @API GaussDBforNoSQL PUT /v3/{project_id}/instances/{instance_id}/backups/policy
+// @API GaussDBforNoSQL DELETE /v3/{project_id}/instances/{instance_id}
+// @API BSS GET /v2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
+// @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{instance_id}
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
 func ResourceGaussDBInfluxInstanceV3() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceGaussDBInfluxInstanceCreate,
-		Read:   resourceGeminiDBInstanceV3Read,
-		Update: resourceGaussDBInfluxInstanceUpdate,
-		Delete: resourceGeminiDBInstanceV3Delete,
+		CreateContext: resourceGaussDBInfluxInstanceCreate,
+		ReadContext:   resourceGeminiDBInstanceV3Read,
+		UpdateContext: resourceGaussDBInfluxInstanceUpdate,
+		DeleteContext: resourceGeminiDBInstanceV3Delete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -47,15 +70,13 @@ func ResourceGaussDBInfluxInstanceV3() *schema.Resource {
 				ForceNew: true,
 			},
 			"node_num": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Default:      3,
-				ValidateFunc: validation.IntBetween(3, 16),
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  3,
 			},
 			"volume_size": {
-				Type:         schema.TypeInt,
-				Required:     true,
-				ValidateFunc: validation.IntAtLeast(100),
+				Type:     schema.TypeInt,
+				Required: true,
 			},
 			"password": {
 				Type:      schema.TypeString,
@@ -84,7 +105,6 @@ func ResourceGaussDBInfluxInstanceV3() *schema.Resource {
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"dedicated_resource_id": {
 				Type:     schema.TypeString,
@@ -240,7 +260,6 @@ func ResourceGaussDBInfluxInstanceV3() *schema.Resource {
 				Type:         schema.TypeInt,
 				Optional:     true,
 				RequiredWith: []string{"period_unit"},
-				ValidateFunc: validation.IntBetween(1, 9),
 			},
 			"auto_renew": common.SchemaAutoRenewUpdatable(nil),
 
@@ -249,22 +268,22 @@ func ResourceGaussDBInfluxInstanceV3() *schema.Resource {
 	}
 }
 
-func resourceGaussDBInfluxInstanceCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceGaussDBInfluxInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	defaults := defaultValues{
 		Mode:      "Cluster",
 		dbType:    "influxdb",
 		dbVersion: "1.7",
 		logName:   "influx",
 	}
-	return resourceGeminiDBInstanceV3Create(d, meta, defaults)
+	return resourceGeminiDBInstanceV3Create(ctx, d, meta, defaults)
 }
 
-func resourceGaussDBInfluxInstanceUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceGaussDBInfluxInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	defaults := defaultValues{
 		Mode:      "Cluster",
 		dbType:    "influxdb",
 		dbVersion: "1.7",
 		logName:   "influx",
 	}
-	return resourceGeminiDBInstanceV3Update(d, meta, defaults)
+	return resourceGeminiDBInstanceV3Update(ctx, d, meta, defaults)
 }

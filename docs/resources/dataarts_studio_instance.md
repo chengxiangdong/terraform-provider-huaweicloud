@@ -1,5 +1,8 @@
 ---
 subcategory: "DataArts Studio"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dataarts_studio_instance"
+description: ""
 ---
 
 # huaweicloud_dataarts_studio_instance
@@ -57,19 +60,18 @@ The following arguments are supported:
 * `security_group_id` - (Required, String, ForceNew) Specifies the security group ID. Changing this creates a new instance.
 
 * `period_unit` - (Required, String, ForceNew) Specifies the charging period unit of the instance.
-  Valid values are *month* and *year*.
+  Valid values are **month** and **year**.
   Changing this creates a new instance.
 
 * `period` - (Required, Int, ForceNew) Specifies the charging period of the DataArts Studio instance.
-  If `period_unit` is set to *month*, the value ranges from 1 to 9.
-  If `period_unit` is set to *year*, the value ranges from 1 to 3.
+  If `period_unit` is set to **month**, the value ranges from `1` to `9`.
+  If `period_unit` is set to **year**, the value ranges from `1` to `3`.
   Changing this creates a new instance.
 
 * `auto_renew` - (Optional, String, ForceNew) Specifies whether auto renew is enabled.
   Valid values are `true` and `false`, defaults to `false`. Changing this parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project id of the instance.
-  Changing this creates a new instance.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project id of the instance.
 
   -> 1. Only **one** DataArts Studio instance can be purchased in an enterprise project.
   <br/> 2. If DataArts Studio needs to communicate with other cloud services, ensure that the enterprise project
@@ -110,7 +112,7 @@ It is generally recommended running `terraform plan` after importing an instance
 You can then decide if changes should be applied to the instance, or the resource definition should be updated to
 align with the instance. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_dataarts_studio_instance" "instance" {
     ...
 

@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Cloud Server (ECS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_compute_instance"
+description: ""
 ---
 
 # huaweicloud_compute_instance
@@ -43,8 +46,8 @@ In addition to all arguments above, the following attributes are exported:
 * `image_name` - The image name of the instance.
 * `flavor_name` - The flavor name of the instance.
 * `key_pair` - The key pair that is used to authenticate the instance.
-* `public_ip` - The EIP address that is associted to the instance.
-* `system_disk_id` - The system disk voume ID.
+* `public_ip` - The EIP address that is associated to the instance.
+* `system_disk_id` - The system disk volume ID.
 * `user_data` - The user data (information after encoding) configured during instance creation.
 * `security_groups` - An array of one or more security groups to associate with the instance.
 * `security_group_ids` - An array of one or more security group IDs to associate with the instance.
@@ -56,6 +59,8 @@ In addition to all arguments above, the following attributes are exported:
   The [scheduler hints](#compute_instance_scheduler_hint_object) structure is documented below.
 * `tags` - The key/value pairs to associate with the instance.
 * `status` - The status of the instance.
+* `charging_mode` - The charging mode of the instance. Valid values are **prePaid**, **postPaid** and **spot**.
+* `expired_time` - The expired time of prePaid instance, in UTC format.
 
 <a name="compute_instance_network_object"></a>
 The `network` block supports:

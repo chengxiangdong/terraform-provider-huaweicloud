@@ -18,6 +18,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API RocketMQ GET /v2/{project_id}/instances/{instance_id}/topics
 func DataSourceDmsRocketMQTopics() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: resourceDmsRocketMQTopicsRead,
@@ -187,8 +188,8 @@ func filterTopics(d *schema.ResourceData, resp interface{}) []interface{} {
 	rawPermission, rawPermissionOK := d.GetOk("permission")
 	for _, topic := range topicArray {
 		name := utils.PathSearch("name", topic, nil)
-		totalReadQueueNum, _ := utils.PathSearch("total_read_queue_num", topic, 0).(float64)
-		totalWriteQueueNum, _ := utils.PathSearch("total_write_queue_num", topic, 0).(float64)
+		totalReadQueueNum, _ := utils.PathSearch("total_read_queue_num", topic, float64(0)).(float64)
+		totalWriteQueueNum, _ := utils.PathSearch("total_write_queue_num", topic, float64(0)).(float64)
 		permission := utils.PathSearch("permission", topic, nil)
 		if rawNameOK && rawName != name {
 			continue

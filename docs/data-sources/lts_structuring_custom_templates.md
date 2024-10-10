@@ -1,5 +1,9 @@
 ---
 subcategory: "Log Tank Service (LTS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_lts_structuring_custom_templates"
+description: |-
+  Use this data source to get the list of LTS structuring custom templates.
 ---
 
 # huaweicloud_lts_structuring_custom_templates
@@ -31,7 +35,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `templates` - The list of LTS structuring custom templates.
   The [templates](#CustomTemplates_templates) structure is documented below.

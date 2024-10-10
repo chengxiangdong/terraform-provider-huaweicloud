@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Service Engine (CSE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cse_microservice"
+description: ""
 ---
 
 # huaweicloud_cse_microservice
@@ -32,6 +35,7 @@ resource "huaweicloud_cse_microservice" "test" {
 variable "engine_conn_addr" {}
 variable "service_name" {}
 variable "app_name" {}
+variable "admin_pass" {}
 
 resource "huaweicloud_cse_microservice" "test" {
   connect_address = var.engine_conn_addr
@@ -41,7 +45,7 @@ resource "huaweicloud_cse_microservice" "test" {
   app_name        = var.app_name
 
   admin_user = "root"
-  admin_pass = "Huawei!123"
+  admin_pass = var.admin_pass
 }
 ```
 
@@ -100,13 +104,13 @@ In addition to all arguments above, the following attributes are exported:
 
 Microservices can be imported using related `connect_address` and their `id`, separated by a slash (/), e.g.
 
-```
+```bash
 $ terraform import huaweicloud_cse_microservice.test https://124.70.26.32:30100/f14960ba495e03f59f85aacaaafbdef3fbff3f0d
 ```
 
 If you enabled the **RBAC** authorization, you also need to provide the account name and password, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_cse_microservice.test 'https://124.70.26.32:30100/f14960ba495e03f59f85aacaaafbdef3fbff3f0d/root/Test!123'
 ```
 

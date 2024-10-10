@@ -1,5 +1,8 @@
 ---
 subcategory: "Intelligent EdgeCloud (IEC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_iec_server"
+description: ""
 ---
 
 # huaweicloud_iec_server
@@ -166,7 +169,7 @@ In addition to all arguments above, the following attributes are exported:
 * `volume_attached` - An array of one or more disks to attach to the IEC server. The object structure is documented
   below.
 * `public_ip` - The EIP address that is associted to the IEC server.
-* `system_disk_id` - The system disk voume ID.
+* `system_disk_id` - The system disk volume ID.
 * `origin_server_id` - The ID of origin server.
 * `status` - The status of IEC server.
 

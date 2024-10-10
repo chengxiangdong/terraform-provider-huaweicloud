@@ -1,5 +1,8 @@
 ---
 subcategory: "Storage Disaster Recovery Service (SDRS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_sdrs_domain"
+description: ""
 ---
 
 # huaweicloud_sdrs_domain
@@ -25,6 +28,6 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `description` - Indicates the description of the SDRS domain.

@@ -1,5 +1,8 @@
 ---
 subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dms_instance"
+description: ""
 ---
 
 # huaweicloud\_dms\_instance
@@ -14,6 +17,8 @@ Manages a DMS instance in the huaweicloud DMS Service.
 ### Automatically detect the correct network
 
 ```hcl
+variable "access_password" {}
+
 data "huaweicloud_dms_az" "az_1" {
 }
 data "huaweicloud_dms_product" "product_1" {
@@ -30,7 +35,7 @@ resource "huaweicloud_dms_instance" "instance_1" {
   name              = var.instance_name
   engine            = "rabbitmq"
   access_user       = "user"
-  password          = "Dmstest@123"
+  password          = var.access_password
   vpc_id            = var.vpc_id
   subnet_id         = var.subnet_id
   security_group_id = huaweicloud_networking_secgroup.secgroup_1.id

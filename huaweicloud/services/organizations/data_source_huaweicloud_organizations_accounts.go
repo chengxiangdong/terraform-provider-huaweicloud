@@ -21,6 +21,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API Organizations GET /v1/organizations/accounts
 func DataSourceAccounts() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceAccountsRead,
@@ -126,7 +127,6 @@ func dataSourceAccountsRead(_ context.Context, d *schema.ResourceData, meta inte
 	d.SetId(uuid)
 
 	mErr := multierror.Append(nil,
-		d.Set("region", region),
 		d.Set("accounts", orgAccounts),
 	)
 

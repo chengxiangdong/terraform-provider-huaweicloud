@@ -1,5 +1,8 @@
 ---
 subcategory: "NAT Gateway (NAT)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_nat_private_snat_rule"
+description: ""
 ---
 
 # huaweicloud_nat_private_snat_rule
@@ -70,6 +73,10 @@ In addition to all arguments above, the following attributes are exported:
 * `created_at` - The creation time of the SNAT rule.
 
 * `updated_at` - The latest update time of the SNAT rule.
+
+* `transit_ip_address` - The address of the transit IP.
+
+* `enterprise_project_id` - The ID of the enterprise project to which the private SNAT rule belongs.
 
 ## Import
 

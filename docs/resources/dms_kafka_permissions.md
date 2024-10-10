@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Message Service (DMS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dms_kafka_permissions"
+description: ""
 ---
 
 # huaweicloud_dms_kafka_permissions
@@ -61,10 +64,17 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID which is formatted `<instance_id>/<topic_name>`.
 
+## Timeouts
+
+This resource provides the following timeouts configuration options:
+
+* `create` - Default is 5 minutes.
+* `delete` - Default is 5 minutes.
+
 ## Import
 
 DMS kafka permissions can be imported using the kafka instance ID and topic name separated by a slash, e.g.:
 
-```
+```bash
 terraform import huaweicloud_dms_kafka_permissions.permissions c8057fe5-23a8-46ef-ad83-c0055b4e0c5c/topic_1
 ```

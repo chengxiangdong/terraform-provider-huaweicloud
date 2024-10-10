@@ -3,13 +3,11 @@ package apig
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/acls"
 
@@ -18,6 +16,10 @@ import (
 )
 
 // ResourceAclPolicy is a provider resource of the APIG ACL policy.
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/acls/{acl_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/acls/{acl_id}
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}/acls/{acl_id}
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/acls
 func ResourceAclPolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAclPolicyCreate,
@@ -44,14 +46,8 @@ func ResourceAclPolicy() *schema.Resource {
 				Description: "The ID of the dedicated instance to which the ACL policy belongs.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\x{4E00}-\x{9FFC}A-Za-z]([\x{4E00}-\x{9FFC}\w]*)?$`),
-						"Only English letters, Chinese characters, digits, underscores (_) are allowed, and must "+
-							"start with an English letter or Chinese character."),
-					validation.StringLenBetween(3, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The name of the ACL policy.",
 			},
 			"type": {
@@ -171,7 +167,7 @@ func resourceAclPolicyDelete(_ context.Context, d *schema.ResourceData, meta int
 		policyId   = d.Id()
 	)
 	if err = acls.Delete(client, instanceId, policyId); err != nil {
-		return diag.Errorf("unable to delete the ACL policy (%s): %s", policyId, err)
+		return common.CheckDeletedDiag(d, err, fmt.Sprintf("unable to delete the ACL policy (%s)", policyId))
 	}
 
 	return nil

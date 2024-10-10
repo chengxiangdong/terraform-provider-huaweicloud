@@ -1,10 +1,13 @@
 ---
 subcategory: "EventGrid (EG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_eg_custom_event_channels"
+description: ""
 ---
 
 # huaweicloud_eg_custom_event_channels
 
-Use this data source to filter EG custom event channels within Huaweicloud.
+Use this data source to filter EG custom event channels within HuaweiCloud.
 
 ## Example Usage
 
@@ -22,8 +25,6 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region where the custom event channels are located.  
   If omitted, the provider-level region will be used.
-
-* `channel_id` - (Optional, String) Specifies the channel ID used to query specified custom event channel.
 
 * `name` - (Optional, String) Specifies the channel name used to query specified custom event channel.
 

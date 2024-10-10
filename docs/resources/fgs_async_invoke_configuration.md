@@ -1,5 +1,8 @@
 ---
 subcategory: "FunctionGraph"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_fgs_async_invoke_configuration"
+description: ""
 ---
 
 # huaweicloud_fgs_async_invoke_configuration
@@ -88,6 +91,10 @@ The `on_success` and the `on_failure` blocks support:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - Specifies a resource ID in UUID format.
+
+* `created_at` - The creation time of the asynchronous invocation, in RFC3339 format.
+
+* `updated_at` - The latest update time of the asynchronous invocation, in RFC3339 format.
 
 ## Import
 

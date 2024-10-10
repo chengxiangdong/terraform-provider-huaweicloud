@@ -2,6 +2,7 @@ package domains
 
 import (
 	"github.com/chnsz/golangsdk"
+	"github.com/chnsz/golangsdk/openstack/common/tags"
 )
 
 // ExtensionOpts allows extensions to add parameters to some requests
@@ -9,6 +10,10 @@ import (
 type ExtensionOpts struct {
 	// specifies the enterprise_project_id.
 	EnterpriseProjectId string `q:"enterprise_project_id"`
+}
+
+type PrivateBucketAccessOpts struct {
+	Status *bool `json:"status,omitempty"`
 }
 
 // ToExtensionQuery formats a ExtensionOpts into a query string.
@@ -44,10 +49,18 @@ type CreateOptsBuilder interface {
 	ToCdnDomainCreateMap() (map[string]interface{}, error)
 }
 
+type PrivateBucketAccessBuilder interface {
+	ToCdnUpdatePrivateBucketAccessMap() (map[string]interface{}, error)
+}
+
 // ToCdnDomainCreateMap assembles a request body based on the contents of a
 // CreateOpts.
 func (opts CreateOpts) ToCdnDomainCreateMap() (map[string]interface{}, error) {
 	return golangsdk.BuildRequestBody(opts, "domain")
+}
+
+func (opts PrivateBucketAccessOpts) ToCdnUpdatePrivateBucketAccessMap() (map[string]interface{}, error) {
+	return golangsdk.BuildRequestBody(opts, "")
 }
 
 // OriginOpts specifies the attributes used to modify the orogin server.
@@ -80,6 +93,17 @@ func Create(client *golangsdk.ServiceClient, opts CreateOptsBuilder) (r CreateRe
 	return
 }
 
+func UpdatePrivateBucketAccess(client *golangsdk.ServiceClient, domainId string, opts PrivateBucketAccessBuilder) (r PrivateBucketAccessResult) {
+	reqBody, err := opts.ToCdnUpdatePrivateBucketAccessMap()
+	if err != nil {
+		r.Err = err
+		return
+	}
+	_, r.Err = client.Put(updatePrivateBucketAccessURL(client, domainId), reqBody, &r.Body, nil)
+	return
+}
+
+// Deprecated: Use GetByName instead.
 // Get retrieves a particular CDN domain based on its unique ID.
 func Get(client *golangsdk.ServiceClient, id string, opts *ExtensionOpts) (r GetResult) {
 	url := getURL(client, id)
@@ -93,6 +117,28 @@ func Get(client *golangsdk.ServiceClient, id string, opts *ExtensionOpts) (r Get
 	}
 	_, r.Err = client.Get(url, &r.Body, &golangsdk.RequestOpts{OkCodes: []int{200}})
 	return
+}
+
+func GetByName(client *golangsdk.ServiceClient, domainName string, opts *ExtensionOpts) (r GetDetailResult) {
+	url := getDetailURL(client, domainName)
+	if opts != nil {
+		query, err := opts.ToExtensionQuery()
+		if err != nil {
+			r.Err = err
+			return
+		}
+		url += query
+	}
+	_, r.Err = client.Get(url, &r.Body, nil)
+	return
+}
+
+func GetTags(client *golangsdk.ServiceClient, domainId string) ([]tags.ResourceTag, error) {
+	var r struct {
+		Tags []tags.ResourceTag `json:"tags"`
+	}
+	_, err := client.Get(getTagsURL(client, domainId), &r, nil)
+	return r.Tags, err
 }
 
 // Delete requests a CDN domain to be deleted to the user in the current tenant.

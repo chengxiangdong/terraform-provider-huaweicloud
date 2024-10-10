@@ -1,5 +1,8 @@
 ---
 subcategory: "Relational Database Service (RDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_rds_backup"
+description: ""
 ---
 
 # huaweicloud_rds_backup
@@ -26,7 +29,7 @@ The following arguments are supported:
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
 * `name` - (Required, String, ForceNew) Backup name.  
-  It must be 4 to 64 characters long, start with a letter, and contain only letters (case-sensitive),
+  It must be `4` to `64` characters long, start with a letter, and contain only letters (case-sensitive),
   digits, hyphens (-), and underscores (_).
 
   Changing this parameter will create a new resource.
@@ -36,7 +39,7 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `description` - (Optional, String, ForceNew) The description about the backup.  
-  It contains a maximum of 256 characters and cannot contain the following special characters: >!<"&'=.
+  It contains a maximum of `256` characters and cannot contain the following special characters: `>!<"&'=`.
 
   Changing this parameter will create a new resource.
 
@@ -84,6 +87,6 @@ This resource provides the following timeouts configuration options:
 
 The rds manual backup can be imported using the instance ID and the backup ID separated by a slash, e.g.:
 
-```
+```bash
 $ terraform import huaweicloud_rds_backup.test 1ce123456a00f2591fabc00385ff1235/0ce123456a00f2591fabc00385ff1234
 ```

@@ -40,12 +40,18 @@ type Service struct {
 	Error []ErrorInfo `json:"error"`
 	// the description of the VPC endpoint service
 	Description string `json:"description"`
+	// the IP version of the VPC endpoint service
+	IpVersion string `json:"ip_version"`
 	// whether the VPC endpoint policy is enabled.
 	EnablePolicy bool `json:"enable_policy"`
 	// the creation time of the VPC endpoint service
 	Created string `json:"created_at"`
 	// the update time of the VPC endpoint service
 	Updated string `json:"updated_at"`
+	// the VPC endpoint service that matches the edge attribute in the filtering result.
+	PublicBorderGroup string `json:"public_border_group"`
+	// the number of VPC endpoints that are in the Creating or Accepted status.
+	ConnectionCount int `json:"connection_count"`
 }
 
 // PortMapping contains the port mappings opened to the VPC endpoint service
@@ -235,5 +241,36 @@ type PublicServicePage struct {
 func extractPublicService(r pagination.Page) ([]PublicService, error) {
 	var s []PublicService
 	err := r.(PublicServicePage).Result.ExtractIntoSlicePtr(&s, "endpoint_services")
+	return s, err
+}
+
+// extractService is a method to extract the list of tags supported Services.
+func extractService(r pagination.Page) ([]Service, error) {
+	var s []Service
+	err := r.(PublicServicePage).Result.ExtractIntoSlicePtr(&s, "endpoint_services")
+	return s, err
+}
+
+// ConnectionPage is a single page maximum result representing a query by offset page.
+type ConnectionPage struct {
+	pagination.OffsetPageBase
+}
+
+// extractConnection is a method to extract the list of tags supported connection.
+func extractConnection(r pagination.Page) ([]Connection, error) {
+	var s []Connection
+	err := r.(ConnectionPage).Result.ExtractIntoSlicePtr(&s, "connections")
+	return s, err
+}
+
+// PermissionPage is a single page maximum result representing a query by offset page.
+type PermissionPage struct {
+	pagination.OffsetPageBase
+}
+
+// extractPermission is a method to extract the list of tags supported permission.
+func extractPermission(r pagination.Page) ([]Permission, error) {
+	var s []Permission
+	err := r.(PermissionPage).Result.ExtractIntoSlicePtr(&s, "permissions")
 	return s, err
 }

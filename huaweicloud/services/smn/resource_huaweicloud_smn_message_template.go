@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -21,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API SMN POST /v2/{project_id}/notifications/message_template
+// @API SMN DELETE /v2/{project_id}/notifications/message_template/{message_template_id}
+// @API SMN GET /v2/{project_id}/notifications/message_template/{message_template_id}
+// @API SMN PUT /v2/{project_id}/notifications/message_template/{message_template_id}
 func ResourceSmnMessageTemplate() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSmnMessageTemplateCreate,
@@ -101,20 +104,20 @@ func resourceSmnMessageTemplateCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("message_template_id", createMessageTemplateRespBody)
-	if err != nil {
+	id := utils.PathSearch("message_template_id", createMessageTemplateRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating SMN message template: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceSmnMessageTemplateRead(ctx, d, meta)
 }
 
 func buildCreateMessageTemplateBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"message_template_name": utils.ValueIngoreEmpty(d.Get("name")),
-		"protocol":              utils.ValueIngoreEmpty(d.Get("protocol")),
-		"content":               utils.ValueIngoreEmpty(d.Get("content")),
+		"message_template_name": utils.ValueIgnoreEmpty(d.Get("name")),
+		"protocol":              utils.ValueIgnoreEmpty(d.Get("protocol")),
+		"content":               utils.ValueIgnoreEmpty(d.Get("content")),
 	}
 	return bodyParams
 }
@@ -145,9 +148,6 @@ func resourceSmnMessageTemplateUpdate(ctx context.Context, d *schema.ResourceDat
 
 		updateMessageTemplateOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			OkCodes: []int{
-				200,
-			},
 		}
 		updateMessageTemplateOpt.JSONBody = utils.RemoveNil(buildUpdateMessageTemplateBodyParams(d))
 		_, err = updateMessageTemplateClient.Request("PUT", updateMessageTemplatePath, &updateMessageTemplateOpt)
@@ -160,7 +160,7 @@ func resourceSmnMessageTemplateUpdate(ctx context.Context, d *schema.ResourceDat
 
 func buildUpdateMessageTemplateBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"content": utils.ValueIngoreEmpty(d.Get("content")),
+		"content": utils.ValueIgnoreEmpty(d.Get("content")),
 	}
 	return bodyParams
 }
@@ -188,9 +188,6 @@ func resourceSmnMessageTemplateRead(_ context.Context, d *schema.ResourceData, m
 
 	getMessageTemplateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	getMessageTemplateResp, err := getMessageTemplateClient.Request("GET",
 		getMessageTemplatePath, &getMessageTemplateOpt)
@@ -238,13 +235,10 @@ func resourceSmnMessageTemplateDelete(_ context.Context, d *schema.ResourceData,
 
 	deleteMessageTemplateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	_, err = deleteMessageTemplateClient.Request("DELETE", deleteMessageTemplatePath, &deleteMessageTemplateOpt)
 	if err != nil {
-		return diag.Errorf("error deleting SMN message template: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting SMN message template")
 	}
 
 	return nil

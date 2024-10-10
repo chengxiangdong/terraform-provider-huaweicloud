@@ -19,6 +19,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API ECS GET /v1/{project_id}/cloudservers/detail
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}/block_device
+// @API EVS GET /v2/{project_id}/cloudvolumes/{volume_id}
+// @API VPC GET /v2.0/ports/{id}
 func DataSourceComputeInstance() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceComputeInstanceRead,
@@ -105,6 +109,14 @@ func DataSourceComputeInstance() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"status": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"charging_mode": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"expired_time": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -199,13 +211,13 @@ func computedSchemaSchedulerHints() *schema.Schema {
 	return &computedSchema
 }
 
-func buildListOptsWithoutStatus(d *schema.ResourceData, conf *config.Config) *cloudservers.ListOpts {
+func buildListOptsWithoutStatus(d *schema.ResourceData, cfg *config.Config) *cloudservers.ListOpts {
 	result := cloudservers.ListOpts{
 		Limit:               100,
-		EnterpriseProjectID: conf.DataGetEnterpriseProjectID(d),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d, "all_granted_eps"),
 		Name:                d.Get("name").(string),
 		Flavor:              d.Get("flavor_id").(string),
-		IP:                  d.Get("fixed_ip_v4").(string),
+		IPEqual:             d.Get("fixed_ip_v4").(string),
 	}
 
 	return &result
@@ -249,7 +261,7 @@ func dataSourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, me
 		return diag.Errorf("your query returned more than one result, please try a more specific search criteria.")
 	}
 
-	server := allServers[0]
+	server := filterServers[0].(cloudservers.CloudServer)
 	log.Printf("[DEBUG] fetching the ECS instance: %#v", server)
 
 	d.SetId(server.ID)
@@ -284,10 +296,21 @@ func setEcsInstanceParams(d *schema.ResourceData, conf *config.Config, ecsClient
 		d.Set("security_group_ids", flattenEcsInstanceSecurityGroupIds(server.SecurityGroups)),
 		d.Set("security_groups", flattenEcsInstanceSecurityGroups(server.SecurityGroups)),
 		d.Set("scheduler_hints", flattenEcsInstanceSchedulerHints(server.OsSchedulerHints)),
+		d.Set("charging_mode", normalizeChargingMode(server.Metadata.ChargingMode)),
 
 		setEcsInstanceNetworks(d, networkingClient, server.Addresses),
 		setEcsInstanceVolumeAttached(d, ecsClient, blockStorageClient, server.VolumeAttached),
 	)
+
+	// Set expired time for prePaid instance
+	if normalizeChargingMode(server.Metadata.ChargingMode) == "prePaid" {
+		expiredTime, err := getPrePaidExpiredTime(d, conf, server.ID)
+		if err != nil {
+			log.Printf("error get prePaid expired time: %s", err)
+		}
+
+		mErr = multierror.Append(mErr, d.Set("expired_time", expiredTime))
+	}
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 

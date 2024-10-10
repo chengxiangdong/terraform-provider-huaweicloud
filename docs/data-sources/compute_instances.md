@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Cloud Server (ECS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_compute_instances"
+description: ""
 ---
 
 # huaweicloud_compute_instances
@@ -41,6 +44,8 @@ The following arguments are supported:
 
 * `flavor_id` - (Optional, String) Specifies the flavor ID.
 
+* `fixed_ip_v4` - (Optional, String)  Specifies the IPv4 addresses of the ECS.
+
 * `availability_zone` - (Optional, String) Specifies the availability zone where the instance is located.
   Please following [reference](https://developer.huaweicloud.com/intl/en-us/endpoint?ECS) for this argument.
 
@@ -74,9 +79,9 @@ The `instances` block supports:
 
 * `availability_zone` - The availability zone where the instance is located.
 
-* `public_ip` - The EIP address that is associted to the instance.
+* `public_ip` - The EIP address that is associated to the instance.
 
-* `system_disk_id` - The system disk voume ID.
+* `system_disk_id` - The system disk volume ID.
 
 * `key_pair` - The key pair that is used to authenticate the instance.
 
@@ -94,6 +99,10 @@ The `instances` block supports:
   The [scheduler hints](#compute_instances_scheduler_hint_object) structure is documented below.
 
 * `tags` - The key/value pairs to associate with the instance.
+
+* `charging_mode` - The charging mode of the instance. Valid values are **prePaid**, **postPaid** and **spot**.
+
+* `expired_time` - The expired time of prePaid instance, in UTC format.
 
 <a name="compute_instances_network_object"></a>
 The `network` block supports:

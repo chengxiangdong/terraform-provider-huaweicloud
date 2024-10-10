@@ -1,5 +1,8 @@
 ---
 subcategory: "Enterprise Router (ER)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_er_static_route"
+description: ""
 ---
 
 # huaweicloud_er_static_route
@@ -69,6 +72,14 @@ In addition to all arguments above, the following attributes are exported:
 * `created_at` - The creation time of the static route.
 
 * `updated_at` - The latest update time of the static route.
+
+## Timeouts
+
+This resource provides the following timeouts configuration options:
+
+* `create` - Default is 5 minutes.
+* `update` - Default is 5 minutes.
+* `delete` - Default is 2 minutes.
 
 ## Import
 

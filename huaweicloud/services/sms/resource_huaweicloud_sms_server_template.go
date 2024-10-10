@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/networking/v1/security/securitygroups"
@@ -25,6 +24,13 @@ import (
 var AutoCreate string = "autoCreate"
 
 // ResourceServerTemplate is the impl of huaweicloud_sms_server_template
+// @API SMS POST /v3/vm/templates
+// @API SMS GET /v3/vm/templates/{id}
+// @API SMS PUT /v3/vm/templates/{id}
+// @API SMS DELETE /v3/vm/templates/{id}
+// @API VPC GET /v1/{project_id}/security-groups/{security_group_id}
+// @API VPC GET /v1/{project_id}/subnets/{subnet_id}
+// @API VPC GET /v1/{project_id}/vpcs/{vpc_id}
 func ResourceServerTemplate() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceServerTemplateCreate,
@@ -90,9 +96,8 @@ func ResourceServerTemplate() *schema.Resource {
 				Optional: true,
 			},
 			"bandwidth_size": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(1, 2000),
+				Type:     schema.TypeInt,
+				Optional: true,
 			},
 			"target_server_name": {
 				Type:     schema.TypeString,

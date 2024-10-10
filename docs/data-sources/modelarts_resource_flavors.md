@@ -1,5 +1,8 @@
 ---
 subcategory: "AI Development Platform (ModelArts)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_modelarts_resource_flavors"
+description: ""
 ---
 
 # huaweicloud_modelarts_resource_flavors
@@ -33,7 +36,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `flavors` - The list of resource flavors.
   The [flavors](#ResourceFlavors_Flavors) structure is documented below.

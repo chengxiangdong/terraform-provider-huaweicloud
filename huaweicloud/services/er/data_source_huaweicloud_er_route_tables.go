@@ -3,13 +3,11 @@ package er
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/er/v3/associations"
@@ -22,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/route-tables
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}/associations
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}/propagations
+// @API ER GET /v3/{project_id}/enterprise-router/route-tables/{route_table_id}/static-routes
 func DataSourceRouteTables() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceRouteTablesRead,
@@ -47,11 +49,6 @@ func DataSourceRouteTables() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: `The name used to filter the route tables.`,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 64),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5\\w.-]*$"), "The name only english and "+
-						"chinese letters, digits, underscore (_), hyphens (-) and dots (.) are allowed."),
-				),
 			},
 			"tags": common.TagsSchema(),
 			// Attributes
@@ -269,8 +266,8 @@ func queryRouteTableRoutes(client *golangsdk.ServiceClient, routeTableId string)
 		for i, attachment := range route.Attachments {
 			attachments[i] = map[string]interface{}{
 				"attachment_id":   attachment.AttachmentId,
-				"attachment_type": attachment.AttachmentId,
-				"resource_id":     attachment.AttachmentId,
+				"attachment_type": attachment.ResourceType,
+				"resource_id":     attachment.ResourceId,
 			}
 		}
 		rr["attachments"] = attachments
@@ -319,6 +316,7 @@ func flattenRouteTables(client *golangsdk.ServiceClient, instanceId string,
 
 		result[i] = map[string]interface{}{
 			"id":                     routeTableId,
+			"name":                   routeTable.Name,
 			"description":            routeTable.Description,
 			"associations":           associationList,
 			"propagations":           propagationList,
@@ -326,9 +324,10 @@ func flattenRouteTables(client *golangsdk.ServiceClient, instanceId string,
 			"is_default_association": routeTable.IsDefaultAssociation,
 			"is_default_propagation": routeTable.IsDefaultPropagation,
 			"status":                 routeTable.Status,
-			"created_at":             routeTable.CreatedAt,
-			"updated_at":             routeTable.UpdatedAt,
-			"tags":                   utils.TagsToMap(routeTable.Tags),
+			// The time results are not the time in RF3339 format without milliseconds.
+			"created_at": utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(routeTable.CreatedAt)/1000, false),
+			"updated_at": utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(routeTable.UpdatedAt)/1000, false),
+			"tags":       utils.TagsToMap(routeTable.Tags),
 		}
 	}
 	return result

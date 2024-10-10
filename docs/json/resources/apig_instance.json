@@ -32,26 +32,18 @@
               "edition": {
                 "type": "string",
                 "description": "The edition of the dedicated instance.",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "egress_address": {
                 "type": "string",
                 "description": "The egress (NAT) public IP address.",
                 "computed": true
               },
-              "eip_id": {
-                "type": "string",
-                "description": "The EIP ID associated with the dedicated instance.",
-                "optional": true,
-                "computed": true
-              },
               "enterprise_project_id": {
                 "type": "string",
                 "description": "The enterprise project ID to which the dedicated instance belongs.",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "id": {
                 "type": "string",
@@ -61,6 +53,14 @@
                 "type": "string",
                 "description": "The ingress EIP address.",
                 "computed": true
+              },
+              "ingress_bandwidth_charging_mode": {
+                "type": "string",
+                "optional": true
+              },
+              "ingress_bandwidth_size": {
+                "type": "number",
+                "optional": true
               },
               "ipv6_enable": {
                 "type": "bool",
@@ -72,9 +72,7 @@
               "loadbalancer_provider": {
                 "type": "string",
                 "description": "The type of loadbalancer provider used by the instance.",
-                "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "maintain_begin": {
                 "type": "string",
@@ -149,6 +147,36 @@
                 "description": "Name of the VPC endpoint service.",
                 "optional": true,
                 "computed": true
+              }
+            },
+            "block_types": {
+              "custom_ingress_ports": {
+                "block": {
+                  "attributes": {
+                    "id": {
+                      "type": "string",
+                      "description": "The ID of the custom ingress port.",
+                      "computed": true
+                    },
+                    "port": {
+                      "type": "number",
+                      "description": "Specified port of the custom ingress port.",
+                      "required": true
+                    },
+                    "protocol": {
+                      "type": "string",
+                      "description": "Specified protocol of the custom ingress port.",
+                      "required": true
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "The current status of the custom ingress port.",
+                      "computed": true
+                    }
+                  },
+                  "description": "Specified the list of the instance custom ingress ports."
+                },
+                "nesting_mode": "set"
               }
             }
           },

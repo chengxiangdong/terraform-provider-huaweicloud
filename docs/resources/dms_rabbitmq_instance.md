@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Message Service (DMS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dms_rabbitmq_instance"
+description: ""
 ---
 
 # huaweicloud_dms_rabbitmq_instance
@@ -14,6 +17,7 @@ Manage DMS RabbitMQ instance resources within HuaweiCloud.
 variable "vpc_id" {}
 variable "subnet_id" {}
 variable "security_group_id" {}
+variable "access_password" {}
 variable "availability_zones" {
    default = ["your_availability_zones_a", "your_availability_zones_b", "your_availability_zones_c"]
 }
@@ -28,7 +32,7 @@ data "huaweicloud_dms_rabbitmq_flavors" "test" {
 
 resource "huaweicloud_dms_rabbitmq_instance" "test" {
   name              = "instance_1"
-  flavor_id         = data.huaweicloud_dms_rabbitmq_flavors.test.flavors[0].flavor.id
+  flavor_id         = data.huaweicloud_dms_rabbitmq_flavors.test.flavors[0].id
   engine_version    = "3.8.35"
   storage_spec_code = data.huaweicloud_dms_rabbitmq_flavors.test.flavors[0].ios[0].storage_spec_code
   broker_num        = 3
@@ -39,7 +43,7 @@ resource "huaweicloud_dms_rabbitmq_instance" "test" {
   availability_zones = var.availability_zones
 
   access_user = "user"
-  password    = "Rabbitmqtest@123"
+  password    = var.access_password
 }
 ```
 
@@ -49,6 +53,7 @@ resource "huaweicloud_dms_rabbitmq_instance" "test" {
 variable "vpc_id" {}
 variable "subnet_id" {}
 variable "security_group_id" {}
+variable "access_password" {}
 variable "availability_zones" {
    default = ["your_availability_zones_a", "your_availability_zones_b", "your_availability_zones_c"]
 }
@@ -60,9 +65,10 @@ data "huaweicloud_dms_rabbitmq_flavors" "test" {
 
 resource "huaweicloud_dms_rabbitmq_instance" "test" {
   name              = "instance_1"
-  flavor_id         = data.huaweicloud_dms_rabbitmq_flavors.test.flavors[0].flavor.id
+  flavor_id         = data.huaweicloud_dms_rabbitmq_flavors.test.flavors[0].id
   engine_version    = data.huaweicloud_dms_rabbitmq_flavors.test.versions[0]
   storage_spec_code = data.huaweicloud_dms_rabbitmq_flavors.test.flavors[0].ios[0].storage_spec_code
+  broker_num        = 1
 
   vpc_id             = var.vpc_id
   network_id         = var.subnet_id
@@ -70,7 +76,7 @@ resource "huaweicloud_dms_rabbitmq_instance" "test" {
   availability_zones = var.availability_zones
   
   access_user = "user"
-  password    = "Rabbitmqtest@123"
+  password    = var.access_password
 }
 ```
 
@@ -97,7 +103,7 @@ The following arguments are supported:
   Changing this creates a new instance resource.
 
 * `storage_spec_code` - (Required, String, ForceNew) Specifies the storage I/O specification.
-  Valid values are **dms.physical.storage.high** and **dms.physical.storage.ultra**.
+  Valid values are **dms.physical.storage.high.v2** and **dms.physical.storage.ultra.v2**.
   Changing this creates a new instance resource.
 
 * `vpc_id` - (Required, String, ForceNew) Specifies the ID of a VPC. Changing this creates a new instance resource.
@@ -116,11 +122,10 @@ The following arguments are supported:
 * `access_user` - (Required, String, ForceNew) Specifies a username. A username consists of 4 to 64 characters and
   supports only letters, digits, and hyphens (-). Changing this creates a new instance resource.
 
-* `password` - (Required, String, ForceNew) Specifies the password of the DMS RabbitMQ instance. A password must meet
+* `password` - (Required, String) Specifies the password of the DMS RabbitMQ instance. A password must meet
   the following complexity requirements: Must be 8 to 32 characters long. Must contain at least 2 of the following
   character types: lowercase letters, uppercase letters, digits,
   and special characters (`~!@#$%^&*()-_=+\\|[{}]:'",<.>/?).
-  Changing this creates a new instance resource.
 
 * `storage_space` - (Optional, Int) Specifies the message storage space, unit is GB.
   It is required when creating a instance with `flavor_id`. Value range:
@@ -189,6 +194,10 @@ In addition to all arguments above, the following attributes are exported:
 * `user_name` - Indicates the name of the user who created the DMS RabbitMQ instance
 * `connect_address` - Indicates the IP address of the DMS RabbitMQ instance.
 * `management_connect_address` - Indicates the management address of the DMS RabbitMQ instance.
+* `created_at` - Indicates the create time of the DMS RabbitMQ instance.
+* `extend_times` - Indicates the extend times of the DMS RabbitMQ instance.
+* `is_logical_volume` - Indicates whether the DMS RabbitMQ instance is logical volume.
+* `public_ip_address` - Indicates the public ip address of the DMS RabbitMQ instance.
 
 ## Timeouts
 
@@ -212,7 +221,7 @@ API response, security or some other reason. The missing attributes include:
 importing a DMS RabbitMQ instance. You can then decide if changes should be applied to the instance, or the resource
 definition should be updated to align with the instance. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_dms_rabbitmq_instance" "instance_1" {
     ...
 

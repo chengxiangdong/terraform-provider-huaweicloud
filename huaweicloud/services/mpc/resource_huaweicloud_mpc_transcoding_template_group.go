@@ -17,6 +17,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API MPC DELETE /v1/{project_id}/template_group/transcodings
+// @API MPC GET /v1/{project_id}/template_group/transcodings
+// @API MPC POST /v1/{project_id}/template_group/transcodings
+// @API MPC PUT /v1/{project_id}/template_group/transcodings
 func ResourceTranscodingTemplateGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceTranscodingTemplateGroupCreate,
@@ -40,21 +44,18 @@ func ResourceTranscodingTemplateGroup() *schema.Resource {
 				Required: true,
 			},
 			"output_format": {
-				Type:         schema.TypeInt,
-				Required:     true,
-				ValidateFunc: validation.IntBetween(1, 6),
+				Type:     schema.TypeInt,
+				Required: true,
 			},
 			"hls_segment_duration": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(2, 10),
-				Default:      5,
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  5,
 			},
 			"dash_segment_duration": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(2, 10),
-				Default:      5,
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  5,
 			},
 			"low_bitrate_hd": {
 				Type:     schema.TypeBool,
@@ -67,14 +68,12 @@ func ResourceTranscodingTemplateGroup() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"codec": {
-							Type:         schema.TypeInt,
-							Required:     true,
-							ValidateFunc: validation.IntBetween(1, 4),
+							Type:     schema.TypeInt,
+							Required: true,
 						},
 						"sample_rate": {
-							Type:         schema.TypeInt,
-							Required:     true,
-							ValidateFunc: validation.IntBetween(1, 6),
+							Type:     schema.TypeInt,
+							Required: true,
 						},
 						"channels": {
 							Type:         schema.TypeInt,
@@ -84,10 +83,6 @@ func ResourceTranscodingTemplateGroup() *schema.Resource {
 						"bitrate": {
 							Type:     schema.TypeInt,
 							Optional: true,
-							ValidateFunc: validation.Any(
-								validation.IntInSlice([]int{0}),
-								validation.IntBetween(8, 1000),
-							),
 						},
 						"output_policy": {
 							Type:     schema.TypeString,
@@ -115,60 +110,48 @@ func ResourceTranscodingTemplateGroup() *schema.Resource {
 							Default: "transcode",
 						},
 						"codec": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(1, 2),
-							Default:      1,
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  1,
 						},
 						"profile": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(1, 4),
-							Default:      3,
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  3,
 						},
 						"level": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(1, 15),
-							Default:      15,
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  15,
 						},
 						"quality": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(1, 3),
-							Default:      1,
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  1,
 						},
 						"max_iframes_interval": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(2, 10),
-							Default:      5,
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  5,
 						},
 						"max_consecutive_bframes": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(0, 7),
-							Default:      4,
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  4,
 						},
 						"fps": {
 							Type:     schema.TypeInt,
 							Optional: true,
-							ValidateFunc: validation.Any(
-								validation.IntInSlice([]int{0}),
-								validation.IntBetween(5, 30),
-							),
 						},
 						"black_bar_removal": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(0, 2),
+							Type:     schema.TypeInt,
+							Optional: true,
 						},
 						"max_reference_frames": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(1, 8),
-							Computed:     true,
-							Description:  "schema: Deprecated; the SDK does not support it",
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Computed:    true,
+							Description: "schema: Deprecated; the SDK does not support it",
 						},
 					},
 				},
@@ -181,27 +164,15 @@ func ResourceTranscodingTemplateGroup() *schema.Resource {
 						"width": {
 							Type:     schema.TypeInt,
 							Optional: true,
-							ValidateFunc: validation.Any(
-								validation.IntInSlice([]int{0}),
-								validation.IntBetween(32, 4096),
-							),
-							Default: 0,
+							Default:  0,
 						},
 						"height": {
 							Type:     schema.TypeInt,
 							Optional: true,
-							ValidateFunc: validation.Any(
-								validation.IntInSlice([]int{0}),
-								validation.IntBetween(32, 2880),
-							),
 						},
 						"bitrate": {
 							Type:     schema.TypeInt,
 							Optional: true,
-							ValidateFunc: validation.Any(
-								validation.IntInSlice([]int{0}),
-								validation.IntBetween(40, 30000),
-							),
 						},
 					},
 				},

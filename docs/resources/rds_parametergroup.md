@@ -1,5 +1,8 @@
 ---
 subcategory: "Relational Database Service (RDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_rds_parametergroup"
+description: ""
 ---
 
 # huaweicloud_rds_parametergroup
@@ -70,6 +73,10 @@ In addition to all arguments above, the following attributes are exported:
   + `type` - Indicates the parameter type.
   + `description` - Indicates the parameter description.
 
+* `created_at` - The creation time, in UTC format.
+
+* `updated_at` - The last update time, in UTC format.
+
 ## Timeouts
 
 This resource provides the following timeouts configuration options:
@@ -81,6 +88,6 @@ This resource provides the following timeouts configuration options:
 
 Parameter groups can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_rds_parametergroup.pg_1 7117d38e-4c8f-4624-a505-bd96b97d024c
 ```

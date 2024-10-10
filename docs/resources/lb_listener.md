@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Load Balance (ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_lb_listener"
+description: ""
 ---
 
 # huaweicloud_lb_listener
@@ -76,6 +79,6 @@ This resource provides the following timeouts configuration options:
 
 ELB listener can be imported using the listener ID, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_lb_listener.listener_1 5c20fdad-7288-11eb-b817-0255ac10158b
 ```

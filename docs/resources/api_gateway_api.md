@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Shared APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_api_gateway_api"
+description: ""
 ---
 
 # huaweicloud_api_gateway_api
@@ -182,6 +185,6 @@ This resource provides the following timeouts configuration options:
 
 API can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_api_gateway_api.api "774438a28a574ac8a496325d1bf51807"
 ```

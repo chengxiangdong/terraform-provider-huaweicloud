@@ -30,6 +30,14 @@ const (
 	redirectBlockPageTemplate = "redirect"
 )
 
+// @API WAF DELETE /v1/{project_id}/waf/policy/{policy_id}
+// @API WAF PATCH /v1/{project_id}/waf/policy/{policy_id}
+// @API WAF GET /v1/{project_id}/waf/certificate/{certificate_id}
+// @API WAF PUT /v1/{project_id}/premium-waf/host/{host_id}/protect-status
+// @API WAF GET /v1/{project_id}/premium-waf/host/{host_id}
+// @API WAF PUT /v1/{project_id}/premium-waf/host/{host_id}
+// @API WAF DELETE /v1/{project_id}/premium-waf/host/{host_id}
+// @API WAF POST /v1/{project_id}/premium-waf/host
 func ResourceWafDedicatedDomain() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceWafDedicatedDomainCreate,
@@ -130,7 +138,7 @@ func ResourceWafDedicatedDomain() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
-				Elem:     dedicatedDomainCustomPageSchema(),
+				Elem:     domainCustomPageSchema(),
 			},
 			"redirect_url": {
 				Type:     schema.TypeString,
@@ -164,7 +172,7 @@ func ResourceWafDedicatedDomain() *schema.Resource {
 				Optional: true,
 				Computed: true,
 				MaxItems: 1,
-				Elem:     dedicatedDomainTimeoutSettingSchema(),
+				Elem:     domainTimeoutSettingSchema(),
 			},
 			"traffic_mark": {
 				Type:     schema.TypeList,
@@ -225,10 +233,9 @@ func dedicatedDomainServerSchema() *schema.Resource {
 				ForceNew: true,
 			},
 			"port": {
-				Type:         schema.TypeInt,
-				ValidateFunc: validation.IntBetween(0, 65535),
-				Required:     true,
-				ForceNew:     true,
+				Type:     schema.TypeInt,
+				Required: true,
+				ForceNew: true,
 			},
 			"type": {
 				Type:         schema.TypeString,
@@ -246,7 +253,7 @@ func dedicatedDomainServerSchema() *schema.Resource {
 	return &sc
 }
 
-func dedicatedDomainCustomPageSchema() *schema.Resource {
+func domainCustomPageSchema() *schema.Resource {
 	sc := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"http_return_code": {
@@ -309,7 +316,7 @@ func dedicatedDomainConnectionProtectionSchema() *schema.Resource {
 	return &sc
 }
 
-func dedicatedDomainTimeoutSettingSchema() *schema.Resource {
+func domainTimeoutSettingSchema() *schema.Resource {
 	sc := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"connection_timeout": {
@@ -384,7 +391,7 @@ func buildCreatePremiumHostOpts(d *schema.ResourceData, cfg *config.Config, cert
 		Servers:             buildCreatePremiumHostServerOpts(d),
 		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 		BlockPage:           buildPremiumHostBlockPageOpts(d),
-		ForwardHeaderMap:    buildPremiumHostForwardHeaderMapOpts(d),
+		ForwardHeaderMap:    buildHostForwardHeaderMapOpts(d),
 		Description:         d.Get("description").(string),
 	}
 }
@@ -421,7 +428,7 @@ func buildPremiumHostBlockPageOpts(d *schema.ResourceData) *domains.BlockPage {
 	}
 }
 
-func buildPremiumHostForwardHeaderMapOpts(d *schema.ResourceData) map[string]string {
+func buildHostForwardHeaderMapOpts(d *schema.ResourceData) map[string]string {
 	if v, ok := d.GetOk("forward_header_map"); ok {
 		return utils.ExpandToStringMap(v.(map[string]interface{}))
 	}
@@ -621,7 +628,7 @@ func updateWafDedicatedDomain(dedicatedClient *golangsdk.ServiceClient, d *schem
 	}
 
 	if d.HasChange("forward_header_map") && !d.IsNewResource() {
-		updateOpts.ForwardHeaderMap = buildPremiumHostForwardHeaderMapOpts(d)
+		updateOpts.ForwardHeaderMap = buildHostForwardHeaderMapOpts(d)
 	}
 
 	_, err := domains.Update(dedicatedClient, d.Id(), updateOpts)
@@ -649,7 +656,7 @@ func buildHostFlag(d *schema.ResourceData) (*domains.Flag, error) {
 	}, nil
 }
 
-func updateWafDedicatedDomainPolicyHost(d *schema.ResourceData, cfg *config.Config) error {
+func updateWafDomainPolicyHost(d *schema.ResourceData, cfg *config.Config) error {
 	client, err := cfg.WafV1Client(cfg.GetRegion(d))
 	if err != nil {
 		return fmt.Errorf("error creating WAF client: %s", err)
@@ -664,7 +671,7 @@ func updateWafDedicatedDomainPolicyHost(d *schema.ResourceData, cfg *config.Conf
 		Hosts:               []string{d.Id()},
 		EnterpriseProjectId: epsID,
 	}
-	log.Printf("[DEBUG] Bind WAF dedicated domain %s to policy %s", d.Id(), newPolicyId)
+	log.Printf("[DEBUG] Bind WAF domain %s to policy %s", d.Id(), newPolicyId)
 
 	if _, err := policies.UpdateHosts(client, newPolicyId, updateHostsOpts).Extract(); err != nil {
 		return fmt.Errorf("error updating WAF policy hosts: %s", err)
@@ -783,6 +790,7 @@ func resourceWafDedicatedDomainRead(_ context.Context, d *schema.ResourceData, m
 	epsID := cfg.GetEnterpriseProjectID(d)
 	dm, err := domains.GetWithEpsID(dedicatedClient, d.Id(), epsID)
 	if err != nil {
+		// If the dedicated domain does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving WAF dedicated domain")
 	}
 
@@ -840,7 +848,7 @@ func resourceWafDedicatedDomainUpdate(ctx context.Context, d *schema.ResourceDat
 	}
 
 	if d.HasChanges("policy_id") {
-		if err := updateWafDedicatedDomainPolicyHost(d, cfg); err != nil {
+		if err := updateWafDomainPolicyHost(d, cfg); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -858,7 +866,8 @@ func resourceWafDedicatedDomainDelete(_ context.Context, d *schema.ResourceData,
 	epsID := cfg.GetEnterpriseProjectID(d)
 	_, err = domains.DeleteWithEpsID(dedicatedClient, keepPolicy, d.Id(), epsID)
 	if err != nil {
-		return diag.Errorf("error deleting WAF dedicated domain: %s", err)
+		// If the dedicated domain does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF dedicated domain")
 	}
 	return nil
 }

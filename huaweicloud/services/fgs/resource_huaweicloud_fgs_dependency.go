@@ -3,12 +3,10 @@ package fgs
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/fgs/v2/dependencies"
 
@@ -16,6 +14,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API FunctionGraph POST /v2/{project_id}/fgs/dependencies
+// @API FunctionGraph GET /v2/{project_id}/fgs/dependencies/{depend_id}
+// @API FunctionGraph PUT /v2/{project_id}/fgs/dependencies/{depend_id}
+// @API FunctionGraph DELETE /v2/{project_id}/fgs/dependencies/{depend_id}
 func ResourceFgsDependency() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceFgsDependencyCreate,
@@ -40,22 +42,15 @@ func ResourceFgsDependency() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z0-9]([\w.-]*[A-Za-z0-9])?$`),
-						"The name must start with a letter and end with a letter or digit, and can only contain "+
-							"letters, digits, underscores (_), periods (.), and hyphens (-)."),
-					validation.StringLenBetween(1, 96),
-				),
 			},
 			"link": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validation.StringLenBetween(1, 512),
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"etag": {
 				Type:     schema.TypeString,
@@ -66,6 +61,10 @@ func ResourceFgsDependency() *schema.Resource {
 				Computed: true,
 			},
 			"size": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"version": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
@@ -124,6 +123,7 @@ func resourceFgsDependencyRead(_ context.Context, d *schema.ResourceData, meta i
 		d.Set("etag", resp.Etag),
 		d.Set("size", resp.Size),
 		d.Set("owner", resp.Owner),
+		d.Set("version", resp.Version),
 	)
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting resource fields of custom dependency (%s): %s", d.Id(), err)
@@ -157,7 +157,7 @@ func resourceFgsDependencyDelete(_ context.Context, d *schema.ResourceData, meta
 
 	err = dependencies.Delete(fgsClient, d.Id()).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting custom dependency: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting custom dependency")
 	}
 	return nil
 }

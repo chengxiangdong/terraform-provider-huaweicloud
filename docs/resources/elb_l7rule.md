@@ -1,5 +1,8 @@
 ---
 subcategory: "Dedicated Load Balance (Dedicated ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_elb_l7rule"
+description: ""
 ---
 
 # huaweicloud_elb_l7rule
@@ -86,6 +89,7 @@ The following arguments are supported:
   + **HEADER**: The request header will be used for matching.
   + **QUERY_STRING**: A query string will be used for matching.
   + **SOURCE_IP**: The source IP address will be used for matching.
+  + **COOKIE**: The cookie will be used for matching.
   
   Changing this creates a new L7 Rule.
 
@@ -161,7 +165,11 @@ The `condition` block supports:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The unique ID for the L7 Rule.
+* `id` - The unique ID of the L7 Rule.
+
+* `created_at` - The create time of the L7 Rule.
+
+* `updated_at` - The update time of the L7 Rule.
 
 ## Timeouts
 

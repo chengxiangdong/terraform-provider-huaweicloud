@@ -12,15 +12,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/pagination"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API RDS POST /v3/{project_id}/instances/{instance_id}/extensions
+// @API RDS GET /v3/{project_id}/instances
+// @API RDS GET /v3/{project_id}/instances/{instance_id}/extensions
+// @API RDS DELETE /v3/{project_id}/instances/{instance_id}/extensions
 func ResourceRdsPgPlugin() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRdsPgPluginCreate,
@@ -32,7 +35,6 @@ func ResourceRdsPgPlugin() *schema.Resource {
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(30 * time.Minute),
-			Read:   schema.DefaultTimeout(30 * time.Minute),
 			Delete: schema.DefaultTimeout(30 * time.Minute),
 		},
 
@@ -70,54 +72,48 @@ func ResourceRdsPgPlugin() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"created": {
-				Type:     schema.TypeBool,
-				Computed: true,
-			},
 		},
 	}
 }
 
 func buildCreatePgPluginBody(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"database_name":  utils.ValueIngoreEmpty(d.Get("database_name")),
-		"extension_name": utils.ValueIngoreEmpty(d.Get("name")),
+		"database_name":  d.Get("database_name"),
+		"extension_name": d.Get("name"),
 	}
 	return bodyParams
 }
 
 func queryPluginDetail(client *golangsdk.ServiceClient, instanceId, databaseName, name string) (interface{}, error) {
-	reqUri := "v3/{project_id}/instances/{instance_id}/extensions?database_name={database_name}"
-	reqPath := client.Endpoint + reqUri
-	reqPath = strings.ReplaceAll(reqPath, "{project_id}", client.ProjectID)
-	reqPath = strings.ReplaceAll(reqPath, "{instance_id}", instanceId)
-	reqPath = strings.ReplaceAll(reqPath, "{database_name}", databaseName)
+	listPgPluginHttpUrl := "v3/{project_id}/instances/{instance_id}/extensions?database_name={database_name}"
+	listPgPluginPath := client.Endpoint + listPgPluginHttpUrl
+	listPgPluginPath = strings.ReplaceAll(listPgPluginPath, "{project_id}", client.ProjectID)
+	listPgPluginPath = strings.ReplaceAll(listPgPluginPath, "{instance_id}", instanceId)
+	listPgPluginPath = strings.ReplaceAll(listPgPluginPath, "{database_name}", databaseName)
 
 	resp, err := pagination.ListAllItems(
 		client,
 		"offset",
-		reqPath,
+		listPgPluginPath,
 		&pagination.QueryOpts{MarkerField: ""})
 	if err != nil {
-		errCode := parseErrCode(resp)
-		if errCode == "DBS.280238" || errCode == "DBS.200823" {
-			fmt.Printf("[WARN] error retrieving PG plugin, error code: %s", errCode)
+		if errCode := parseErrCode(resp); errCode == "DBS.280238" || errCode == "DBS.200823" {
 			return nil, golangsdk.ErrDefault404{}
 		}
-		return nil, fmt.Errorf("error retrieving PG plugin: %s", err)
+		return nil, fmt.Errorf("error retrieving PostgreSQL plugin: %s", err)
 	}
 	bodyBytes, err := json.Marshal(resp)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling PG plugin: %s", err)
+		return nil, fmt.Errorf("error marshaling RDS PostgreSQL plugin: %s", err)
 	}
 
 	var bodyJson interface{}
 	err = json.Unmarshal(bodyBytes, &bodyJson)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshal PG plugin: %s", err)
+		return nil, fmt.Errorf("error unmarshal PostgreSQL plugin: %s", err)
 	}
 
-	log.Printf("[DEBUG] reading RDS PG plugin response: %#v", bodyJson)
+	log.Printf("[DEBUG] Reading RDS PostgreSQL plugin response: %#v", bodyJson)
 
 	pluginDetail := utils.PathSearch(fmt.Sprintf("extensions[?name=='%s']|[?created]|[0]", name), bodyJson, nil)
 	if pluginDetail == nil {
@@ -130,30 +126,32 @@ func queryPluginDetail(client *golangsdk.ServiceClient, instanceId, databaseName
 func parseErrCode(resp interface{}) string {
 	bodyBytes, err := json.Marshal(resp)
 	if err != nil {
-		log.Printf("[ERROR] error marshaling PG plugin: %s", err)
+		log.Printf("[ERROR] Error marshaling PostgreSQL plugin: %s", err)
 		return ""
 	}
 
 	var bodyJson interface{}
 	err = json.Unmarshal(bodyBytes, &bodyJson)
 	if err != nil {
-		log.Printf("[ERROR] error unmarshal PG plugin: %s", err)
+		log.Printf("[ERROR] Error unmarshal PostgreSQL plugin: %s", err)
 		return ""
 	}
-	errCode := utils.PathSearch(fmt.Sprintf("errCode"), bodyJson, "")
+	errCode := utils.PathSearch("error.code", bodyJson, "")
 	return errCode.(string)
 }
 
 func resourceRdsPgPluginCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
-	client, err := cfg.NewServiceClient("rds", region)
+
+	var createPgPluginProduct = "rds"
+	createPgPluginClient, err := cfg.NewServiceClient(createPgPluginProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating RDS PG plugin client: %s", err)
+		return diag.Errorf("error creating RDS client: %s", err)
 	}
 
-	// 判断插件是否已创建
-	pluginDetail, err := queryPluginDetail(client, d.Get("instance_id").(string), d.Get("database_name").(string), d.Get("name").(string))
+	instanceId := d.Get("instance_id").(string)
+	pluginDetail, err := queryPluginDetail(createPgPluginClient, instanceId, d.Get("database_name").(string), d.Get("name").(string))
 	if err != nil {
 		if _, ok := err.(golangsdk.ErrDefault404); !ok {
 			return diag.FromErr(err)
@@ -161,38 +159,39 @@ func resourceRdsPgPluginCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if pluginDetail != nil {
-		return diag.Errorf("error RDS PG plugin already created: %#v", pluginDetail)
+		return diag.Errorf("The RDS PostgreSQL plugin already created: %#v", pluginDetail)
 	}
 
-	reqUri := "v3/{project_id}/instances/{instance_id}/extensions"
-	reqPath := client.Endpoint + reqUri
-	reqPath = strings.Replace(reqPath, "{project_id}", client.ProjectID, -1)
-	reqPath = strings.Replace(reqPath, "{instance_id}", d.Get("instance_id").(string), -1)
+	createPgPluginHttpUrl := "v3/{project_id}/instances/{instance_id}/extensions"
+	createPgPluginPath := createPgPluginClient.Endpoint + createPgPluginHttpUrl
+	createPgPluginPath = strings.ReplaceAll(createPgPluginPath, "{project_id}", createPgPluginClient.ProjectID)
+	createPgPluginPath = strings.ReplaceAll(createPgPluginPath, "{instance_id}", instanceId)
 
 	jsonBody := utils.RemoveNil(buildCreatePgPluginBody(d))
-	log.Printf("[DEBUG] create RDS PG plugin: %#v", jsonBody)
+	log.Printf("[DEBUG] Create RDS PostgreSQL plugin: %#v", jsonBody)
 
-	createOpt := golangsdk.RequestOpts{
+	reqOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         jsonBody,
-		OkCodes: []int{
-			200,
-		},
 	}
 
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate), func() *resource.RetryError {
-		_, err = client.Request("POST", reqPath, &createOpt)
-		retryable, err := handleMultiOperationsError(err)
-		if retryable {
-			return resource.RetryableError(err)
-		}
-		if err != nil {
-			return resource.NonRetryableError(err)
-		}
-		return nil
+	retryFunc := func() (interface{}, bool, error) {
+		_, err = createPgPluginClient.Request("POST", createPgPluginPath, &reqOpt)
+		retry, err := handleMultiOperationsError(err)
+		return nil, retry, err
+	}
+	_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     rdsInstanceStateRefreshFunc(createPgPluginClient, instanceId),
+		WaitTarget:   []string{"ACTIVE"},
+		Timeout:      d.Timeout(schema.TimeoutCreate),
+		DelayTimeout: 1 * time.Second,
+		PollInterval: 10 * time.Second,
 	})
+
 	if err != nil {
-		return diag.Errorf("error creating RDS PG plugin: %s", err)
+		return diag.Errorf("error creating RDS PostgreSQL plugin: %s", err)
 	}
 
 	id := fmt.Sprintf("%s/%s/%s", d.Get("instance_id").(string), d.Get("database_name").(string), d.Get("name").(string))
@@ -204,31 +203,30 @@ func resourceRdsPgPluginCreate(ctx context.Context, d *schema.ResourceData, meta
 func resourceRdsPgPluginRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
-	client, err := cfg.NewServiceClient("rds", region)
+	getPgPluginClient, err := cfg.NewServiceClient("rds", region)
 	if err != nil {
-		return diag.Errorf("error creating RDS PG plugin client: %s", err)
+		return diag.Errorf("error creating RDS client: %s", err)
 	}
 
-	arr := strings.Split(d.Id(), "/")
-	if len(arr) != 3 {
+	parts := strings.Split(d.Id(), "/")
+	if len(parts) != 3 {
 		return diag.Errorf("invalid ID format in ReadContext: %s", d.Id())
 	}
-
-	pluginDetail, err := queryPluginDetail(client, arr[0], arr[1], arr[2])
-	log.Printf("[DEBUG] RDS PG plugin detail: %#v", pluginDetail)
+	pluginDetail, err := queryPluginDetail(getPgPluginClient, parts[0], parts[1], parts[2])
+	log.Printf("[DEBUG] RDS PostgreSQL plugin detail: %#v", pluginDetail)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving PG plugin")
+		return common.CheckDeletedDiag(d, err, "error retrieving PostgreSQL plugin")
 	}
 
 	mErr := multierror.Append(
 		nil,
 		d.Set("region", cfg.GetRegion(d)),
+		d.Set("instance_id", parts[0]),
 		d.Set("name", utils.PathSearch("name", pluginDetail, "")),
 		d.Set("database_name", utils.PathSearch("database_name", pluginDetail, "")),
 		d.Set("version", utils.PathSearch("version", pluginDetail, "")),
 		d.Set("shared_preload_libraries", utils.PathSearch("shared_preload_libraries", pluginDetail, "")),
-		d.Set("created", utils.PathSearch("created", pluginDetail, false)),
 		d.Set("description", utils.PathSearch("description", pluginDetail, "")),
 	)
 
@@ -237,8 +235,8 @@ func resourceRdsPgPluginRead(_ context.Context, d *schema.ResourceData, meta int
 
 func buildDeletePgPluginBody(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"database_name":  utils.ValueIngoreEmpty(d.Get("database_name")),
-		"extension_name": utils.ValueIngoreEmpty(d.Get("name")),
+		"database_name":  d.Get("database_name"),
+		"extension_name": d.Get("name"),
 	}
 	return bodyParams
 }
@@ -247,40 +245,44 @@ func resourceRdsPgPluginDelete(ctx context.Context, d *schema.ResourceData, meta
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
-	client, err := cfg.NewServiceClient("rds", region)
+	deletePgPluginClient, err := cfg.NewServiceClient("rds", region)
 	if err != nil {
-		return diag.Errorf("error deleting RDS client: %s", err)
+		return diag.Errorf("error creating RDS client: %s", err)
 	}
 
-	reqUri := "v3/{project_id}/instances/{instance_id}/extensions"
-	reqPath := client.Endpoint + reqUri
-	reqPath = strings.Replace(reqPath, "{project_id}", client.ProjectID, -1)
-	reqPath = strings.Replace(reqPath, "{instance_id}", d.Get("instance_id").(string), -1)
+	deletePgPluginHttpUrl := "v3/{project_id}/instances/{instance_id}/extensions"
+	deletePgPluginPath := deletePgPluginClient.Endpoint + deletePgPluginHttpUrl
+	deletePgPluginPath = strings.ReplaceAll(deletePgPluginPath, "{project_id}", deletePgPluginClient.ProjectID)
+	deletePgPluginPath = strings.ReplaceAll(deletePgPluginPath, "{instance_id}", d.Get("instance_id").(string))
 
 	jsonBody := utils.RemoveNil(buildDeletePgPluginBody(d))
-	log.Printf("[DEBUG] delete RDS PG plugin: %#v", jsonBody)
+	log.Printf("[DEBUG] Delete RDS PostgreSQL plugin: %#v", jsonBody)
 
 	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         jsonBody,
-		OkCodes: []int{
-			200,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json;charset=UTF-8",
 		},
 	}
 
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {
-		_, err = client.Request("DELETE", reqPath, &deleteOpt)
-		retryable, err := handleMultiOperationsError(err)
-		if retryable {
-			return resource.RetryableError(err)
-		}
-		if err != nil {
-			return resource.NonRetryableError(err)
-		}
-		return nil
+	retryFunc := func() (interface{}, bool, error) {
+		_, err = deletePgPluginClient.Request("DELETE", deletePgPluginPath, &deleteOpt)
+		retry, err := handleMultiOperationsError(err)
+		return nil, retry, err
+	}
+	_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     rdsInstanceStateRefreshFunc(deletePgPluginClient, d.Get("instance_id").(string)),
+		WaitTarget:   []string{"ACTIVE"},
+		Timeout:      d.Timeout(schema.TimeoutDelete),
+		DelayTimeout: 1 * time.Second,
+		PollInterval: 10 * time.Second,
 	})
+
 	if err != nil {
-		return diag.Errorf("error deleting PG plugin: %s", err)
+		return diag.Errorf("error deleting RDS PostgreSQL plugin: %s", err)
 	}
 
 	return nil

@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Shared APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_api_gateway_environment"
+description: ""
 ---
 
 # huaweicloud_api_gateway_environment
@@ -42,6 +45,6 @@ In addition to all arguments above, the following attributes are exported:
 
 APIG environments can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_api_gateway_environment.test_env 774438a28a574ac8a496325d1bf51807
 ```

@@ -1,5 +1,8 @@
 ---
 subcategory: "Software Repository for Container (SWR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_swr_repository_sharing"
+description: ""
 ---
 
 # huaweicloud_swr_repository_sharing
@@ -69,6 +72,6 @@ This resource provides the following timeouts configuration options:
 Repository sharing can be imported using the organization name, repository name and sharing account
 separated by a slash, e.g.:
 
-```
+```bash
 $ terraform import huaweicloud_swr_repository_sharing.test org-name/repo-name/sharing-account
 ```

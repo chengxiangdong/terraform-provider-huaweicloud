@@ -22,6 +22,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API WAF POST /v1/{project_id}/waf/policy/{policy_id}/anticrawler
+// @API WAF PUT /v1/{project_id}/waf/policy/{policy_id}/anticrawler
+// @API WAF DELETE /v1/{project_id}/waf/policy/{policy_id}/anticrawler/{rule_id}
+// @API WAF GET /v1/{project_id}/waf/policy/{policy_id}/anticrawler/{rule_id}
+// @API WAF PUT /v1/{project_id}/waf/policy/{policy_id}/anticrawler/{rule_id}
 func ResourceRuleAntiCrawler() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAntiCrawlerRuleCreate,
@@ -251,6 +256,7 @@ func resourceAntiCrawlerRuleRead(_ context.Context, d *schema.ResourceData, meta
 
 	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
+		// If the anti crawler rule does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving WAF anti crawler rule")
 	}
 
@@ -350,7 +356,8 @@ func resourceAntiCrawlerRuleDelete(_ context.Context, d *schema.ResourceData, me
 
 	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
-		return diag.Errorf("error deleting WAF anti crawler rule: %s", err)
+		// If the anti crawler rule does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF anti crawler rule")
 	}
 	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +28,12 @@ const (
 	toJobConfig   = "toJobConfig"
 )
 
+// @API CDM PUT /v1.1/{project_id}/clusters/{clusterId}/cdm/job/{jobName}/start
+// @API CDM PUT /v1.1/{project_id}/clusters/{clusterId}/cdm/job/{jobName}/stop
+// @API CDM GET /v1.1/{project_id}/clusters/{clusterId}/cdm/job/{jobName}
+// @API CDM PUT /v1.1/{project_id}/clusters/{clusterId}/cdm/job/{jobName}
+// @API CDM DELETE /v1.1/{project_id}/clusters/{clusterId}/cdm/job/{jobName}
+// @API CDM POST /v1.1/{project_id}/clusters/{clusterId}/cdm/job
 func ResourceCdmJob() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCdmJobCreate,
@@ -50,9 +55,6 @@ func ResourceCdmJob() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[A-Za-z][\w]{1,240}$`),
-					"The name consists of 1 to 240 characters, starting with a letter. "+
-						"Only letters, digits and underscores (_) are allowed."),
 			},
 
 			"cluster_id": {
@@ -279,7 +281,7 @@ func resourceCdmJobRead(_ context.Context, d *schema.ResourceData, meta interfac
 	}
 
 	rst, gErr := job.Get(client, clusterId, jobName, job.GetJobsOpts{})
-	log.Printf("[DEBUG] read CDM job opts: %#v", gErr)
+	log.Printf("[DEBUG] read CDM job opts: %v", gErr)
 
 	if gErr != nil {
 		return common.CheckDeletedDiag(d, parseCdmJobErrorToError404(gErr), "Error retrieving CDM job")
@@ -615,6 +617,7 @@ func flattenFromOrToConfig(configName string, configs []job.Configs) map[string]
 			for _, v := range item.Inputs {
 				if v.Value != "" {
 					key := strings.Replace(v.Name, configPref, "", 1)
+					// Value in return is encoded, use `url.PathUnescape` to decode it.
 					result[key], _ = url.PathUnescape(v.Value)
 				}
 			}
@@ -646,6 +649,7 @@ func setJobConfigtoState(d *schema.ResourceData, configs []job.Configs) error {
 				case "throttlingConfig.obsBucket":
 					result["throttling_dirty_write_to_bucket"] = v.Value
 				case "throttlingConfig.dirtyDataDirectory":
+					// Value in return is encoded, use `url.PathUnescape` to decode it.
 					result["throttling_dirty_write_to_directory"], pErr = url.PathUnescape(v.Value)
 					err = multierror.Append(err, pErr)
 				case "throttlingConfig.maxErrorRecords":
@@ -662,9 +666,13 @@ func setJobConfigtoState(d *schema.ResourceData, configs []job.Configs) error {
 				case "schedulerConfig.runAt":
 					result["scheduler_run_at"] = v.Value
 				case "schedulerConfig.startDate":
-					result["scheduler_start_date"] = v.Value
+					// Value in return is encoded, use `url.PathUnescape` to decode it.
+					result["scheduler_start_date"], pErr = url.PathUnescape(v.Value)
+					err = multierror.Append(err, pErr)
 				case "schedulerConfig.stopDate":
-					result["scheduler_stop_date"] = v.Value
+					// Value in return is encoded, use `url.PathUnescape` to decode it.
+					result["scheduler_stop_date"], pErr = url.PathUnescape(v.Value)
+					err = multierror.Append(err, pErr)
 				case "schedulerConfig.disposableType":
 					result["scheduler_disposable_type"] = v.Value
 				case "retryJobConfig.retryJobType":

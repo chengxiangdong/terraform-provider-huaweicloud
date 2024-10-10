@@ -1,0 +1,20 @@
+info:
+    version: ""
+    title: resource_huaweicloud_cc_authorization
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: CC
+paths:
+    /v3/{domain_id}/ccaas/authorisations:
+        GET:
+            tag: CC
+        POST:
+            tag: CC
+    /v3/{domain_id}/ccaas/authorisations/{id}:
+        DELETE:
+            tag: CC
+        PUT:
+            tag: CC

@@ -1,10 +1,13 @@
 ---
 subcategory: "Cloud Backup and Recovery (CBR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cbr_vault"
+description: ""
 ---
 
 # huaweicloud_cbr_vault
 
-Manages a CBR Vault resource within Huaweicloud.
+Manages a CBR vault resource within HuaweiCloud.
 
 ## Example Usage
 
@@ -59,7 +62,11 @@ resource "huaweicloud_cbr_vault" "test" {
   consistent_level = "crash_consistent"
   size             = 500
 
-  ... // Associated instances
+  auto_bind  = true
+  bind_rules = {
+    # {auto_bind_key} = {auto_bind_value}
+    service_name = "xxx"
+  }
 
   policy {
     id = var.backup_policy_id
@@ -186,7 +193,7 @@ The following arguments are supported:
   characters, which may consist of letters, digits, underscores(_) and hyphens (-).
 
 * `type` - (Required, String, ForceNew) Specifies the object type of the CBR vault.
-  Changing this will create a new vault. Vaild values are as follows:
+  Changing this will create a new vault. Valid values are as follows:
   + **server** (Elastic Cloud Server)
   + **disk** (EVS Disk)
   + **turbo** (SFS Turbo file system)
@@ -220,8 +227,7 @@ The following arguments are supported:
 
 * `bind_rules` - (Optional, Map) Specifies the tags to filter resources for automatic association with **auto_bind**.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the ID of the enterprise project to which the vault
-  belongs. Changing this will create a new vault.
+* `enterprise_project_id` - (Optional, String) Specifies the ID of the enterprise project to which the vault belongs.
 
 * `policy` - (Optional, List) Specifies the policy details to associate with the CBR vault.
   The [object](#cbr_vault_policies) structure is documented below.
@@ -308,7 +314,7 @@ This resource provides the following timeouts configuration options:
 
 Vaults can be imported by their `id`. For example,
 
-```
+```bash
 $ terraform import huaweicloud_cbr_vault.test 01c33779-7c83-4182-8b6b-24a671fcedf8
 ```
 
@@ -318,7 +324,7 @@ It is generally recommended running `terraform plan` after importing a vault.
 You can then decide if changes should be applied to the vault, or the resource definition should be updated to align
 with the vault. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_cbr_vault" "test" {
   ...
 

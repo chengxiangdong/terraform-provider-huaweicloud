@@ -9,6 +9,14 @@
                 "type": "string",
                 "computed": true
               },
+              "associate_id": {
+                "type": "string",
+                "computed": true
+              },
+              "associate_type": {
+                "type": "string",
+                "computed": true
+              },
               "auto_renew": {
                 "type": "string",
                 "optional": true
@@ -16,17 +24,27 @@
               "charging_mode": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
+              },
+              "created_at": {
+                "type": "string",
+                "computed": true
               },
               "enterprise_project_id": {
                 "type": "string",
                 "description": "The enterprise project ID to which the EIP belongs.",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "id": {
+                "type": "string",
+                "computed": true
+              },
+              "instance_id": {
+                "type": "string",
+                "computed": true
+              },
+              "instance_type": {
                 "type": "string",
                 "computed": true
               },
@@ -41,13 +59,11 @@
               },
               "period": {
                 "type": "number",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "period_unit": {
                 "type": "string",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "port_id": {
                 "type": "string",
@@ -72,6 +88,10 @@
                   "string"
                 ],
                 "optional": true
+              },
+              "updated_at": {
+                "type": "string",
+                "computed": true
               }
             },
             "block_types": {
@@ -82,8 +102,7 @@
                       "type": "string",
                       "description": "Whether the bandwidth is billed by traffic or by bandwidth size.",
                       "optional": true,
-                      "computed": true,
-                      "forcenew": true
+                      "computed": true
                     },
                     "id": {
                       "type": "string",

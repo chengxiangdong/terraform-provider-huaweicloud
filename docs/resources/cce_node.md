@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_node"
+description: ""
 ---
 
 # huaweicloud_cce_node
@@ -378,6 +381,9 @@ The following arguments are supported:
 * `initialized_conditions` - (Optional, List, ForceNew) Specifies the custom initialization flags.
   Changing this parameter will create a new resource.
 
+* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID of the CCE node.
+  Changing this parameter will create a new resource.
+
 * `labels` - (Optional, Map, ForceNew) Specifies the tags of a Kubernetes node, key/value pair format.
   Changing this parameter will create a new resource.
 
@@ -389,11 +395,16 @@ The following arguments are supported:
   + `key` - (Required, String, ForceNew) A key must contain 1 to 63 characters starting with a letter or digit.
     Only letters, digits, hyphens (-), underscores (_), and periods (.) are allowed. A DNS subdomain name can be used
     as the prefix of a key. Changing this parameter will create a new resource.
-  + `value` - (Required, String, ForceNew) A value must start with a letter or digit and can contain a maximum of 63
+  + `value` - (Optional, String, ForceNew) A value must start with a letter or digit and can contain a maximum of 63
     characters, including letters, digits, hyphens (-), underscores (_), and periods (.). Changing this parameter will
     create a new resource.
   + `effect` - (Required, String, ForceNew) Available options are NoSchedule, PreferNoSchedule, and NoExecute.
     Changing this parameter will create a new resource.
+
+* `hostname_config` - (Optional, List, ForceNew) Specifies the hostname config of the kubernetes node,
+  which is supported by clusters of v1.23.6-r0 to v1.25 or clusters of v1.25.2-r0 or later versions.
+  The [object](#hostname_config) structure is documented below.
+  Changing this parameter will create a new resource.
 
 <a name="extension_nics"></a>
 The `extension_nics` block supports:
@@ -460,7 +471,7 @@ The `groups` block supports:
 * `cce_managed` - (Optional, Bool, ForceNew) Specifies the whether the storage space is for **kubernetes** and
   **runtime** components. Only one group can be set to true. The default value is **false**.
   Changing this parameter will create a new resource.
-* `selector_names` - (Required, List, ForceNew) Specifies the list of names of seletors to match.
+* `selector_names` - (Required, List, ForceNew) Specifies the list of names of selectors to match.
   This parameter corresponds to name in `selectors`. A group can match multiple selectors,
   but a selector can match only one group. Changing this parameter will create a new resource.
 * `virtual_spaces` - (Required, List, ForceNew) Specifies the detailed management of space configuration in a group.
@@ -478,6 +489,23 @@ The `groups` block supports:
     This parameter takes effect only in **user** configuration. Changing this parameter will create a new resource.
   + `runtime_lv_type` - (Optional, String, ForceNew) Specifies the LVM write mode, values can be **linear** and **striped**.
     This parameter takes effect only in **runtime** configuration. Changing this parameter will create a new resource.
+
+<a name="hostname_config"></a>
+The `hostname_config` block supports:
+
+* `type` - (Required, String, ForceNew) Specifies the hostname type of the kubernetes node.
+  The value can be:
+  + **privateIp**: The Kubernetes node is named after its IP address.
+  + **cceNodeName**: The Kubernetes node is named after the CCE node.
+  
+  If `hostname_config` not specified, the default value is **privateIp**.
+  Changing this parameter will create a new resource.
+
+  ~>For a node which is configured using cceNodeName, the name is the same as the Kubernetes node name and the ECS name.
+    The node name cannot be changed. If the ECS name is changed on the ECS console, the node name will retain unchanged
+    after ECS synchronization. To avoid a conflict between Kubernetes nodes, the system automatically adds a suffix to
+    each node name. The suffix is in the format of A hyphen (-) Five random characters. The value of the random
+    characters is a lowercase letter or a digit ranging from 0 to 9.
 
 ## Attribute Reference
 

@@ -1,5 +1,8 @@
 ---
 subcategory: "Tag Management Service (TMS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_tms_resource_tags"
+description: ""
 ---
 
 # huaweicloud_tms_resource_tags
@@ -7,7 +10,7 @@ subcategory: "Tag Management Service (TMS)"
 Using this resource to manage tags of other service resources in batches within HuaweiCloud.
 
 ~> The `tags` parameters of this resource and each service resource will affect each other, and should be managed in
-only one way as much as possible. You can using `lifecycle.ignore_changes` to ignore resource changes.
+only one way as much as possible. You can use `lifecycle.ignore_changes` to ignore resource changes.
 
 ## Example Usage
 
@@ -32,7 +35,7 @@ resource "huaweicloud_tms_resource_tags" "test" {
     }
   }
 
-  tags {
+  tags = {
     foo   = "bar"
     owner = "terraform"
   }

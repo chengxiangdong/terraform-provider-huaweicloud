@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Backup and Recovery (CBR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cbr_vaults"
+description: ""
 ---
 
 # huaweicloud_cbr_vaults
@@ -26,7 +29,7 @@ The following arguments are supported:
 * `name` - (Optional, String) Specifies the vault name. This parameter can contain a maximum of 64
   characters, which may consist of letters, digits, underscores(_) and hyphens (-).
 
-* `type` - (Optional, String) Specifies the object type of the vault. The vaild values are as follows:
+* `type` - (Optional, String) Specifies the object type of the vault. The valid values are as follows:
   + **server** (Cloud Servers)
   + **disk** (EVS Disks)
   + **turbo** (SFS Turbo file systems)
@@ -41,7 +44,7 @@ The following arguments are supported:
 * `protection_type` - (Optional, String) Specifies the protection type of the vault.
   The valid values are **backup** and **replication**. Vaults of type **disk** don't support **replication**.
 
-* `size` - (Optional, Int) Specifies the vault sapacity, in GB. The valid value range is `1` to `10,485,760`.
+* `size` - (Optional, Int) Specifies the vault capacity, in GB. The valid value range is `1` to `10,485,760`.
 
 * `auto_expand_enabled` - (Optional, Bool) Specifies whether to enable automatic expansion of the backup protection
   type vault. Defaults to **false**.
@@ -95,6 +98,10 @@ The `vaults` block supports:
 
 * `resources` - The array of one or more resources to attach to the vault.
   The [object](#cbr_vault_resources) structure is documented below.
+
+* `auto_bind` - Whether automatic association is enabled. Defaults to **false**.
+
+* `bind_rules` - The tags to filter resources for automatic association with **auto_bind**.
 
 <a name="cbr_vault_resources"></a>
 The `resources` block supports:

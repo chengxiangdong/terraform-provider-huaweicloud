@@ -1,5 +1,8 @@
 ---
 subcategory: "Relational Database Service (RDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_rds_read_replica_instance"
+description: ""
 ---
 
 # huaweicloud_rds_read_replica_instance
@@ -61,8 +64,7 @@ The following arguments are supported:
 * `db` - (Optional, List, ForceNew) Specifies the database information. The [db](#Rds_db) structure is documented below.
   Changing this parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) The enterprise project id of the read replica instance.
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project id of the read replica instance.
 
 * `flavor` - (Required, String) Specifies the specification code.
 
@@ -78,6 +80,14 @@ The following arguments are supported:
 
 * `description` - (Optional, String) Specifies the description of the instance. The value consists of 0 to 64
   characters, including letters, digits, periods (.), underscores (_), and hyphens (-).
+
+* `maintain_begin` - (Optional, String) Specifies the time at which the maintenance time window starts, for example, **22:00**.
+
+* `maintain_end` - (Optional, String) Specifies the time at which the maintenance time window ends, for example, **01:00**.
+
+-> **Note** For RDS for MySQL and RDS for PostgreSQL databases, the maintenance begin time and end time must be on the
+  hour, and the interval between them must be one to four hours.<br>
+  For RDS for SQL Server databases, the interval between the maintenance begin time and end time must be four hours.
 
 * `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the read replica instance. Valid values
   are **prePaid** and **postPaid**, defaults to **postPaid**. Changing this creates a new resource.
@@ -99,11 +109,11 @@ The following arguments are supported:
 The `db` block supports:
 
 * `port` - (Optional, Int) Specifies the database port.
-  + The MySQL database port ranges from **1024** to **65535** (excluding **12017** and **33071**, which are occupied by
-    the RDS system and cannot be used). The default value is **3306**.
-  + The PostgreSQL database port ranges from **2100** to **9500**. The default value is **5432**.
-  + The Microsoft SQL Server database port can be **1433** or ranges from **2100** to **9500**, excluding **5355** and
-    **5985**. The default value is **1433**.
+  + The MySQL database port ranges from `1,024` to `65,535` (excluding `12,017` and `33,071`, which are occupied by
+    the RDS system and cannot be used). The default value is `3,306`.
+  + The PostgreSQL database port ranges from `2,100` to `9,500`. The default value is `5,432`.
+  + The Microsoft SQL Server database port can be `1,433` or ranges from `2,100` to `9,500`, excluding `5,355` and
+    `5,985`. The default value is `1,433`.
 
 <a name="Rds_volume"></a>
 The `volume` block supports:
@@ -118,13 +128,13 @@ The `volume` block supports:
 
   Changing this parameter will create a new resource.
 
-* `size` - (Optional, Int) Specifies the volume size. Its value range is from **40** GB to **4000** GB. The value must
+* `size` - (Optional, Int) Specifies the volume size. Its value range is from `40` GB to `4,000` GB. The value must
   be a multiple of 10 and greater than the original size.
 
 * `limit_size` - (Optional, Int) Specifies the upper limit of automatic expansion of storage, in GB.
 
 * `trigger_threshold` - (Optional, Int) Specifies the threshold to trigger automatic expansion.  
-  If the available storage drops to this threshold or **10** GB, the automatic expansion is triggered.  
+  If the available storage drops to this threshold or `10` GB, the automatic expansion is triggered.  
   The valid values are as follows:
   + **10**
   + **15**
@@ -146,14 +156,14 @@ In addition to all arguments above, the following attributes are exported:
 
 * `status` - Indicates the instance status.
 
-* `type` -  Indicates the type of the read replica instance. The value can be **Single**, **Ha**, **Replica**,
+* `type` - Indicates the type of the read replica instance. The value can be **Single**, **Ha**, **Replica**,
   **Enterprise**.
 
-* `db/type` -  Indicates the DB engine. The value can be **MySQL**, **PostgreSQL**, **SQLServer**, **MariaDB**.
+* `db/type` - Indicates the DB engine. The value can be **MySQL**, **PostgreSQL**, **SQLServer**, **MariaDB**.
 
-* `db/version` -  Indicates the database version.
+* `db/version` - Indicates the database version.
 
-* `db/user_name` -  Indicates the default username of database.
+* `db/user_name` - Indicates the default username of database.
 
 * `volume/disk_encryption_id` - Indicates the key ID for disk encryption. It is same with the primary instance.
 

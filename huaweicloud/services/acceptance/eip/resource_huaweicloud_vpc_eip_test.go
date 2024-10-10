@@ -2,6 +2,7 @@ package eip
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -69,6 +70,7 @@ func TestAccVpcEip_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "bandwidth.0.size", "8"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar1"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key1", "value"),
+					resource.TestCheckResourceAttr(resourceName, "bandwidth.0.charge_mode", "bandwidth"),
 				),
 			},
 			{
@@ -145,7 +147,15 @@ func TestAccVpcEip_WithEpsId(t *testing.T) {
 				Config: testAccVpcEip_epsId(randName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", "0"),
+				),
+			},
+			{
+				Config: testAccVpcEip_epsId_update(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id",
+						acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
 				),
 			},
 		},
@@ -221,6 +231,78 @@ func TestAccVpcEip_prePaid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "bandwidth.0.size", "6"),
 					resource.TestCheckResourceAttrSet(resourceName, "bandwidth.0.id"),
 					resource.TestCheckResourceAttrSet(resourceName, "address"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"charging_mode", "period", "period_unit", "auto_renew"},
+			},
+		},
+	})
+}
+
+func TestAccVpcEip_ChangeToPeriod(t *testing.T) {
+	var (
+		eip          eips.PublicIp
+		randName     = acceptance.RandomAccResourceNameWithDash()
+		resourceName = "huaweicloud_vpc_eip.test"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&eip,
+		getEipResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckChargingMode(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVpcEip_basic(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", randName),
+				),
+			},
+			{
+				Config: testAccVpcEip_update(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", randName),
+					resource.TestCheckResourceAttr(resourceName, "bandwidth.0.charge_mode", "bandwidth"),
+				),
+			},
+			{
+				Config: testAccVpcEip_prePaid(randName, 8, true),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", randName),
+					resource.TestCheckResourceAttr(resourceName, "bandwidth.0.charge_mode", "bandwidth"),
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "period_unit", "month"),
+					resource.TestCheckResourceAttr(resourceName, "auto_renew", "true"),
+				),
+			},
+			{
+				Config:      testAccVpcEip_prePaidChangeToPostPaid(randName, 8, true),
+				ExpectError: regexp.MustCompile(`error updating the charging mode of the EIP`),
+			},
+			{
+				Config: testAccVpcEip_prePaid(randName, 8, false),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", randName),
+					resource.TestCheckResourceAttr(resourceName, "bandwidth.0.charge_mode", "bandwidth"),
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "period_unit", "month"),
+					resource.TestCheckResourceAttr(resourceName, "auto_renew", "false"),
 				),
 			},
 			{
@@ -312,7 +394,7 @@ resource "huaweicloud_vpc_eip" "test" {
     share_type  = "PER"
     name        = "%[1]s"
     size        = 8
-    charge_mode = "traffic"
+    charge_mode = "bandwidth"
   }
 
   tags = {
@@ -324,6 +406,25 @@ resource "huaweicloud_vpc_eip" "test" {
 }
 
 func testAccVpcEip_epsId(rName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_vpc_eip" "test" {
+  enterprise_project_id = "0"
+
+  publicip {
+    type = "5_bgp"
+  }
+
+  bandwidth {
+    share_type  = "PER"
+    name        = "%[1]s"
+    size        = 5
+    charge_mode = "traffic"
+  }
+}
+`, rName)
+}
+
+func testAccVpcEip_epsId_update(rName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_vpc_eip" "test" {
   enterprise_project_id = "%[1]s"
@@ -372,9 +473,10 @@ resource "huaweicloud_vpc_eip" "test" {
   }
 
   bandwidth {
-    share_type = "PER"
-    name       = "%[1]s"
-    size       = %[2]d
+    share_type  = "PER"
+    name        = "%[1]s"
+    size        = %[2]d
+    charge_mode = "bandwidth"
   }
 
   charging_mode = "prePaid"
@@ -418,4 +520,25 @@ resource "huaweicloud_vpc_eip" "test" {
   }
 }
 `, rName)
+}
+
+func testAccVpcEip_prePaidChangeToPostPaid(rName string, size int, _ bool) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_vpc_eip" "test" {
+  name = "%[1]s"
+
+  publicip {
+    type = "5_bgp"
+  }
+
+  bandwidth {
+    share_type  = "PER"
+    name        = "%[1]s"
+    size        = %[2]d
+    charge_mode = "bandwidth"
+  }
+
+  charging_mode = "postPaid"
+}
+`, rName, size)
 }

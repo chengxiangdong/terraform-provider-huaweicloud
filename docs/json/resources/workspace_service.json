@@ -67,6 +67,22 @@
                 "optional": true,
                 "computed": true
               },
+              "is_locked": {
+                "type": "number",
+                "computed": true
+              },
+              "lock_enabled": {
+                "type": "bool",
+                "optional": true
+              },
+              "lock_reason": {
+                "type": "string",
+                "computed": true
+              },
+              "lock_time": {
+                "type": "string",
+                "computed": true
+              },
               "management_subnet_cidr": {
                 "type": "string",
                 "optional": true,
@@ -137,6 +153,50 @@
                       "optional": true
                     },
                     "standby_domain_name": {
+                      "type": "string",
+                      "optional": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
+              },
+              "otp_config_info": {
+                "block": {
+                  "attributes": {
+                    "app_id": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "app_secret": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "auth_server_access_mode": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "auth_url": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "cert_content": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "enable": {
+                      "type": "bool",
+                      "required": true
+                    },
+                    "receive_mode": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "rule": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "rule_type": {
                       "type": "string",
                       "optional": true
                     }

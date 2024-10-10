@@ -1,10 +1,13 @@
 ---
-subcategory: "Elastic Cloud Server (ECS)"
+subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_compute_keypair"
+description: ""
 ---
 
 # huaweicloud_compute_keypair
 
--> **DEPRECATED:**  This resource  has been deprecated. Please use [huaweicloud_kps_keypair](https://www.terraform.io/docs/providers/huaweicloud/r/kps_keypair).
+!> **WARNING:** It has been deprecated, use `huaweicloud_kps_keypair` instead.
 
 Manages a keypair resource within HuaweiCloud.
 
@@ -59,6 +62,6 @@ In addition to all arguments above, the following attributes are exported:
 
 Keypairs can be imported using the `name`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_compute_keypair.my-keypair test-keypair
 ```

@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -21,6 +20,12 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API UCS POST /v1/clusters
+// @API UCS GET /v1/clusters/{id}
+// @API UCS PUT /v1/clusters/{id}
+// @API UCS POST /v1/clusters/{id}/unjoin
+// @API UCS POST /v1/clusters/{id}/join
+// @API UCS DELETE /v1/clusters/{id}
 func ResourceCluster() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceClusterCreate,
@@ -128,13 +133,14 @@ func ResourceCluster() *schema.Resource {
 
 func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// createCluster: Create a UCS Cluster.
 	var (
 		createClusterHttpUrl = "v1/clusters"
 		createClusterProduct = "ucs"
 	)
-	createClusterClient, err := cfg.NewServiceClient(createClusterProduct, "")
+	createClusterClient, err := cfg.NewServiceClient(createClusterProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}
@@ -159,11 +165,11 @@ func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("uid", createClusterRespBody)
-	if err != nil {
+	id := utils.PathSearch("uid", createClusterRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating Cluster: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceClusterRead(ctx, d, meta)
 }
@@ -180,23 +186,23 @@ func buildCreateClusterBodyParams(d *schema.ResourceData) map[string]interface{}
 
 func buildCreateClusterMetadataBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"uid":         utils.ValueIngoreEmpty(d.Get("cluster_id")),
-		"name":        utils.ValueIngoreEmpty(d.Get("cluster_name")),
-		"labels":      utils.ValueIngoreEmpty(d.Get("cluster_labels")),
-		"annotations": utils.ValueIngoreEmpty(d.Get("annotations")),
+		"uid":         utils.ValueIgnoreEmpty(d.Get("cluster_id")),
+		"name":        utils.ValueIgnoreEmpty(d.Get("cluster_name")),
+		"labels":      utils.ValueIgnoreEmpty(d.Get("cluster_labels")),
+		"annotations": utils.ValueIgnoreEmpty(d.Get("annotations")),
 	}
 	return bodyParams
 }
 
 func buildCreateClusterSpecBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"category":  utils.ValueIngoreEmpty(d.Get("category")),
-		"type":      utils.ValueIngoreEmpty(d.Get("cluster_type")),
-		"region":    utils.ValueIngoreEmpty(d.Get("cluster_region")),
-		"projectID": utils.ValueIngoreEmpty(d.Get("cluster_project_id")),
-		"provider":  utils.ValueIngoreEmpty(d.Get("service_provider")),
-		"country":   utils.ValueIngoreEmpty(d.Get("country")),
-		"city":      utils.ValueIngoreEmpty(d.Get("city")),
+		"category":  utils.ValueIgnoreEmpty(d.Get("category")),
+		"type":      utils.ValueIgnoreEmpty(d.Get("cluster_type")),
+		"region":    utils.ValueIgnoreEmpty(d.Get("cluster_region")),
+		"projectID": utils.ValueIgnoreEmpty(d.Get("cluster_project_id")),
+		"provider":  utils.ValueIgnoreEmpty(d.Get("service_provider")),
+		"country":   utils.ValueIgnoreEmpty(d.Get("country")),
+		"city":      utils.ValueIgnoreEmpty(d.Get("city")),
 	}
 
 	if v, ok := d.GetOk("fleet_id"); ok {
@@ -210,6 +216,7 @@ func buildCreateClusterSpecBodyParams(d *schema.ResourceData) map[string]interfa
 
 func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var mErr *multierror.Error
 
@@ -218,7 +225,7 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 		getClusterHttpUrl = "v1/clusters/{id}"
 		getClusterProduct = "ucs"
 	)
-	getClusterClient, err := cfg.NewServiceClient(getClusterProduct, "")
+	getClusterClient, err := cfg.NewServiceClient(getClusterProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}
@@ -266,11 +273,12 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 
 func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var (
 		updateClusterProduct = "ucs"
 	)
-	updateClusterClient, err := cfg.NewServiceClient(updateClusterProduct, "")
+	updateClusterClient, err := cfg.NewServiceClient(updateClusterProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}
@@ -364,21 +372,22 @@ func buildUpdateClusterBodyParams(d *schema.ResourceData) map[string]interface{}
 
 func buildUpdateClusterSpecBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"country": utils.ValueIngoreEmpty(d.Get("country")),
-		"city":    utils.ValueIngoreEmpty(d.Get("city")),
+		"country": utils.ValueIgnoreEmpty(d.Get("country")),
+		"city":    utils.ValueIgnoreEmpty(d.Get("city")),
 	}
 	return bodyParams
 }
 
 func resourceClusterDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// deleteCluster: Delete an existing UCS Cluster
 	var (
 		deleteClusterHttpUrl = "v1/clusters/{id}"
 		deleteClusterProduct = "ucs"
 	)
-	deleteClusterClient, err := cfg.NewServiceClient(deleteClusterProduct, "")
+	deleteClusterClient, err := cfg.NewServiceClient(deleteClusterProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}

@@ -13,10 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
-	"github.com/chnsz/golangsdk/openstack/eps/v1/enterpriseprojects"
 	"github.com/chnsz/golangsdk/openstack/obs"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
@@ -25,6 +23,42 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API OBS PUT ?acl
+// @API OBS DELETE ?lifecycle
+// @API OBS PUT ?lifecycle
+// @API OBS GET ?lifecycle
+// @API OBS PUT ?website
+// @API OBS DELETE ?website
+// @API OBS GET ?website
+// @API OBS PUT ?customdomain
+// @API OBS DELETE ?customdomain
+// @API OBS GET ?customdomain
+// @API OBS DELETE /
+// @API OBS PUT /
+// @API OBS HEAD /
+// @API OBS GET /
+// @API OBS PUT ?versioning
+// @API OBS GET ?versioning
+// @API OBS PUT ?quota
+// @API OBS GET ?quota
+// @API OBS POST ?delete
+// @API OBS PUT ?tagging
+// @API OBS GET ?tagging
+// @API OBS GET ?storageinfo
+// @API OBS PUT ?storageClass
+// @API OBS GET ?storageClass
+// @API OBS PUT ?encryption
+// @API OBS DELETE ?encryption
+// @API OBS GET ?encryption
+// @API OBS PUT ?policy
+// @API OBS DELETE ?policy
+// @API OBS GET ?policy
+// @API OBS PUT ?logging
+// @API OBS GET ?logging
+// @API OBS DELETE ?cors
+// @API OBS PUT ?cors
+// @API OBS GET ?cors
+// @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/resources-migrate
 func ResourceObsBucket() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceObsBucketCreate,
@@ -88,15 +122,20 @@ func ResourceObsBucket() *schema.Resource {
 							Optional: true,
 							Default:  "logs/",
 						},
+						"agency": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+							Description: "schema: Required",
+						},
 					},
 				},
 			},
 
 			"quota": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Default:      0,
-				ValidateFunc: validation.IntAtLeast(0),
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
 			},
 
 			"storage_info": {
@@ -162,6 +201,18 @@ func ResourceObsBucket() *schema.Resource {
 							},
 						},
 						"noncurrent_version_expiration": {
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"days": {
+										Type:     schema.TypeInt,
+										Required: true,
+									},
+								},
+							},
+						},
+						"abort_incomplete_multipart_upload": {
 							Type:     schema.TypeSet,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -295,6 +346,11 @@ func ResourceObsBucket() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
+			"sse_algorithm": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
 			"kms_key_id": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -410,14 +466,14 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		}
 	}
 
-	if d.HasChanges("encryption", "kms_key_id", "kms_key_project_id") {
+	if d.HasChanges("encryption", "sse_algorithm", "kms_key_id", "kms_key_project_id") {
 		if err := resourceObsBucketEncryptionUpdate(conf, obsClientWithSignature, d); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if d.HasChange("logging") {
-		if err := resourceObsBucketLoggingUpdate(obsClient, d); err != nil {
+		if err := resourceObsBucketLoggingUpdate(obsClientWithSignature, d); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -447,7 +503,7 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	}
 
 	if d.HasChange("enterprise_project_id") && !d.IsNewResource() {
-		// API Limitations: still requires `project_id` field when migrating the EPS of OBS bucket
+		// the API Limitations: still requires `project_id` field when migrating the EPS of OBS bucket
 		if err := resourceObsBucketEnterpriseProjectIdUpdate(ctx, d, conf, obsClient, region); err != nil {
 			return diag.FromErr(err)
 		}
@@ -469,6 +525,11 @@ func resourceObsBucketRead(_ context.Context, d *schema.ResourceData, meta inter
 	obsClient, err := conf.ObjectStorageClient(region)
 	if err != nil {
 		return diag.Errorf("Error creating OBS client: %s", err)
+	}
+
+	obsClientWithSignature, err := conf.ObjectStorageClientWithSignature(region)
+	if err != nil {
+		return diag.Errorf("Error creating OBS client with signature: %s", err)
 	}
 
 	bucket := d.Id()
@@ -523,7 +584,7 @@ func resourceObsBucketRead(_ context.Context, d *schema.ResourceData, meta inter
 	}
 
 	// Read the logging configuration
-	if err := setObsBucketLogging(obsClient, d); err != nil {
+	if err := setObsBucketLogging(obsClientWithSignature, d); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -551,10 +612,7 @@ func resourceObsBucketRead(_ context.Context, d *schema.ResourceData, meta inter
 	policyClient := obsClient
 	format := d.Get("policy_format").(string)
 	if format == "obs" {
-		policyClient, err = conf.ObjectStorageClientWithSignature(region)
-		if err != nil {
-			return diag.Errorf("Error creating OBS policy client: %s", err)
-		}
+		policyClient = obsClientWithSignature
 	}
 	if err := setObsBucketPolicy(policyClient, d); err != nil {
 		return diag.FromErr(err)
@@ -725,13 +783,18 @@ func resourceObsBucketEncryptionUpdate(config *config.Config, obsClient *obs.Obs
 	if d.Get("encryption").(bool) {
 		input := &obs.SetBucketEncryptionInput{}
 		input.Bucket = bucket
-		input.SSEAlgorithm = obs.DEFAULT_SSE_KMS_ENCRYPTION_OBS
-		input.KMSMasterKeyID = d.Get("kms_key_id").(string)
 
-		if v, ok := d.GetOk("kms_key_project_id"); ok {
-			input.ProjectID = v.(string)
+		if v, ok := d.GetOk("sse_algorithm"); ok {
+			input.SSEAlgorithm = v.(string)
 		} else {
-			input.ProjectID = config.GetProjectID(config.GetRegion(d))
+			input.SSEAlgorithm = obs.DEFAULT_SSE_KMS_ENCRYPTION_OBS
+		}
+
+		if input.SSEAlgorithm == obs.DEFAULT_SSE_KMS_ENCRYPTION_OBS {
+			if raw, ok := d.GetOk("kms_key_id"); ok {
+				input.KMSMasterKeyID = raw.(string)
+				input.ProjectID = d.Get("kms_key_project_id").(string)
+			}
 		}
 
 		log.Printf("[DEBUG] enable default encryption of OBS bucket %s: %#v", bucket, input)
@@ -763,6 +826,10 @@ func resourceObsBucketLoggingUpdate(obsClient *obs.ObsClient, d *schema.Resource
 
 		if val := c["target_prefix"].(string); val != "" {
 			loggingStatus.TargetPrefix = val
+		}
+
+		if val := c["agency"].(string); val != "" {
+			loggingStatus.Agency = val
 		}
 	}
 	log.Printf("[DEBUG] set logging of OBS bucket %s: %#v", bucket, loggingStatus)
@@ -855,6 +922,18 @@ func resourceObsBucketLifecycleUpdate(obsClient *obs.ObsClient, d *schema.Resour
 
 			if val, ok := raw["days"].(int); ok && val > 0 {
 				ncExp.NoncurrentDays = val
+			}
+		}
+
+		// AbortIncompleteMultipartUpload
+		abortIncompleteMultipartUpload := d.Get(fmt.Sprintf("lifecycle_rule.%d.abort_incomplete_multipart_upload",
+			i)).(*schema.Set).List()
+		if len(abortIncompleteMultipartUpload) > 0 {
+			raw := abortIncompleteMultipartUpload[0].(map[string]interface{})
+			abincomMultipartUpload := &rules[i].AbortIncompleteMultipartUpload
+
+			if val, ok := raw["days"].(int); ok && val > 0 {
+				abincomMultipartUpload.DaysAfterInitiation = val
 			}
 		}
 
@@ -1000,19 +1079,19 @@ func deleteObsBucketUserDomainNames(obsClient *obs.ObsClient, bucket string, dom
 	return nil
 }
 
-func resourceObsBucketEnterpriseProjectIdUpdate(ctx context.Context, d *schema.ResourceData, conf *config.Config,
+func resourceObsBucketEnterpriseProjectIdUpdate(ctx context.Context, d *schema.ResourceData, cfg *config.Config,
 	obsClient *obs.ObsClient, region string) error {
 	var (
-		projectId   = conf.GetProjectID(region)
+		projectId   = cfg.GetProjectID(region)
 		bucket      = d.Get("bucket").(string)
-		migrateOpts = enterpriseprojects.MigrateResourceOpts{
+		migrateOpts = config.MigrateResourceOpts{
 			ResourceId:   bucket,
 			ResourceType: "bucket",
 			RegionId:     region,
 			ProjectId:    projectId,
 		}
 	)
-	err := common.MigrateEnterpriseProjectWithoutWait(conf, d, migrateOpts)
+	err := cfg.MigrateEnterpriseProjectWithoutWait(d, migrateOpts)
 	if err != nil {
 		return err
 	}
@@ -1244,6 +1323,7 @@ func setObsBucketEncryption(obsClient *obs.ObsClient, d *schema.ResourceData) er
 					d.Set("encryption", false),
 					d.Set("kms_key_id", nil),
 					d.Set("kms_key_project_id", nil),
+					d.Set("sse_algorithm", nil),
 				)
 				if mErr.ErrorOrNil() != nil {
 					return fmt.Errorf("error saving encryption of OBS bucket %s: %s", bucket, mErr)
@@ -1257,17 +1337,19 @@ func setObsBucketEncryption(obsClient *obs.ObsClient, d *schema.ResourceData) er
 
 	log.Printf("[DEBUG] getting encryption configuration of OBS bucket %s: %+v", bucket, output.BucketEncryptionConfiguration)
 	mErr := &multierror.Error{}
-	if output.SSEAlgorithm != "" {
+	if sseAlgorithm := output.SSEAlgorithm; sseAlgorithm != "" {
 		mErr = multierror.Append(mErr,
 			d.Set("encryption", true),
 			d.Set("kms_key_id", output.KMSMasterKeyID),
 			d.Set("kms_key_project_id", output.ProjectID),
+			d.Set("sse_algorithm", sseAlgorithm),
 		)
 	} else {
 		mErr = multierror.Append(mErr,
 			d.Set("encryption", false),
 			d.Set("kms_key_id", nil),
 			d.Set("kms_key_project_id", nil),
+			d.Set("sse_algorithm", nil),
 		)
 	}
 	if mErr.ErrorOrNil() != nil {
@@ -1291,6 +1373,9 @@ func setObsBucketLogging(obsClient *obs.ObsClient, d *schema.ResourceData) error
 		logging["target_bucket"] = output.TargetBucket
 		if output.TargetPrefix != "" {
 			logging["target_prefix"] = output.TargetPrefix
+		}
+		if output.Agency != "" {
+			logging["agency"] = output.Agency
 		}
 		lcList = append(lcList, logging)
 	}
@@ -1377,6 +1462,13 @@ func setObsBucketLifecycleConfiguration(obsClient *obs.ObsClient, d *schema.Reso
 			e := make(map[string]interface{})
 			e["days"] = days
 			rule["noncurrent_version_expiration"] = schema.NewSet(expirationHash, []interface{}{e})
+		}
+
+		// abort_incomplete_multipart_upload
+		if days := lifecycleRule.AbortIncompleteMultipartUpload.DaysAfterInitiation; days > 0 {
+			a := make(map[string]interface{})
+			a["days"] = days
+			rule["abort_incomplete_multipart_upload"] = schema.NewSet(expirationHash, []interface{}{a})
 		}
 
 		// noncurrent_version_transition
@@ -1599,7 +1691,7 @@ func deleteAllBucketObjects(obsClient *obs.ObsClient, bucket string) error {
 		return getObsError("Error deleting all objects of OBS bucket", bucket, err)
 	}
 	if len(output.Errors) > 0 {
-		return fmt.Errorf("error some objects are still exist in %s: %#v", bucket, output.Errors)
+		return fmt.Errorf("error some objects are still exist in %s: %v", bucket, output.Errors)
 	}
 	return nil
 }

@@ -2,6 +2,8 @@ package css
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -12,10 +14,13 @@ import (
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/css/v1/thesaurus"
 
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
+// @API CSS DELETE /v1.0/{project_id}/clusters/{clusterId}/thesaurus
+// @API CSS GET /v1.0/{project_id}/clusters/{clusterId}/thesaurus
+// @API CSS POST /v1.0/{project_id}/clusters/{clusterId}/thesaurus
 func ResourceCssthesaurus() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: ResourceCssthesaurusCreate,
@@ -52,15 +57,18 @@ func ResourceCssthesaurus() *schema.Resource {
 			"main_object": {
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				AtLeastOneOf: []string{"main_object", "stop_object", "synonym_object"},
 			},
 			"stop_object": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"synonym_object": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"status": {
 				Type:     schema.TypeString,
@@ -75,23 +83,32 @@ func ResourceCssthesaurus() *schema.Resource {
 }
 
 func ResourceCssthesaurusCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	cssV1Client, err := config.CssV1Client(region)
+	conf := meta.(*config.Config)
+	region := conf.GetRegion(d)
+	clusterID := d.Get("cluster_id").(string)
+	cssV1Client, err := conf.CssV1Client(region)
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating CSS V1 client: %s", err)
-	}
-	opts := buildThesaurusCreateParameters(d)
-	clusterId := d.Get("cluster_id").(string)
-
-	loadErr := thesaurus.Load(cssV1Client, clusterId, *opts)
-	if loadErr.Err != nil {
-		return fmtp.DiagErrorf("load thesaurus to css cluster failed. cluster_id=%s,error=%s", clusterId, loadErr.Err)
+		return diag.Errorf("error creating CSS V1 client: %s", err)
 	}
 
-	d.SetId(clusterId)
+	addCustomThesaurusHttpUrl := "v1.0/{project_id}/clusters/{cluster_id}/thesaurus"
+	addCustomThesaurusPath := cssV1Client.Endpoint + addCustomThesaurusHttpUrl
+	addCustomThesaurusPath = strings.ReplaceAll(addCustomThesaurusPath, "{project_id}", cssV1Client.ProjectID)
+	addCustomThesaurusPath = strings.ReplaceAll(addCustomThesaurusPath, "{cluster_id}", clusterID)
 
-	createResultErr := checkThesaurusLoadResult(ctx, cssV1Client, clusterId, d.Timeout(schema.TimeoutCreate))
+	addCustomThesaurusOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+	addCustomThesaurusOpt.JSONBody = buildThesaurusCreateParameters(d)
+	_, err = cssV1Client.Request("POST", addCustomThesaurusPath, &addCustomThesaurusOpt)
+	if err != nil {
+		return diag.Errorf("error adding CSS cluster custom thesaurus: %s", err)
+	}
+
+	d.SetId(clusterID)
+
+	createResultErr := checkThesaurusLoadResult(ctx, cssV1Client, clusterID, d.Timeout(schema.TimeoutCreate))
 	if createResultErr != nil {
 		return diag.FromErr(createResultErr)
 	}
@@ -103,35 +120,45 @@ func ResourceCssthesaurusUpdate(ctx context.Context, d *schema.ResourceData, met
 	return ResourceCssthesaurusCreate(ctx, d, meta)
 }
 
-func buildThesaurusCreateParameters(d *schema.ResourceData) *thesaurus.LoadThesaurusReq {
-	opts := thesaurus.LoadThesaurusReq{
-		BucketName: d.Get("bucket_name").(string),
+func buildThesaurusCreateParameters(d *schema.ResourceData) map[string]interface{} {
+	opts := map[string]interface{}{
+		"bucketName": d.Get("bucket_name").(string),
 	}
 
-	if obj, ok := d.GetOk("main_object"); ok {
-		opts.MainObject = obj.(string)
+	// nil or "Default" indicates no change, "" or "Unused" indicates that this value is cleared.
+	if obj, ok := d.GetOk("main_object"); ok && obj.(string) != "Default" {
+		opts["mainObject"] = convertUnusedToNullString(obj.(string))
 	}
-	if obj, ok := d.GetOk("stop_object"); ok {
-		opts.StopObject = obj.(string)
+	if obj, ok := d.GetOk("stop_object"); ok && obj.(string) != "Default" {
+		opts["stopObject"] = convertUnusedToNullString(obj.(string))
 	}
-	if obj, ok := d.GetOk("synonym_object"); ok {
-		opts.SynonymObject = obj.(string)
+	if obj, ok := d.GetOk("synonym_object"); ok && obj.(string) != "Default" {
+		opts["synonymObject"] = convertUnusedToNullString(obj.(string))
 	}
 
-	return &opts
+	return opts
 }
 
-func ResourceCssthesaurusRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	cssV1Client, err := config.CssV1Client(region)
+func convertUnusedToNullString(str string) string {
+	if str == "Unused" {
+		return ""
+	}
+	return str
+}
+
+func ResourceCssthesaurusRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	conf := meta.(*config.Config)
+	region := conf.GetRegion(d)
+	cssV1Client, err := conf.CssV1Client(region)
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating CSS V1 client: %s", err)
+		return diag.Errorf("error creating CSS V1 client: %s", err)
 	}
 
 	detail, err := thesaurus.Get(cssV1Client, d.Id())
 	if err != nil {
-		return fmtp.DiagErrorf("Query cluster thesaurus failed,cluster_id=%s,err=%s", d.Id(), err)
+		// "CSS.0015": The cluster does not exist. Status code is 403.
+		err = common.ConvertExpected403ErrInto404Err(err, "errCode", "CSS.0015")
+		return common.CheckDeletedDiag(d, err, "error querying CSS cluster thesaurus")
 	}
 
 	mErr := multierror.Append(
@@ -139,39 +166,35 @@ func ResourceCssthesaurusRead(ctx context.Context, d *schema.ResourceData, meta 
 		d.Set("bucket_name", detail.Bucket),
 		d.Set("main_object", detail.MainObj),
 		d.Set("stop_object", detail.StopObj),
-		d.Set("stop_object", detail.StopObj),
 		d.Set("synonym_object", detail.SynonymObj),
 		d.Set("status", detail.Status),
 		d.Set("update_time", time.Unix(int64(detail.UpdateTime/1000), 0).UTC().Format(time.RFC3339)),
 	)
 
-	if err := mErr.ErrorOrNil(); err != nil {
-		return fmtp.DiagErrorf("Error setting vault fields: %s", err)
-	}
-
-	return nil
+	return diag.FromErr(mErr.ErrorOrNil())
 }
 
 func ResourceCssthesaurusDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	cssV1Client, err := config.CssV1Client(region)
+	conf := meta.(*config.Config)
+	region := conf.GetRegion(d)
+	cssV1Client, err := conf.CssV1Client(region)
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating CSS V1 client: %s", err)
+		return diag.Errorf("error creating CSS V1 client: %s", err)
 	}
 
 	clusterId := d.Id()
 
 	errResult := thesaurus.Delete(cssV1Client, clusterId)
 	if errResult.Err != nil {
-		return fmtp.DiagErrorf("Delete CSS Cluster thesaurus failed. %s", errResult.Err)
+		// "CSS.0015": The cluster does not exist. Status code is 403.
+		err = common.ConvertExpected403ErrInto404Err(errResult.Err, "errCode", "CSS.0015")
+		return common.CheckDeletedDiag(d, err, "error deleting CSS cluster thesaurus")
 	}
 
 	errCheckRt := checkThesaurusDeleteResult(ctx, cssV1Client, clusterId, d.Timeout(schema.TimeoutDelete))
 	if errCheckRt != nil {
-		return fmtp.DiagErrorf("Failed to check the result of deletion %s", errCheckRt)
+		return diag.Errorf("failed to check the result of deletion %s", errCheckRt)
 	}
-	d.SetId("")
 	return nil
 }
 
@@ -186,7 +209,7 @@ func checkThesaurusLoadResult(ctx context.Context, client *golangsdk.ServiceClie
 				return nil, "failed", err
 			}
 			if resp.Status == "Failed" {
-				return nil, "failed", fmtp.Errorf("load thesaurus failed in cluster_id=%s", clusterId)
+				return nil, "failed", fmt.Errorf("load thesaurus failed in cluster_id: %s", clusterId)
 			}
 			return resp, resp.Status, err
 		},
@@ -197,7 +220,7 @@ func checkThesaurusLoadResult(ctx context.Context, client *golangsdk.ServiceClie
 	_, err := stateConf.WaitForStateContext(ctx)
 
 	if err != nil {
-		return fmtp.Errorf("error waiting for CSS (%s) to load thesaurus: %s", clusterId, err)
+		return fmt.Errorf("error waiting for CSS (%s) to load thesaurus: %s", clusterId, err)
 	}
 	return nil
 }
@@ -215,7 +238,7 @@ func checkThesaurusDeleteResult(ctx context.Context, client *golangsdk.ServiceCl
 				}
 				return nil, "failed", err
 			}
-			if resp != nil && resp.MainObj == "" && resp.StopObj == "" && resp.SynonymObj == "" {
+			if resp != nil && resp.MainObj == "Unused" && resp.StopObj == "Unused" && resp.SynonymObj == "Unused" {
 				return resp, "Done", nil
 			}
 			return resp, "Pending", nil
@@ -226,7 +249,7 @@ func checkThesaurusDeleteResult(ctx context.Context, client *golangsdk.ServiceCl
 	}
 	_, err := stateConf.WaitForStateContext(ctx)
 	if err != nil {
-		return fmtp.Errorf("error waiting for CSS thesaurus (%s) to be delete: %s", clusterId, err)
+		return fmt.Errorf("error waiting for CSS thesaurus (%s) to be delete: %s", clusterId, err)
 	}
 	return nil
 }

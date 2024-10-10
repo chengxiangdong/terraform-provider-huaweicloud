@@ -1,0 +1,19 @@
+info:
+    version: ""
+    title: resource_huaweicloud_dataarts_architecture_subject
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: DataArtsStudio
+paths:
+    /v3/{project_id}/design/subjects:
+        DELETE:
+            tag: DataArtsStudio
+        GET:
+            tag: DataArtsStudio
+        POST:
+            tag: DataArtsStudio
+        PUT:
+            tag: DataArtsStudio

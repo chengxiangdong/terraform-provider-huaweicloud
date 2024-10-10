@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Firewall (CFW)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cfw_black_white_list"
+description: ""
 ---
 
 # huaweicloud_cfw_black_white_list
@@ -41,12 +44,12 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `list_type` - (Required, Int, ForceNew) Specifies the list type.
-  The options are **4** (blacklist) and **5** (whitelist).
+  The options are `4` (blacklist) and `5` (whitelist).
 
   Changing this parameter will create a new resource.
 
 * `direction` - (Required, Int) Specifies the address direction.
-  The options are **0** (source address) and **1** (destination address).
+  The options are `0` (source address) and `1` (destination address).
 
 * `protocol` - (Required, Int) Specifies the protocol type. The value can be:
   + **6**: indicates TCP;
@@ -56,12 +59,14 @@ The following arguments are supported:
   + **-1**: indicates any protocol;
 
 * `address_type` - (Required, Int) Specifies the IP address type.
-  The options are **0** (ipv4), **1** (ipv6) and **2** (domain).
+  The options are `0` (ipv4), `1` (ipv6) and `2` (domain).
 
 * `address` - (Required, String) Specifies the address.
 
 * `port` - (Optional, String) Specifies the destination port.
   Required and only available if protocol is **TCP** or **UDP**.
+
+* `description` - (Optional, String) Specifies the description of the list.
 
 ## Attribute Reference
 
@@ -71,7 +76,7 @@ In addition to all arguments above, the following attributes are exported:
 
 ## Import
 
-The blackwhitelist can be imported using `object_id`, `list_type`, `address`, separated by slashes, e.g.
+The black whitelist can be imported using `object_id`, `list_type`, `address`, separated by slashes, e.g.
 
 ```bash
 $ terraform import huaweicloud_cfw_black_white_list.test <object_id>/<list_type>/<address>

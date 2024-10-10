@@ -58,6 +58,7 @@ func TestAccPrivateGateway_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "status", "ACTIVE"),
 					resource.TestCheckResourceAttr(rName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(rName, "tags.key", "value"),
+					resource.TestCheckResourceAttrSet(rName, "vpc_id"),
 				),
 			},
 			{
@@ -70,6 +71,7 @@ func TestAccPrivateGateway_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "status", "ACTIVE"),
 					resource.TestCheckResourceAttr(rName, "tags.foo", "baaar"),
 					resource.TestCheckResourceAttr(rName, "tags.newKey", "value"),
+					resource.TestCheckResourceAttrSet(rName, "vpc_id"),
 				),
 			},
 			{
@@ -106,6 +108,7 @@ func testAccPrivateGateway_basic_step_2(name, relatedConfig string) string {
 resource "huaweicloud_nat_private_gateway" "test" {
   subnet_id             = huaweicloud_vpc_subnet.test.id
   name                  = "%[2]s"
+  spec                  = "Medium"
   enterprise_project_id = "0"
 
   tags = {

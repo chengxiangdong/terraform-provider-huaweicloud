@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -213,6 +212,21 @@ func IsStrContainsSliceElement(str string, sl []string, ignoreCase, isExcat bool
 	return false
 }
 
+// IsSliceContainsAnyAnotherSliceElement is a method that used to determine whether a list contains any element of
+// another list (including its fragments belonging to the current string), returns true if it contains.
+// sl: The slice body used to determine the inclusion relationship.
+// another: The included slice object used to determine the inclusion relationship.
+// ignoreCase: Whether to ignore case.
+// isExcat: Whether the inclusion relationship of string objects applies exact matching rules.
+func IsSliceContainsAnyAnotherSliceElement(sl, another []string, ignoreCase, isExcat bool) bool {
+	for _, elem := range sl {
+		if IsStrContainsSliceElement(elem, another, ignoreCase, isExcat) {
+			return true
+		}
+	}
+	return false
+}
+
 func JsonMarshal(t interface{}) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	enc := json.NewEncoder(buffer)
@@ -273,43 +287,6 @@ func IsResourceNotFound(err error) bool {
 	}
 	_, ok := err.(golangsdk.ErrDefault404)
 	return ok
-}
-
-// GetTimezoneCode calculates the time zone code and returns a signed number.
-// For example, the time zone code for 'Asia/Shanghai' is 8, and the time zone code for 'America/Alaska' is -4.
-func GetTimezoneCode() int {
-	timeStr := strings.Split(time.Now().String(), " ")[2]
-	timezoneNum, _ := strconv.Atoi(timeStr)
-	return timezoneNum / 100
-}
-
-// FormatTimeStampRFC3339 is used to unify the time format to RFC-3339 and return a time string.
-// We can use "isUTC" parameter to reset the timezone. If omitted, the method will return local time.
-// Parameter "customFormat" allows you to use a custom RFC3339 format, such as: "2006-01-02T15:04:05.000Z", this
-// parameter can be omitted.
-func FormatTimeStampRFC3339(timestamp int64, isUTC bool, customFormat ...string) string {
-	createTime := time.Unix(timestamp, 0)
-	if isUTC {
-		createTime = createTime.UTC()
-	}
-	if len(customFormat) > 0 {
-		return createTime.Format(customFormat[0])
-	}
-	return createTime.Format(time.RFC3339)
-}
-
-// FormatTimeStampUTC is used to unify the unix second time to UTC time string, format: YYYY-MM-DD HH:MM:SS.
-func FormatTimeStampUTC(timestamp int64) string {
-	return time.Unix(timestamp, 0).UTC().Format("2006-01-02 15:04:05")
-}
-
-// FormatTimeStampUTC is used to unify the unix second time to UTC time string, format: YYYY-MM-DD HH:MM:SS.
-func FormatUTCTimeStamp(utcTime string) (int64, error) {
-	timestamp, err := time.Parse("2006-01-02 15:04:05", utcTime)
-	if err != nil {
-		return 0, fmt.Errorf("unable to prase the time: %s", utcTime)
-	}
-	return timestamp.Unix(), nil
 }
 
 // IsIPv4Address is used to check whether the addr string is IPv4 format
@@ -541,4 +518,41 @@ func SchemaDesc(description string, schemaDescInput SchemaDescInput) string {
 	}
 
 	return description
+}
+
+// ConvertMemoryUnit is a method that used to convert the memory unit.
+// Parameters:
+// + memory: The memory size of the current unit, only supports int value or string corresponding to int value.
+// + diffLevel: Difference level between units before and after conversion.
+// diffLevel greater than 0 means that the unit is converted to a higher level, and vice versa to a lower level, e.g.
+// the unit of memory input is MB, -2 means it is converted from MB to B, and 2 means it is converted from MB to TB.
+func ConvertMemoryUnit(memory interface{}, diffLevel int) int {
+	var memoryInt int
+	switch memory := memory.(type) {
+	case int:
+		memoryInt = memory
+	case string:
+		var err error
+		memoryInt, err = strconv.Atoi(memory)
+		if err != nil {
+			log.Printf("convert string value (%v) to int fail: %s", memory, err)
+			return -1
+		}
+	default:
+		log.Printf("unsupported memory unit type, want 'int' or 'string', but got '%T'", memory)
+		return -1
+	}
+
+	if diffLevel >= 0 {
+		return memoryInt / Power(1024, diffLevel)
+	}
+	return memoryInt * Power(1024, -diffLevel)
+}
+
+// IsUUID is a method used to determine whether a string is in UUID format.
+func IsUUID(uuid string) bool {
+	// Using regular expressions to match UUID formats, with or without underscores.
+	pattern := "[0-9a-fA-F]{8}(-?[0-9a-fA-F]{4}){3}-?[0-9a-fA-F]{12}"
+	match, _ := regexp.MatchString(pattern, uuid)
+	return match
 }

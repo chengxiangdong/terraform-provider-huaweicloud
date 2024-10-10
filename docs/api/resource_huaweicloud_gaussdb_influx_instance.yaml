@@ -1,77 +1,71 @@
 info:
-  version: 
-  title: resource_huaweicloud_gaussdb_influx_instance
-  description: 
+    version: ""
+    title: resource_huaweicloud_gaussdb_influx_instance
+    description: ""
 schemes:
-  - https
+    - https
 host: huaweicloud.com
 tags:
-  - name: GaussDBforNoSQL
+    - name: GaussDBforNoSQL
 paths:
-  /v3/{project_id}/configurations/{configId}/apply:
-    put:
-      tag: GaussDBforNoSQL
-      operationId: Apply
-  /v3/{project_id}/configurations/{configId}:
-    get:
-      tag: GaussDBforNoSQL
-      operationId: Get
-  /v3/{project_id}/dedicated-resources:
-    get:
-      tag: GaussDBforNoSQL
-      operationId: ListDeh
-  /v3/{project_id}/instances/{id}/backups/policy:
-    put:
-      tag: GaussDBforNoSQL
-      operationId: Update
-  /v3/{project_id}/instances/{id}/tags/action:
-    post:
-      tag: GaussDBforNoSQL
-      operationId: Create
-  /v3/{project_id}/instances/{id}/tags:
-    get:
-      tag: GaussDBforNoSQL
-      operationId: Get
-  /v3/{project_id}/instances/{instanceId}/configurations:
-    get:
-      tag: GaussDBforNoSQL
-      operationId: GetInstanceConfig
-  /v3/{project_id}/instances/{instanceID}/enlarge-node:
-    post:
-      tag: GaussDBforNoSQL
-      operationId: EnlargeNode
-  /v3/{project_id}/instances/{instanceID}/extend-volume:
-    post:
-      tag: GaussDBforNoSQL
-      operationId: ExtendVolume
-  /v3/{project_id}/instances/{instanceID}/name:
-    put:
-      tag: GaussDBforNoSQL
-      operationId: UpdateName
-  /v3/{project_id}/instances/{instanceID}/password:
-    put:
-      tag: GaussDBforNoSQL
-      operationId: UpdatePass
-  /v3/{project_id}/instances/{instanceID}/reduce-node:
-    post:
-      tag: GaussDBforNoSQL
-      operationId: ReduceNode
-  /v3/{project_id}/instances/{instanceID}/resize:
-    put:
-      tag: GaussDBforNoSQL
-      operationId: Resize
-  /v3/{project_id}/instances/{instanceID}/security-group:
-    put:
-      tag: GaussDBforNoSQL
-      operationId: UpdateSg
-  /v3/{project_id}/instances/{instanceID}:
-    delete:
-      tag: GaussDBforNoSQL
-      operationId: Delete
-  /v3/{project_id}/instances:
-    get:
-      tag: GaussDBforNoSQL
-      operationId: GetInstanceByID
-    post:
-      tag: GaussDBforNoSQL
-      operationId: Create
+    /v2/orders/customer-orders/details/{order_id}:
+        GET:
+            tag: BSS
+    /v2/orders/subscriptions/resources/autorenew/{instance_id}:
+        DELETE:
+            tag: BSS
+        POST:
+            tag: BSS
+    /v2/orders/subscriptions/resources/unsubscribe:
+        POST:
+            tag: BSS
+    /v3/{project_id}/configurations/{config_id}:
+        GET:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/configurations/{config_id}/apply:
+        PUT:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/dedicated-resources:
+        GET:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances:
+        GET:
+            tag: GaussDBforNoSQL
+        POST:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}:
+        DELETE:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/backups/policy:
+        PUT:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/configurations:
+        GET:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/enlarge-node:
+        POST:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/extend-volume:
+        POST:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/name:
+        PUT:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/password:
+        PUT:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/reduce-node:
+        POST:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/resize:
+        PUT:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/security-group:
+        PUT:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/tags:
+        GET:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/tags/action:
+        POST:
+            tag: GaussDBforNoSQL

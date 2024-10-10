@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Volume Service (EVS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_evs_volumes"
+description: ""
 ---
 
 # huaweicloud_evs_volumes
@@ -22,6 +25,13 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region in which to query the disk list.
   If omitted, the provider-level region will be used.
+
+* `volume_id` - (Optional, String) Specifies the ID for the disk.
+
+* `name` - (Optional, String) Specifies the name for the disks. This field will undergo a fuzzy matching query, the
+  query result is for all disks whose names contain this value.
+
+* `volume_type_id` - (Optional, String) Specifies the type ID for the disks.
 
 * `availability_zone` - (Optional, String) Specifies the availability zone for the disks.
 
@@ -58,7 +68,7 @@ In addition to all arguments above, the following attributes are exported:
 
 The `volumes` block supports:
 
-* `id` - The resource ID of EVS disk, in UUID format.
+* `id` - The data source ID of EVS disk, in UUID format.
 
 * `attachments` - The disk attachment information. Structure is documented below.
 

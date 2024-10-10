@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/cci/v1/networks"
@@ -22,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/vpc"
 )
 
+// @API CCI DELETE /apis/networking.cci.io/v1beta1/namespaces/{ns}/networks/{name}
+// @API CCI GET /apis/networking.cci.io/v1beta1/namespaces/{ns}/networks/{name}
+// @API CCI POST /apis/networking.cci.io/v1beta1/namespaces/{ns}/networks
+// @API VPC GET /v1/{project_id}/subnets/{subnet_id}
 func ResourceCciNetworkV1() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCciNetworkCreate,
@@ -46,7 +48,7 @@ func ResourceCciNetworkV1() *schema.Resource {
 			},
 			"availability_zone": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 			},
 			"namespace": {
@@ -58,12 +60,6 @@ func ResourceCciNetworkV1() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$`),
-						"The name can only contains lowercase characters, hyphens (-) and dots (.), and must start "+
-							"and end with a character or digit."),
-					validation.StringLenBetween(1, 200),
-				),
 			},
 			"security_group_id": {
 				Type:     schema.TypeString,
@@ -128,11 +124,14 @@ func resourceCciNetworkCreate(ctx context.Context, d *schema.ResourceData, meta 
 			Annotations: resourceNetworkAnnotations(d, conf),
 		},
 		Spec: networks.Spec{
-			AvailableZone: d.Get("availability_zone").(string),
-			NetworkType:   "underlay_neutron",
-			AttachedVPC:   subnet.VPC_ID,
-			NetworkID:     networkId,
+			NetworkType: "underlay_neutron",
+			AttachedVPC: subnet.VPC_ID,
+			NetworkID:   networkId,
 		},
+	}
+
+	if az, ok := d.GetOk("availability_zone"); ok {
+		opt.Spec.AvailableZone = az.(string)
 	}
 
 	ns := d.Get("namespace").(string)

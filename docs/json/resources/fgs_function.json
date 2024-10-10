@@ -25,16 +25,21 @@
               },
               "code_type": {
                 "type": "string",
-                "optional": true,
-                "computed": true
+                "description": "The code type of the function.",
+                "required": true
               },
               "code_url": {
                 "type": "string",
                 "optional": true
               },
+              "concurrency_num": {
+                "type": "number",
+                "optional": true,
+                "computed": true
+              },
               "depend_list": {
                 "type": [
-                  "list",
+                  "set",
                   "string"
                 ],
                 "optional": true,
@@ -69,6 +74,14 @@
                 "optional": true,
                 "computed": true,
                 "forcenew": true
+              },
+              "gpu_memory": {
+                "type": "number",
+                "optional": true
+              },
+              "gpu_type": {
+                "type": "string",
+                "optional": true
               },
               "handler": {
                 "type": "string",
@@ -178,9 +191,26 @@
               "custom_image": {
                 "block": {
                   "attributes": {
+                    "args": {
+                      "type": "string",
+                      "description": "Specifies the command line arguments used to start the SWR image.",
+                      "optional": true
+                    },
+                    "command": {
+                      "type": "string",
+                      "description": "Specifies the startup commands of the SWR image.",
+                      "optional": true
+                    },
                     "url": {
                       "type": "string",
+                      "description": "Specifies the URL of SWR image.",
                       "required": true
+                    },
+                    "working_dir": {
+                      "type": "string",
+                      "description": "Specifies the working directory of the SWR image.",
+                      "optional": true,
+                      "computed": true
                     }
                   }
                 },
@@ -213,6 +243,89 @@
                   }
                 },
                 "nesting_mode": "list"
+              },
+              "reserved_instances": {
+                "block": {
+                  "attributes": {
+                    "count": {
+                      "type": "number",
+                      "required": true
+                    },
+                    "idle_mode": {
+                      "type": "bool",
+                      "optional": true
+                    },
+                    "qualifier_name": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "qualifier_type": {
+                      "type": "string",
+                      "required": true
+                    }
+                  },
+                  "block_types": {
+                    "tactics_config": {
+                      "block": {
+                        "block_types": {
+                          "cron_configs": {
+                            "block": {
+                              "attributes": {
+                                "count": {
+                                  "type": "number",
+                                  "required": true
+                                },
+                                "cron": {
+                                  "type": "string",
+                                  "required": true
+                                },
+                                "expired_time": {
+                                  "type": "number",
+                                  "required": true
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "required": true
+                                },
+                                "start_time": {
+                                  "type": "number",
+                                  "required": true
+                                }
+                              }
+                            },
+                            "nesting_mode": "list"
+                          },
+                          "metric_configs": {
+                            "block": {
+                              "attributes": {
+                                "min": {
+                                  "type": "number",
+                                  "required": true
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "required": true
+                                },
+                                "threshold": {
+                                  "type": "number",
+                                  "required": true
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            },
+                            "nesting_mode": "list"
+                          }
+                        }
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    }
+                  }
+                },
+                "nesting_mode": "set"
               },
               "versions": {
                 "block": {

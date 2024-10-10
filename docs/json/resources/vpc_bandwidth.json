@@ -11,19 +11,23 @@
               },
               "bandwidth_type": {
                 "type": "string",
-                "computed": true
+                "optional": true,
+                "computed": true,
+                "forcenew": true
               },
               "charge_mode": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "charging_mode": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
+              },
+              "created_at": {
+                "type": "string",
+                "computed": true
               },
               "enterprise_project_id": {
                 "type": "string",
@@ -41,12 +45,16 @@
               },
               "period": {
                 "type": "number",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "period_unit": {
                 "type": "string",
+                "optional": true
+              },
+              "public_border_group": {
+                "type": "string",
                 "optional": true,
+                "computed": true,
                 "forcenew": true
               },
               "publicips": {
@@ -77,6 +85,10 @@
                 "required": true
               },
               "status": {
+                "type": "string",
+                "computed": true
+              },
+              "updated_at": {
                 "type": "string",
                 "computed": true
               }

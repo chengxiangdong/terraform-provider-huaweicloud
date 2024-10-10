@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Database Middleware (DDM)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_ddm_accounts"
+description: ""
 ---
 
 # huaweicloud_ddm_accounts
@@ -35,7 +38,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `accounts` - Indicates the list of DDM account.
   The [Account](#DdmAccounts_Account) structure is documented below.

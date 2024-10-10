@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Cloud (VPC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_networking_vip"
+description: ""
 ---
 
 # huaweicloud_networking_vip
@@ -59,6 +62,6 @@ This resource provides the following timeouts configuration options:
 
 Network VIPs can be imported using their `id`, e.g.:
 
-```
+```bash
 $ terraform import huaweicloud_networking_vip.test ce595799-da26-4015-8db5-7733c6db292e
 ```

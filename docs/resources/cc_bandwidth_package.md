@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Connect (CC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cc_bandwidth_package"
+description: ""
 ---
 
 # huaweicloud_cc_bandwidth_package
@@ -33,7 +36,7 @@ The following arguments are supported:
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
 * `name` - (Required, String) The bandwidth package name.  
-  The name can contain a maximum of 64 characters.
+  The name can contain a maximum of `64` characters.
 
 * `local_area_id` - (Required, String, ForceNew) The local area ID.  
   Valid values are **Chinese-Mainland**, **Asia-Pacific**, **Africa**, **Western-Latin-America**,
@@ -67,14 +70,46 @@ The following arguments are supported:
   If omitted, the provider-level project ID will be used.
   Changing this parameter will create a new resource.
 
+* `interflow_mode` - (Optional, String, ForceNew) Interflow mode of the bandwidth package.
+  Valid values are **Area** and **Region**, defaults to **Area**. Changing this parameter will create a new resource.
+
+* `spec_code` - (Optional, String, ForceNew) Specification code of the bandwidth package.
+  Changing this parameter will create a new resource.
+  If the value of `interflow_mode` is **Area**, the values are as follows:
+  + **bandwidth.aftoela**: Southern Africa-Eastern Latin America on both the Chinese Mainland website and International website.
+  + **bandwidth.aftonla**: Southern Africa-Northern Latin America on both the Chinese Mainland website and International
+    website.
+  + **bandwidth.aftowla**: Southern Africa-Western Latin America on both the Chinese Mainland website and International website.
+  + **bandwidth.aptoaf**: Asia Pacific-Southern Africa on the International website.
+  + **bandwidth.aptoap**: Asia Pacific on the International website.
+  + **bandwidth.aptoela**: Asia Pacific-Eastern Latin America on both the Chinese Mainland website and International website.
+  + **bandwidth.aptonla**: Asia Pacific-Northern Latin America on both the Chinese Mainland website and International website.
+  + **bandwidth.aptowla**: Asia Pacific-Western Latin America on both the Chinese Mainland website and International website.
+  + **bandwidth.cmtoaf**: Chinese mainland-Southern Africa on the International website.
+  + **bandwidth.cmtoap**: Chinese mainland-Asia Pacific on the International website.
+  + **bandwidth.cmtocm**: Chinese mainland on the International website.
+  + **bandwidth.cmtoela**: Chinese mainland-Eastern Latin America on both the Chinese Mainland website and International
+    website.
+  + **bandwidth.cmtonla**: Chinese mainland-Northern Latin America on both the Chinese Mainland website and International
+    website.
+  + **bandwidth.cmtowla**: Chinese mainland-Western Latin America on both the Chinese Mainland website and International
+    website.
+  + **bandwidth.elatoela**: Eastern Latin America on both the Chinese Mainland website and International website.
+  + **bandwidth.elatonla**: Eastern Latin America–Northern Latin America on both the Chinese Mainland website and
+    International website.
+  + **bandwidth.wlatoela**: Western Latin America-Eastern Latin America on both the Chinese Mainland website and
+    International website.
+  + **bandwidth.wlatonla**: Western Latin America–Northern Latin America on both the Chinese Mainland website and
+    International website.
+  + **bandwidth.wlatowla**: Western Latin America on both the Chinese Mainland website and International website.
+
+  If the value of `interflow_mode` is **Region**, the value depends on the specified interflow regions, e.g. **Beijing4toGuangzhou**.
+
 * `description` - (Optional, String) The description about the bandwidth package.  
   The description can contain a maximum of 85 characters.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) ID of the enterprise project that the bandwidth package
-  belongs to.
-  Value 0 indicates the default enterprise project.
-
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) ID of the enterprise project that the bandwidth package
+  belongs to. Value 0 indicates the default enterprise project.
 
 * `resource_id` - (Optional, String) ID of the resource that the bandwidth package is bound to.  
 

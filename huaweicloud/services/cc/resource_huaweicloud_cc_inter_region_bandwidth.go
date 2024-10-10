@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -21,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CC POST /v3/{domain_id}/ccaas/inter-region-bandwidths
+// @API CC DELETE /v3/{domain_id}/ccaas/inter-region-bandwidths/{id}
+// @API CC GET /v3/{domain_id}/ccaas/inter-region-bandwidths/{id}
+// @API CC PUT /v3/{domain_id}/ccaas/inter-region-bandwidths/{id}
 func ResourceInterRegionBandwidth() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceInterRegionBandwidthCreate,
@@ -134,11 +137,11 @@ func resourceInterRegionBandwidthCreate(ctx context.Context, d *schema.ResourceD
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("inter_region_bandwidth.id", createInterRegionBandwidthRespBody)
-	if err != nil {
+	id := utils.PathSearch("inter_region_bandwidth.id", createInterRegionBandwidthRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating inter-region bandwidth: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceInterRegionBandwidthRead(ctx, d, meta)
 }
@@ -146,10 +149,10 @@ func resourceInterRegionBandwidthCreate(ctx context.Context, d *schema.ResourceD
 func buildCreateInterRegionBandwidthBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"inter_region_bandwidth": map[string]interface{}{
-			"cloud_connection_id":  utils.ValueIngoreEmpty(d.Get("cloud_connection_id")),
-			"bandwidth_package_id": utils.ValueIngoreEmpty(d.Get("bandwidth_package_id")),
-			"bandwidth":            utils.ValueIngoreEmpty(d.Get("bandwidth")),
-			"inter_region_ids":     utils.ValueIngoreEmpty(d.Get("inter_region_ids")),
+			"cloud_connection_id":  utils.ValueIgnoreEmpty(d.Get("cloud_connection_id")),
+			"bandwidth_package_id": utils.ValueIgnoreEmpty(d.Get("bandwidth_package_id")),
+			"bandwidth":            utils.ValueIgnoreEmpty(d.Get("bandwidth")),
+			"inter_region_ids":     utils.ValueIgnoreEmpty(d.Get("inter_region_ids")),
 		},
 	}
 	return bodyParams
@@ -264,7 +267,7 @@ func resourceInterRegionBandwidthUpdate(ctx context.Context, d *schema.ResourceD
 func buildUpdateInterRegionBandwidthBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"inter_region_bandwidth": map[string]interface{}{
-			"bandwidth": utils.ValueIngoreEmpty(d.Get("bandwidth")),
+			"bandwidth": utils.ValueIgnoreEmpty(d.Get("bandwidth")),
 		},
 	}
 	return bodyParams
@@ -296,7 +299,7 @@ func resourceInterRegionBandwidthDelete(_ context.Context, d *schema.ResourceDat
 
 	_, err = deleteInterRegionBandwidthClient.Request("DELETE", deleteInterRegionBandwidthPath, &deleteInterRegionBandwidthOpt)
 	if err != nil {
-		return diag.Errorf("error deleting inter-region bandwidth: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting inter-region bandwidth")
 	}
 
 	return nil

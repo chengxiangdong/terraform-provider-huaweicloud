@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_addon_template"
+description: ""
 ---
 
 # huaweicloud_cce_addon_template
@@ -39,7 +42,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID of the add-on template.
+* `id` - The data source ID of the add-on template.
 
 * `description` - The description of the add-on.
 

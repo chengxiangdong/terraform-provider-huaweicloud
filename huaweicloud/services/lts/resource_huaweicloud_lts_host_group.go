@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product LTS
-// ---------------------------------------------------------------
-
 package lts
 
 import (
@@ -22,6 +17,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API LTS POST /v3/{project_id}/lts/host-group-list
+// @API LTS DELETE /v3/{project_id}/lts/host-group
+// @API LTS POST /v3/{project_id}/lts/host-group
+// @API LTS PUT /v3/{project_id}/lts/host-group
 func ResourceHostGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceHostGroupCreate,
@@ -48,13 +47,25 @@ func ResourceHostGroup() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: `Specifies the type of the host group.`,
+				Description: `Specifies the type of the host.`,
 			},
 			"host_ids": {
 				Type:        schema.TypeSet,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Optional:    true,
 				Description: `Specifies the ID list of hosts to join the host group.`,
+			},
+			"agent_access_type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: `Specifies the type of the host group.`,
+			},
+			"labels": {
+				Type:        schema.TypeSet,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Optional:    true,
+				Description: `Specifies the custom label list of the host group.`,
 			},
 			"tags": common.TagsSchema(),
 			"created_at": {
@@ -117,10 +128,12 @@ func resourceHostGroupCreate(ctx context.Context, d *schema.ResourceData, meta i
 
 func buildCreateHostGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"host_group_name": utils.ValueIngoreEmpty(d.Get("name")),
-		"host_group_type": utils.ValueIngoreEmpty(d.Get("type")),
-		"host_id_list":    utils.ValueIngoreEmpty(d.Get("host_ids").(*schema.Set).List()),
-		"host_group_tag":  utils.ExpandResourceTags(d.Get("tags").(map[string]interface{})),
+		"host_group_name":   utils.ValueIgnoreEmpty(d.Get("name")),
+		"host_group_type":   utils.ValueIgnoreEmpty(d.Get("type")),
+		"host_id_list":      utils.ValueIgnoreEmpty(d.Get("host_ids").(*schema.Set).List()),
+		"host_group_tag":    utils.ExpandResourceTags(d.Get("tags").(map[string]interface{})),
+		"agent_access_type": utils.ValueIgnoreEmpty(d.Get("agent_access_type")),
+		"labels":            utils.ValueIgnoreEmpty(d.Get("labels").(*schema.Set).List()),
 	}
 	return bodyParams
 }
@@ -175,11 +188,13 @@ func resourceHostGroupRead(_ context.Context, d *schema.ResourceData, meta inter
 		d.Set("name", utils.PathSearch("host_group_name", getHostGroupRespBody, nil)),
 		d.Set("type", utils.PathSearch("host_group_type", getHostGroupRespBody, nil)),
 		d.Set("host_ids", utils.PathSearch("host_id_list", getHostGroupRespBody, nil)),
+		d.Set("agent_access_type", utils.PathSearch("agent_access_type", getHostGroupRespBody, nil)),
+		d.Set("labels", utils.PathSearch("labels", getHostGroupRespBody, nil)),
 		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("host_group_tag", getHostGroupRespBody, nil))),
 		d.Set("created_at", utils.FormatTimeStampRFC3339(
-			int64(utils.PathSearch("create_time", getHostGroupRespBody, 0).(float64))/1000, false)),
+			int64(utils.PathSearch("create_time", getHostGroupRespBody, float64(0)).(float64))/1000, false)),
 		d.Set("updated_at", utils.FormatTimeStampRFC3339(
-			int64(utils.PathSearch("update_time", getHostGroupRespBody, 0).(float64))/1000, false)),
+			int64(utils.PathSearch("update_time", getHostGroupRespBody, float64(0)).(float64))/1000, false)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -193,6 +208,7 @@ func resourceHostGroupUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		"name",
 		"host_ids",
 		"tags",
+		"labels",
 	}
 
 	if d.HasChanges(updateHostGroupChanges...) {
@@ -227,14 +243,23 @@ func resourceHostGroupUpdate(ctx context.Context, d *schema.ResourceData, meta i
 
 func buildUpdateHostGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"host_group_id":  d.Id(),
-		"host_id_list":   d.Get("host_ids").(*schema.Set).List(),
-		"host_group_tag": utils.ExpandResourceTags(d.Get("tags").(map[string]interface{})),
+		"host_group_id": d.Id(),
+		"host_id_list":  d.Get("host_ids").(*schema.Set).List(),
+		"labels":        d.Get("labels").(*schema.Set).List(),
 	}
 
 	if d.HasChange("name") {
 		bodyParams["host_group_name"] = d.Get("name")
 	}
+
+	// When deleting all tags, the value received by the interface must be an empty array.
+	tags := utils.ExpandResourceTags(d.Get("tags").(map[string]interface{}))
+	if tags == nil {
+		bodyParams["host_group_tag"] = make([]interface{}, 0)
+	} else {
+		bodyParams["host_group_tag"] = tags
+	}
+
 	return bodyParams
 }
 

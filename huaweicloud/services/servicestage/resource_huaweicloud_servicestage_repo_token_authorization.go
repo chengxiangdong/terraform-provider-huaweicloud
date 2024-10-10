@@ -3,7 +3,6 @@ package servicestage
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -18,6 +17,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
+// @API ServiceStage POST /v1/{project_id}/git/auths/{repo_type}/personal
+// @API ServiceStage GET /v1/{project_id}/git/auths
+// @API ServiceStage DELETE /v1/{project_id}/git/auths/{name}
 func ResourceRepoTokenAuth() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRepoTokenAuthCreate,
@@ -39,11 +41,6 @@ func ResourceRepoTokenAuth() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\w.-]*$`),
-						"The name can only contain letters, digits, underscores (_), hyphens (-) and dots (.)."),
-					validation.StringLenBetween(4, 63),
-				),
 			},
 			"type": {
 				Type:     schema.TypeString,

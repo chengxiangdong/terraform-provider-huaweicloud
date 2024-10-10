@@ -26,6 +26,10 @@
                 "type": "string",
                 "computed": true
               },
+              "topic_urn": {
+                "type": "string",
+                "optional": true
+              },
               "traffic_threshold": {
                 "type": "number",
                 "required": true

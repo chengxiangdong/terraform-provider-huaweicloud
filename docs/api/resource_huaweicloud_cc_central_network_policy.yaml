@@ -1,0 +1,19 @@
+info:
+    version: ""
+    title: resource_huaweicloud_cc_central_network_policy
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: CC
+paths:
+    /v3/{domain_id}/gcn/central-network/{central_network_id}/policies:
+        POST:
+            tag: CC
+    /v3/{domain_id}/gcn/central-network/{central_network_id}/policies/{id}:
+        DELETE:
+            tag: CC
+    /v3/{domain_id}/gcn/central-network/{central_network_id}/policies?id={id}:
+        GET:
+            tag: CC

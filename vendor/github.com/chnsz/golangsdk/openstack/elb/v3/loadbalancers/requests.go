@@ -16,6 +16,9 @@ type CreateOpts struct {
 	// Human-readable name for the Loadbalancer. Does not have to be unique.
 	Name string `json:"name,omitempty"`
 
+	// Human-readable type for the Loadbalancer.
+	LoadBalancerType string `json:"loadbalancer_type,omitempty"`
+
 	// Human-readable description for the Loadbalancer.
 	Description string `json:"description,omitempty"`
 
@@ -82,6 +85,12 @@ type CreateOpts struct {
 
 	// Protection reason
 	ProtectionReason string `json:"protection_reason,omitempty"`
+
+	// Waf failure action
+	WafFailureAction string `json:"waf_failure_action,omitempty"`
+
+	// IpV6 Vip Address
+	Ipv6VipAddress string `json:"ipv6_vip_address,omitempty"`
 }
 
 // BandwidthRef
@@ -216,6 +225,9 @@ type UpdateOpts struct {
 	// The UUID of a l7 flavor.
 	L7Flavor string `json:"l7_flavor_id,omitempty"`
 
+	// Human-readable type for the Loadbalancer.
+	LoadBalancerType string `json:"loadbalancer_type,omitempty"`
+
 	// IPv6 Bandwidth.
 	IPV6Bandwidth *UBandwidthRef `json:"ipv6_bandwidth,omitempty"`
 
@@ -239,6 +251,12 @@ type UpdateOpts struct {
 
 	// Update protection reason
 	ProtectionReason *string `json:"protection_reason,omitempty"`
+
+	// Waf failure action
+	WafFailureAction string `json:"waf_failure_action,omitempty"`
+
+	// IpV6 Vip Address
+	Ipv6VipAddress string `json:"ipv6_vip_address,omitempty"`
 }
 
 // ToLoadBalancerUpdateMap builds a request body from UpdateOpts.
@@ -253,6 +271,12 @@ func Update(c *golangsdk.ServiceClient, id string, opts UpdateOpts) (r UpdateRes
 	if err != nil {
 		r.Err = err
 		return
+	}
+	// if loadbalancer_type is gateway, it indicates ipv4_subnet_id has not been changed, the value should be nil
+	// so remove loadbalancer_type and ipv4_subnet_id from the request body
+	if v, ok := b["loadbalancer"].(map[string]interface{})["loadbalancer_type"]; ok && v.(string) == "gateway" {
+		delete(b["loadbalancer"].(map[string]interface{}), "vip_subnet_cidr_id")
+		delete(b["loadbalancer"].(map[string]interface{}), "loadbalancer_type")
 	}
 	_, r.Err = c.Put(resourceURL(c, id), b, &r.Body, &golangsdk.RequestOpts{
 		OkCodes: []int{200, 202},
@@ -276,5 +300,67 @@ func ForceDelete(c *golangsdk.ServiceClient, id string) (r DeleteResult) {
 // GetStatuses will return the status of a particular LoadBalancer.
 func GetStatuses(c *golangsdk.ServiceClient, id string) (r GetStatusesResult) {
 	_, r.Err = c.Get(statusRootURL(c, id), &r.Body, nil)
+	return
+}
+
+type UpdateAvailabilityZone interface {
+	ToAvailabilityZoneUpdateMap() (map[string]interface{}, error)
+}
+
+// Availability Zone List.
+type AvailabilityZoneOpts struct {
+	AvailabilityZoneList []string `json:"availability_zone_list" required:"true"`
+}
+
+// ToAvailabilityZoneUpdateMap builds a request body from AvailabilityZoneOpts.
+func (opts AvailabilityZoneOpts) ToAvailabilityZoneUpdateMap() (map[string]interface{}, error) {
+	return golangsdk.BuildRequestBody(opts, "")
+}
+
+// AddAvailabilityZone will add availability zone list
+func AddAvailabilityZone(c *golangsdk.ServiceClient, id string, opts AvailabilityZoneOpts) (r UpdateResult) {
+	b, err := opts.ToAvailabilityZoneUpdateMap()
+	if err != nil {
+		r.Err = err
+		return
+	}
+	_, r.Err = c.Post(updateAvailabilityZoneURL(c, id, "batch-add"), b, &r.Body, &golangsdk.RequestOpts{})
+	return
+}
+
+// RemoveAvailabilityZone will remove availability zone list
+func RemoveAvailabilityZone(c *golangsdk.ServiceClient, id string, opts AvailabilityZoneOpts) (r UpdateResult) {
+	b, err := opts.ToAvailabilityZoneUpdateMap()
+	if err != nil {
+		r.Err = err
+		return
+	}
+	_, r.Err = c.Post(updateAvailabilityZoneURL(c, id, "batch-remove"), b, &r.Body, &golangsdk.RequestOpts{})
+	return
+}
+
+// Charging info.
+type ChangeChargingModeOpts struct {
+	LoadBalancerIds []string       `json:"loadbalancer_ids" required:"true"`
+	ChargingMode    string         `json:"charge_mode" required:"true"`
+	PrepaidOptions  PrepaidOptions `json:"prepaid_options,omitempty"`
+}
+
+type PrepaidOptions struct {
+	IncludePublicIp *bool  `json:"include_publicip,omitempty"`
+	PeriodType      string `json:"period_type" required:"true"`
+	PeriodNum       int    `json:"period_num,omitempty"`
+	AutoRenew       string `json:"auto_renew,omitempty"`
+	AutoPay         bool   `json:"auto_pay,omitempty"`
+}
+
+// ChangeChargingMode will change the charging mode of the loadbalancer
+func ChangeChargingMode(c *golangsdk.ServiceClient, opts ChangeChargingModeOpts) (r ChangeResult) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		r.Err = err
+		return
+	}
+	_, r.Err = c.Post(changeChargingModeURL(c), b, &r.Body, &golangsdk.RequestOpts{})
 	return
 }

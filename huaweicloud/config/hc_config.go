@@ -9,14 +9,18 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
 	hcconfig "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/config"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/httphandler"
+	hcregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
 	aomv2 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/aom/v2"
+	ccev3 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cce/v3"
 	cdnv1 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v1"
+	cdnv2 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2"
 	cptsv1 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cpts/v1"
 	cssv1 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/css/v1"
 	cssv2 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/css/v2"
@@ -41,7 +45,7 @@ import (
 This file is used to impl the configuration of huaweicloud-sdk-go-v3 package and
 genetate service clients.
 */
-func buildAuthCredentials(c *Config, region string) (*basic.Credentials, error) {
+func buildAuthCredentials(c *Config, region string, isDerived bool) (*basic.Credentials, error) {
 	if c.AccessKey == "" || c.SecretKey == "" {
 		return nil, fmt.Errorf("access_key or secret_key is missing in the provider")
 	}
@@ -51,6 +55,10 @@ func buildAuthCredentials(c *Config, region string) (*basic.Credentials, error) 
 		SK:            c.SecretKey,
 		SecurityToken: c.SecurityToken,
 		IamEndpoint:   c.IdentityEndpoint,
+	}
+
+	if isDerived {
+		credentials.DerivedPredicate = basic.DefaultDerivedPredicate
 	}
 
 	c.RPLock.Lock()
@@ -102,23 +110,23 @@ func buildHTTPConfig(c *Config) *hcconfig.HttpConfig {
 		AddResponseHandler(logResponseHandler)
 	httpConfig = httpConfig.WithHttpHandler(httpHandler)
 
-	if proxyURL := getProxyFromEnv(); proxyURL != "" {
-		if parsed, err := url.Parse(proxyURL); err == nil {
-			logp.Printf("[DEBUG] using https proxy: %s://%s", parsed.Scheme, parsed.Host)
+	if proxyURL, err := parseProxyFromEnv(); err == nil {
+		if proxyURL != nil {
+			logp.Printf("[DEBUG] using https proxy: %s://%s", proxyURL.Scheme, proxyURL.Host)
 
 			httpProxy := hcconfig.Proxy{
-				Schema:   parsed.Scheme,
-				Host:     parsed.Host,
-				Username: parsed.User.Username(),
+				Schema:   proxyURL.Scheme,
+				Host:     proxyURL.Host,
+				Username: proxyURL.User.Username(),
 			}
-			if pwd, ok := parsed.User.Password(); ok {
+			if pwd, ok := proxyURL.User.Password(); ok {
 				httpProxy.Password = pwd
 			}
 
 			httpConfig = httpConfig.WithProxy(&httpProxy)
-		} else {
-			logp.Printf("[WARN] parsing https proxy failed: %s", err)
 		}
+	} else {
+		logp.Printf("[WARN] parsing https proxy failed: %s", err)
 	}
 
 	return httpConfig
@@ -224,9 +232,9 @@ func (c *Config) HcMpcV1Client(region string) (*mpcv1.MpcClient, error) {
 	return mpcv1.NewMpcClient(hcClient), nil
 }
 
-// HcIoTdaV5Client is the live service client using huaweicloud-sdk-go-v3 package
-func (c *Config) HcIoTdaV5Client(region string) (*iotdav5.IoTDAClient, error) {
-	hcClient, err := NewHcClient(c, region, "iotda", false)
+// HcIoTdaV5Client is the IoTDA service client using huaweicloud-sdk-go-v3 package
+func (c *Config) HcIoTdaV5Client(region string, isDerived bool) (*iotdav5.IoTDAClient, error) {
+	hcClient, err := implNewHcClient(c, region, "iotda", false, isDerived)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +277,15 @@ func (c *Config) HcCdnV1Client(region string) (*cdnv1.CdnClient, error) {
 	return cdnv1.NewCdnClient(hcClient), nil
 }
 
+// HcCdnV2Client is the CDN service client using huaweicloud-sdk-go-v3 package
+func (c *Config) HcCdnV2Client(region string) (*cdnv2.CdnClient, error) {
+	hcClient, err := NewHcClient(c, region, "cdn", false)
+	if err != nil {
+		return nil, err
+	}
+	return cdnv2.NewCdnClient(hcClient), nil
+}
+
 // HcDmsV2Client is the DMS service client using huaweicloud-sdk-go-v3 package
 func (c *Config) HcDmsV2Client(region string) (*dmsv2.KafkaClient, error) {
 	hcClient, err := NewHcClient(c, region, "dmsv2", false)
@@ -287,27 +304,47 @@ func (c *Config) HcHssV5Client(region string) (*hssv5.HssClient, error) {
 	return hssv5.NewHssClient(hcClient), nil
 }
 
+// HcCceV3Client is the CCE service client using huaweicloud-sdk-go-v3 package
+func (c *Config) HcCceV3Client(region string) (*ccev3.CceClient, error) {
+	hcClient, err := NewHcClient(c, region, "cce", false)
+	if err != nil {
+		return nil, err
+	}
+	return ccev3.NewCceClient(hcClient), nil
+}
+
 // NewHcClient is the common client using huaweicloud-sdk-go-v3 package
-func NewHcClient(c *Config, region, product string, globalFlag bool) (*core.HcHttpClient, error) {
+func NewHcClient(c *Config, region, product string, isGlobal bool) (*core.HcHttpClient, error) {
+	return implNewHcClient(c, region, product, isGlobal, false)
+}
+
+func implNewHcClient(c *Config, region, product string, isGlobal, isDerived bool) (*core.HcHttpClient, error) {
 	endpoint := GetServiceEndpoint(c, product, region)
 	if endpoint == "" {
 		return nil, fmt.Errorf("failed to get the endpoint of %q service in region %s", product, region)
 	}
 
-	builder := core.NewHcHttpClientBuilder().WithEndpoint(endpoint).WithHttpConfig(buildHTTPConfig(c))
+	builder := core.NewHcHttpClientBuilder().
+		WithRegion(hcregion.NewRegion(region, endpoint)).
+		WithHttpConfig(buildHTTPConfig(c))
 
-	if globalFlag {
+	if isGlobal {
 		credentials, err := buildGlobalAuthCredentials(c, region)
 		if err != nil {
 			return nil, err
 		}
 		builder.WithCredentialsType("global.Credentials").WithCredential(credentials)
 	} else {
-		credentials, err := buildAuthCredentials(c, region)
+		credentials, err := buildAuthCredentials(c, region, isDerived)
 		if err != nil {
 			return nil, err
 		}
+
 		builder.WithCredential(credentials)
+		if isDerived {
+			// the derivedAuthServiceName is fixed to "iotdm", now only IoTDA service need derived sign
+			builder.WithDerivedAuthServiceName("iotdm")
+		}
 	}
 
 	headers := make(map[string]string)
@@ -321,40 +358,66 @@ func NewHcClient(c *Config, region, product string, globalFlag bool) (*core.HcHt
 	return builder.Build().PreInvoke(headers), nil
 }
 
-func getProxyFromEnv() string {
-	var url string
+func parseProxyFromEnv() (*url.URL, error) {
+	var proxy string
 
 	envNames := []string{"HTTPS_PROXY", "https_proxy"}
 	for _, n := range envNames {
 		if val := os.Getenv(n); val != "" {
-			url = val
+			proxy = val
 			break
 		}
 	}
 
-	return url
+	if proxy == "" {
+		return nil, nil
+	}
+
+	proxyURL, err := url.Parse(proxy)
+	if err != nil ||
+		(proxyURL.Scheme != "http" &&
+			proxyURL.Scheme != "https" &&
+			proxyURL.Scheme != "socks5") {
+		// proxy was bogus. Try prepending "http://" to it and
+		// see if that parses correctly. If not, we fall
+		// through and complain about the original one.
+		if proxyURL, err := url.Parse("http://" + proxy); err == nil {
+			return proxyURL, nil
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("invalid https proxy address %q: %v", proxy, err)
+	}
+	return proxyURL, nil
 }
 
 func logRequestHandler(request http.Request) {
-	log.Printf("[DEBUG] API Request URL: %s %s", request.Method, request.URL)
-	log.Printf("[DEBUG] API Request Headers:\n%s", FormatHeaders(request.Header, "\n"))
+	requestAt := fmt.Sprintf("%d-0", time.Now().UnixMilli())
+	log.Printf("[DEBUG] [%s] API Request URL: %s %s\nAPI Request Headers:\n%s",
+		requestAt, request.Method, request.URL, FormatHeaders(request.Header, "\n"))
+
 	if request.Body != nil {
-		if err := logRequest(request.Body, request.Header.Get("Content-Type")); err != nil {
-			log.Printf("[WARN] failed to get request body: %s", err)
+		if err := logRequest(request.Body, request.Header.Get("Content-Type"), requestAt); err != nil {
+			log.Printf("[WARN] [%s] failed to log API Request Body: %s", requestAt, err)
 		}
 	}
 }
 
 func logResponseHandler(response http.Response) {
-	log.Printf("[DEBUG] API Response Code: %d", response.StatusCode)
-	log.Printf("[DEBUG] API Response Headers:\n%s", FormatHeaders(response.Header, "\n"))
+	responseAt := fmt.Sprintf("%d-0", time.Now().UnixMilli())
+	log.Printf("[DEBUG] [%s] API Response Code: %d\nAPI Response Headers:\n%s",
+		responseAt, response.StatusCode, FormatHeaders(response.Header, "\n"))
 
-	if err := logResponse(response.Body, response.Header.Get("Content-Type")); err != nil {
-		log.Printf("[WARN] failed to get response body: %s", err)
+	if response.Body != nil {
+		if err := logResponse(response.Body, response.Header.Get("Content-Type"), responseAt); err != nil {
+			log.Printf("[WARN] [%s] failed to log API Response Body: %s", responseAt, err)
+		}
 	}
 }
 
-func logRequest(original io.ReadCloser, contentType string) error {
+// logRequest will log the HTTP Request details, then close the original.
+// If the body is JSON, it will attempt to be pretty-formatted.
+func logRequest(original io.ReadCloser, contentType, requestAt string) error {
 	defer original.Close()
 
 	var bs bytes.Buffer
@@ -371,18 +434,18 @@ func logRequest(original io.ReadCloser, contentType string) error {
 
 	// Handle request contentType
 	if strings.HasPrefix(contentType, "application/json") {
-		debugInfo := formatJSON(body[index:], true)
-		log.Printf("[DEBUG] API Request Body: %s", debugInfo)
+		debugInfo := formatJSON(body[index:], requestAt, true)
+		log.Printf("[DEBUG] [%s] API Request Body: %s", requestAt, debugInfo)
 	} else {
-		log.Printf("[DEBUG] Not logging because the request body isn't JSON")
+		log.Printf("[DEBUG] [%s] Not logging because the request body isn't JSON", requestAt)
 	}
 
 	return nil
 }
 
-// logResponse will log the HTTP Response details.
+// logResponse will log the HTTP Response details, then close the original.
 // If the body is JSON, it will attempt to be pretty-formatted.
-func logResponse(original io.ReadCloser, contentType string) error {
+func logResponse(original io.ReadCloser, contentType, responseAt string) error {
 	defer original.Close()
 
 	var bs bytes.Buffer
@@ -398,10 +461,10 @@ func logResponse(original io.ReadCloser, contentType string) error {
 	}
 
 	if strings.HasPrefix(contentType, "application/json") {
-		debugInfo := formatJSON(body[index:], true)
-		log.Printf("[DEBUG] API Response Body: %s", debugInfo)
+		debugInfo := formatJSON(body[index:], responseAt, true)
+		log.Printf("[DEBUG] [%s] API Response Body: %s", responseAt, debugInfo)
 	} else {
-		log.Printf("[DEBUG] Not logging because the response body isn't JSON")
+		log.Printf("[DEBUG] [%s] Not logging because the response body isn't JSON", responseAt)
 	}
 
 	return nil

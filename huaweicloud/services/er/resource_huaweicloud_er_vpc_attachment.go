@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/er/v3/vpcattachments"
@@ -22,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API ER POST /v3/{project_id}/enterprise-router/{er_id}/vpc-attachments
+// @API ER PUT /v3/{project_id}/enterprise-router/{er_id}/vpc-attachments/{vpc_attachment_id}
+// @API ER DELETE /v3/{project_id}/enterprise-router/{er_id}/vpc-attachments/{vpc_attachment_id}
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/vpc-attachments/{vpc_attachment_id}
 func ResourceVpcAttachment() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceVpcAttachmentCreate,
@@ -66,23 +68,13 @@ func ResourceVpcAttachment() *schema.Resource {
 				Description: `The ID of the VPC subnet to which the VPC attachment belongs.`,
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 64),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5\\w.-]*$"), "The name only english and "+
-						"chinese letters, digits, underscore (_), hyphens (-) and dots (.) are allowed."),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: `The name of the VPC attachment.`,
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile(`^[^<>]*$`),
-						"The angle brackets (< and >) are not allowed."),
-				),
+				Type:        schema.TypeString,
+				Optional:    true,
 				Description: `The description of the VPC attachment.`,
 			},
 			"auto_create_vpc_routes": {
@@ -92,7 +84,7 @@ func ResourceVpcAttachment() *schema.Resource {
 				ForceNew:    true,
 				Description: `Whether to automatically configure routes for the VPC which pointing to the ER instance.`,
 			},
-			"tags": common.TagsForceNewSchema(),
+			"tags": common.TagsSchema(),
 			// Attributes
 			"status": {
 				Type:        schema.TypeString,
@@ -177,8 +169,9 @@ func resourceVpcAttachmentRead(_ context.Context, d *schema.ResourceData, meta i
 		d.Set("auto_create_vpc_routes", resp.AutoCreateVpcRoutes),
 		d.Set("tags", utils.TagsToMap(resp.Tags)),
 		d.Set("status", resp.Status),
-		d.Set("created_at", resp.CreatedAt),
-		d.Set("updated_at", resp.UpdatedAt),
+		// The time results are not the time in RF3339 format without milliseconds.
+		d.Set("created_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.CreatedAt)/1000, false)),
+		d.Set("updated_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.UpdatedAt)/1000, false)),
 	)
 
 	if mErr.ErrorOrNil() != nil {
@@ -248,6 +241,13 @@ func resourceVpcAttachmentUpdate(ctx context.Context, d *schema.ResourceData, me
 	if d.HasChanges("name", "description") {
 		if err = updateVpcAttachmentBasicInfo(ctx, client, d); err != nil {
 			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("tags") {
+		err = utils.UpdateResourceTags(client, d, "vpc-attachment", d.Id())
+		if err != nil {
+			return diag.Errorf("error updating VPC attachment tags: %s", err)
 		}
 	}
 

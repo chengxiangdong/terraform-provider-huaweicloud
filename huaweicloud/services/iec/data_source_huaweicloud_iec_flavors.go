@@ -13,9 +13,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
-func DataSourceIecFlavors() *schema.Resource {
+// @API IEC GET /v1/cloudservers/flavors
+func DataSourceFlavors() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceIecFlavorsRead,
+		Read: dataSourceFlavorsRead,
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -75,7 +76,7 @@ func DataSourceIecFlavors() *schema.Resource {
 	}
 }
 
-func dataSourceIecFlavorsRead(d *schema.ResourceData, meta interface{}) error {
+func dataSourceFlavorsRead(d *schema.ResourceData, meta interface{}) error {
 	cfg := meta.(*config.Config)
 
 	iecClient, err := cfg.IECV1Client(cfg.GetRegion(d))

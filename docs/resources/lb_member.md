@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Load Balance (ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_lb_member"
+description: ""
 ---
 
 # huaweicloud_lb_member
@@ -49,6 +52,10 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The unique ID for the member.
 
+* `backend_server_status` - Indicates the administrative status of the backend server.
+
+* `operating_status` - Indicates the health check result of the backend server.
+
 ## Timeouts
 
 This resource provides the following timeouts configuration options:
@@ -61,6 +68,6 @@ This resource provides the following timeouts configuration options:
 
 ELB member can be imported using the pool ID and member ID separated by a slash, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_lb_member.member_1 e0bd694a-abbe-450e-b329-0931fd1cc5eb/4086b0c9-b18c-4d1c-b6b8-4c56c3ad2a9e
 ```

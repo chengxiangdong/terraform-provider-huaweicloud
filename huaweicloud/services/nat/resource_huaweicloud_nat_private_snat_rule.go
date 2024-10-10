@@ -3,12 +3,10 @@ package nat
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/nat/v3/snats"
 
@@ -17,6 +15,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API NAT POST /v3/{project_id}/private-nat/snat-rules
+// @API NAT GET /v3/{project_id}/private-nat/snat-rules/{snat_rule_id}
+// @API NAT PUT /v3/{project_id}/private-nat/snat-rules/{snat_rule_id}
+// @API NAT DELETE /v3/{project_id}/private-nat/snat-rules/{snat_rule_id}
 func ResourcePrivateSnatRule() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourcePrivateSnatRuleCreate,
@@ -63,13 +65,8 @@ func ResourcePrivateSnatRule() *schema.Resource {
 				Description: "The subnet ID of the match rule.",
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile(`^[^<>]*$`),
-						"The angle brackets (< and >) are not allowed."),
-				),
+				Type:        schema.TypeString,
+				Optional:    true,
 				Description: "The description of the SNAT rule.",
 			},
 			"created_at": {
@@ -81,6 +78,16 @@ func ResourcePrivateSnatRule() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "The latest update time of the SNAT rule.",
+			},
+			"transit_ip_address": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The address of the transit IP",
+			},
+			"enterprise_project_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The ID of the enterprise project to which the private SNAT rule belongs.",
 			},
 		},
 	}
@@ -121,7 +128,8 @@ func resourcePrivateSnatRuleRead(_ context.Context, d *schema.ResourceData, meta
 
 	resp, err := snats.Get(client, d.Id())
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "Private SNAT rule")
+		// If the private SNAT rule does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error retrieving private SNAT rule")
 	}
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
@@ -132,6 +140,8 @@ func resourcePrivateSnatRuleRead(_ context.Context, d *schema.ResourceData, meta
 		d.Set("cidr", resp.Cidr),
 		d.Set("created_at", resp.CreatedAt),
 		d.Set("updated_at", resp.UpdatedAt),
+		d.Set("enterprise_project_id", resp.EnterpriseProjectId),
+		d.Set("transit_ip_address", utils.PathSearch("[0].Address", resp.TransitIpAssociations, nil)),
 	)
 
 	if err = mErr.ErrorOrNil(); err != nil {
@@ -172,7 +182,8 @@ func resourcePrivateSnatRuleDelete(_ context.Context, d *schema.ResourceData, me
 	ruleId := d.Id()
 	err = snats.Delete(client, ruleId)
 	if err != nil {
-		return diag.Errorf("error deleting private SNAT rule (%s): %s", ruleId, err)
+		// If the private SNAT rule does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting private SNAT rule")
 	}
 
 	return nil

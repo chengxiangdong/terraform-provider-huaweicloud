@@ -1,10 +1,13 @@
 ---
-subcategory: "GaussDB NoSQL"
+subcategory: "GeminiDB"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_gaussdb_nosql_flavors"
+description: ""
 ---
 
 # huaweicloud_gaussdb_nosql_flavors
 
-Use this data source to get available HuaweiCloud GaussDB (for NoSQL) flavors.
+Use this data source to get available HuaweiCloud GeminiDB flavors.
 This is an alternative to `huaweicloud_gaussdb_cassandra_flavors`
 
 ## Example Usage

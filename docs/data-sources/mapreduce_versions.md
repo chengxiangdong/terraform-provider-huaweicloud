@@ -1,5 +1,8 @@
 ---
 subcategory: "MapReduce Service (MRS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_mapreduce_versions"
+description: ""
 ---
 
 # huaweicloud_mapreduce_versions
@@ -24,6 +27,6 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `versions` - List of available cluster versions.

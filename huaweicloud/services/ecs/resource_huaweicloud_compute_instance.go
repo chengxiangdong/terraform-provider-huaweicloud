@@ -18,12 +18,11 @@ import (
 	"github.com/chnsz/golangsdk/openstack/ecs/v1/block_devices"
 	"github.com/chnsz/golangsdk/openstack/ecs/v1/cloudservers"
 	"github.com/chnsz/golangsdk/openstack/ecs/v1/powers"
-	"github.com/chnsz/golangsdk/openstack/eps/v1/enterpriseprojects"
 	"github.com/chnsz/golangsdk/openstack/evs/v2/cloudvolumes"
 	"github.com/chnsz/golangsdk/openstack/ims/v2/cloudimages"
+	"github.com/chnsz/golangsdk/openstack/networking/v1/ports"
 	groups "github.com/chnsz/golangsdk/openstack/networking/v1/security/securitygroups"
 	"github.com/chnsz/golangsdk/openstack/networking/v1/subnets"
-	"github.com/chnsz/golangsdk/openstack/networking/v2/ports"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
@@ -41,6 +40,25 @@ var (
 	SystemDiskType = "GPSSD"
 )
 
+// @API ECS POST /v1.1/{project_id}/cloudservers
+// @API ECS POST /v1/{project_id}/cloudservers/delete
+// @API ECS PUT /v1/{project_id}/cloudservers/{server_id}
+// @API ECS POST /v1/{project_id}/cloudservers/action
+// @API ECS POST /v1/{project_id}/cloudservers/{server_id}/metadata
+// @API ECS DELETE /v1/{project_id}/cloudservers/{server_id}/metadata/{key}
+// @API ECS POST /v1.1/{project_id}/cloudservers/{server_id}/resize
+// @API ECS PUT /v1/{project_id}/cloudservers/{server_id}/os-reset-password
+// @API ECS POST /v1/{project_id}/cloudservers/{server_id}/tags/action
+// @API ECS POST /v2.1/{project_id}/servers/{server_id}/action
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}/block_device/{volume_id}
+// @API ECS GET /v1/{project_id}/jobs/{job_id}
+// @API IMS GET /v2/cloudimages
+// @API EVS POST /v2.1/{project_id}/cloudvolumes/{volume_id}/action
+// @API EVS GET /v2/{project_id}/cloudvolumes/{volume_id}
+// @API VPC PUT /v1/{project_id}/ports/{port_id}
+// @API VPC GET /v1/{project_id}/security-groups
+// @API VPC GET /v1/{project_id}/subnets/{subnet_id}
 func ResourceComputeInstance() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceComputeInstanceCreate,
@@ -313,9 +331,10 @@ func ResourceComputeInstance() *schema.Resource {
 			"user_data": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 				// just stash the hash for state & diff comparisons
 				StateFunc: utils.HashAndHexEncode,
+				// Suppress changes if we get a base64 format or plaint text user_data
+				DiffSuppressFunc: utils.SuppressUserData,
 			},
 			"metadata": {
 				Type:     schema.TypeMap,
@@ -390,6 +409,12 @@ func ResourceComputeInstance() *schema.Resource {
 							ForceNew:     true,
 							RequiredWith: []string{"bandwidth.0.size"},
 						},
+						"extend_param": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							ForceNew: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
 					},
 				},
 			},
@@ -416,10 +441,9 @@ func ResourceComputeInstance() *schema.Resource {
 				ConflictsWith: []string{"spot_duration", "spot_duration_count"},
 			},
 			"spot_duration": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ForceNew:     true,
-				ValidateFunc: validation.IntBetween(1, 6),
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
 			},
 			"spot_duration_count": {
 				Type:         schema.TypeInt,
@@ -429,7 +453,7 @@ func ResourceComputeInstance() *schema.Resource {
 				RequiredWith: []string{"spot_duration"},
 			},
 
-			"user_id": { // required if in prePaid charging mode with key_pair.
+			"user_id": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
@@ -458,7 +482,10 @@ func ResourceComputeInstance() *schema.Resource {
 					"ON", "OFF", "REBOOT", "FORCE-OFF", "FORCE-REBOOT",
 				}, false),
 			},
-
+			"auto_terminate_time": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			// computed attributes
 			"volume_attached": {
 				Type:     schema.TypeList,
@@ -520,6 +547,10 @@ func ResourceComputeInstance() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"expired_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -552,14 +583,9 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.Errorf("error creating networking v1 client: %s", err)
 	}
-	nicClient, err := cfg.NetworkingV2Client(region)
+	nicClient, err := cfg.NetworkingV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating networking v2 client: %s", err)
-	}
-
-	// user_id is required if in prePaid charging mode with key_pair
-	if err := validateComputeInstanceConfig(d, cfg); err != nil {
-		return diag.FromErr(err)
 	}
 
 	// Determines the Image ID using the following rules:
@@ -586,19 +612,20 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	createOpts := &cloudservers.CreateOpts{
-		Name:             d.Get("name").(string),
-		Description:      d.Get("description").(string),
-		ImageRef:         imageId,
-		FlavorRef:        flavorId,
-		KeyName:          d.Get("key_pair").(string),
-		VpcId:            vpcId,
-		SecurityGroups:   secGroupIDs,
-		AvailabilityZone: d.Get("availability_zone").(string),
-		RootVolume:       buildInstanceRootVolume(d),
-		DataVolumes:      buildInstanceDataVolumes(d),
-		Nics:             buildInstanceNicsRequest(d),
-		PublicIp:         buildInstancePublicIPRequest(d),
-		UserData:         []byte(d.Get("user_data").(string)),
+		Name:              d.Get("name").(string),
+		Description:       d.Get("description").(string),
+		ImageRef:          imageId,
+		FlavorRef:         flavorId,
+		KeyName:           d.Get("key_pair").(string),
+		VpcId:             vpcId,
+		SecurityGroups:    secGroupIDs,
+		AvailabilityZone:  d.Get("availability_zone").(string),
+		RootVolume:        buildInstanceRootVolume(d),
+		DataVolumes:       buildInstanceDataVolumes(d),
+		Nics:              buildInstanceNicsRequest(d),
+		PublicIp:          buildInstancePublicIPRequest(d),
+		UserData:          []byte(d.Get("user_data").(string)),
+		AutoTerminateTime: d.Get("auto_terminate_time").(string),
 	}
 
 	if tags, ok := d.GetOk("tags"); ok {
@@ -668,6 +695,9 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		if err != nil {
 			return diag.Errorf("error creating server: %s", err)
 		}
+		if len(n.ServerIDs) != 0 {
+			d.SetId(n.ServerIDs[0])
+		}
 		bssClient, err := cfg.BssV2Client(region)
 		if err != nil {
 			return diag.Errorf("error creating BSS v2 client: %s", err)
@@ -686,6 +716,9 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		n, err := cloudservers.Create(ecsV11Client, createOpts).ExtractJobResponse()
 		if err != nil {
 			return diag.Errorf("error creating server: %s", err)
+		}
+		if len(n.ServerIDs) != 0 {
+			d.SetId(n.ServerIDs[0])
 		}
 		if err := cloudservers.WaitForJobSuccess(ecsClient, int(d.Timeout(schema.TimeoutCreate)/time.Second), n.JobID); err != nil {
 			return diag.FromErr(err)
@@ -709,9 +742,8 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	// Update the hostname if necessary.
-	if v, ok := d.GetOk("hostname"); ok {
-		hostname := v.(string)
-		if err := updateInstanceHostname(ecsClient, hostname, d.Id()); err != nil {
+	if _, ok := d.GetOk("hostname"); ok {
+		if err := updateInstanceHostname(ecsClient, d); err != nil {
 			return diag.FromErr(err)
 		}
 
@@ -776,6 +808,7 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
+	serverID := d.Id()
 	ecsClient, err := cfg.ComputeV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating compute V1 client: %s", err)
@@ -789,7 +822,7 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating image client: %s", err)
 	}
 
-	server, err := cloudservers.Get(ecsClient, d.Id()).Extract()
+	server, err := cloudservers.Get(ecsClient, serverID).Extract()
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving compute instance")
 	} else if server.Status == "DELETED" {
@@ -797,7 +830,7 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 		return nil
 	}
 
-	log.Printf("[DEBUG] retrieved compute instance %s: %+v", d.Id(), server)
+	log.Printf("[DEBUG] retrieved compute instance %s: %+v", serverID, server)
 	// Set some attributes
 	d.Set("region", region)
 	d.Set("enterprise_project_id", server.EnterpriseProjectID)
@@ -811,6 +844,7 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 	d.Set("charging_mode", normalizeChargingMode(server.Metadata.ChargingMode))
 	d.Set("created_at", server.Created.Format(time.RFC3339))
 	d.Set("updated_at", server.Updated.Format(time.RFC3339))
+	d.Set("auto_terminate_time", server.AutoTerminateTime)
 
 	flavorInfo := server.Flavor
 	d.Set("flavor_id", flavorInfo.ID)
@@ -890,7 +924,7 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 			log.Printf("[DEBUG] retrieved volume %s: %#v", b.ID, volumeInfo)
 
 			// retrieve volume `pci_address`
-			va, err := block_devices.Get(ecsClient, d.Id(), b.ID).Extract()
+			va, err := block_devices.Get(ecsClient, serverID, b.ID).Extract()
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -932,7 +966,47 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 	// Set instance tags
 	d.Set("tags", flattenTagsToMap(server.Tags))
 
+	// Set expired time for prePaid instance
+	if normalizeChargingMode(server.Metadata.ChargingMode) == "prePaid" {
+		expiredTime, err := getPrePaidExpiredTime(d, cfg, serverID)
+		if err != nil {
+			log.Printf("error get prePaid expired time: %s", err)
+		}
+
+		d.Set("expired_time", expiredTime)
+	}
+
 	return nil
+}
+
+func getPrePaidExpiredTime(d *schema.ResourceData, cfg *config.Config, instanceID string) (string, error) {
+	product := "ecsv11"
+	client, err := cfg.NewServiceClient(product, cfg.GetRegion(d))
+	if err != nil {
+		return "", fmt.Errorf("error creating EVS client: %s", err)
+	}
+
+	getPrePaidExpiredTimeHttpUrl := "v1.1/{project_id}/cloudservers/detail?id={instance_id}&expect-fields=market_info"
+	getPrePaidExpiredTimePath := client.Endpoint + getPrePaidExpiredTimeHttpUrl
+	getPrePaidExpiredTimePath = strings.ReplaceAll(getPrePaidExpiredTimePath, "{project_id}", client.ProjectID)
+	getPrePaidExpiredTimePath = strings.ReplaceAll(getPrePaidExpiredTimePath, "{instance_id}", instanceID)
+
+	getPrePaidExpiredTimeOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	getPrePaidExpiredTimeResp, err := client.Request("GET", getPrePaidExpiredTimePath, &getPrePaidExpiredTimeOpt)
+	if err != nil {
+		return "", err
+	}
+
+	getPrePaidExpiredTimeRespBody, err := utils.FlattenResponse(getPrePaidExpiredTimeResp)
+	if err != nil {
+		return "", err
+	}
+
+	expiredTime := utils.PathSearch("servers[0].market_info.prepaid_info.expired_time", getPrePaidExpiredTimeRespBody, "")
+
+	return expiredTime.(string), nil
 }
 
 func normalizeChargingMode(mode string) string {
@@ -966,9 +1040,10 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	serverID := d.Id()
-	if d.HasChanges("name", "description") {
+	if d.HasChanges("name", "description", "user_data") {
 		var updateOpts cloudservers.UpdateOpts
 		updateOpts.Name = d.Get("name").(string)
+		updateOpts.UserData = []byte(d.Get("user_data").(string))
 		description := d.Get("description").(string)
 		updateOpts.Description = &description
 
@@ -1069,7 +1144,7 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 
 	if d.HasChange("network") {
 		var err error
-		nicClient, err := cfg.NetworkingV2Client(region)
+		nicClient, err := cfg.NetworkingV1Client(region)
 		if err != nil {
 			return diag.Errorf("error creating networking client: %s", err)
 		}
@@ -1087,13 +1162,13 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	if d.HasChange("enterprise_project_id") {
-		migrateOpts := enterpriseprojects.MigrateResourceOpts{
+		migrateOpts := config.MigrateResourceOpts{
 			ResourceId:   d.Id(),
 			ResourceType: "ecs",
 			RegionId:     region,
 			ProjectId:    ecsClient.ProjectID,
 		}
-		if err := common.MigrateEnterpriseProject(ctx, cfg, d, migrateOpts); err != nil {
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1134,7 +1209,7 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 			}
 			err = common.WaitOrderComplete(ctx, bssClient, resp.OrderID, d.Timeout(schema.TimeoutUpdate))
 			if err != nil {
-				return diag.Errorf("The order (%s) is not completed while extending system disk (%s) size: %#v",
+				return diag.Errorf("The order (%s) is not completed while extending system disk (%s) size: %v",
 					resp.OrderID, serverID, err)
 			}
 		}
@@ -1194,10 +1269,16 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
+	if d.HasChange("auto_terminate_time") {
+		terminateTime := d.Get("auto_terminate_time").(string)
+		err := cloudservers.UpdateAutoTerminateTime(ecsClient, serverID, terminateTime).ExtractErr()
+		if err != nil {
+			return diag.Errorf("error updating auto-terminate-time of server (%s): %s", serverID, err)
+		}
+	}
 	var diags diag.Diagnostics
 	if d.HasChanges("hostname") {
-		hostname := d.Get("hostname").(string)
-		if err := updateInstanceHostname(ecsClient, hostname, serverID); err != nil {
+		if err := updateInstanceHostname(ecsClient, d); err != nil {
 			return diag.FromErr(err)
 		}
 
@@ -1215,9 +1296,13 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	return diags
 }
 
-func updateInstanceHostname(ecsClient *golangsdk.ServiceClient, hostname, serverID string) error {
+func updateInstanceHostname(ecsClient *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	serverID := d.Id()
+	hostname := d.Get("hostname").(string)
+	userData := []byte(d.Get("user_data").(string))
 	updateOpts := cloudservers.UpdateOpts{
 		Hostname: hostname,
+		UserData: userData,
 	}
 	err := cloudservers.Update(ecsClient, serverID, updateOpts).ExtractErr()
 	if err != nil {
@@ -1442,18 +1527,6 @@ func getOpSvcUserID(d *schema.ResourceData, conf *config.Config) string {
 	return conf.UserID
 }
 
-func validateComputeInstanceConfig(d *schema.ResourceData, conf *config.Config) error {
-	_, hasSSH := d.GetOk("key_pair")
-	if d.Get("charging_mode").(string) == "prePaid" && hasSSH {
-		if getOpSvcUserID(d, conf) == "" {
-			return fmt.Errorf("user_id must be specified when charging_mode is set to prePaid and " +
-				"the ECS is logged in using an SSH key")
-		}
-	}
-
-	return nil
-}
-
 func buildInstanceNicsRequest(d *schema.ResourceData) []cloudservers.Nic {
 	var nicRequests []cloudservers.Nic
 
@@ -1491,10 +1564,19 @@ func buildInstancePublicIPRequest(d *schema.ResourceData) *cloudservers.PublicIp
 		Size:       bandWidth["size"].(int),
 	}
 
+	var eipExtendOpts *cloudservers.EipExtendParam
+	extendParam := bandWidth["extend_param"].(map[string]interface{})
+	if v, ok := extendParam["charging_mode"]; ok {
+		eipExtendOpts = &cloudservers.EipExtendParam{
+			ChargingMode: v.(string),
+		}
+	}
+
 	return &cloudservers.PublicIp{
 		Eip: &cloudservers.Eip{
-			IpType:    d.Get("eip_type").(string),
-			BandWidth: &bwOpts,
+			IpType:      d.Get("eip_type").(string),
+			BandWidth:   &bwOpts,
+			ExtendParam: eipExtendOpts,
 		},
 		DeleteOnTermination: d.Get("delete_eip_on_termination").(bool),
 	}
@@ -1706,27 +1788,25 @@ func doPowerAction(client *golangsdk.ServiceClient, d *schema.ResourceData, acti
 func disableSourceDestCheck(networkClient *golangsdk.ServiceClient, portID string) error {
 	// Update the allowed-address-pairs of the port to 1.1.1.1/0
 	// to disable the source/destination check
-	portpairs := []ports.AddressPair{
-		{
-			IPAddress: "1.1.1.1/0",
+	portpairs := ports.UpdateOpts{
+		AllowedAddressPairs: []ports.AddressPair{
+			{
+				IpAddress: "1.1.1.1/0",
+			},
 		},
 	}
-	portUpdateOpts := ports.UpdateOpts{
-		AllowedAddressPairs: &portpairs,
-	}
 
-	_, err := ports.Update(networkClient, portID, portUpdateOpts).Extract()
+	_, err := ports.Update(networkClient, portID, portpairs)
 	return err
 }
 
 func enableSourceDestCheck(networkClient *golangsdk.ServiceClient, portID string) error {
 	// cancle all allowed-address-pairs to enable the source/destination check
-	portpairs := make([]ports.AddressPair, 0)
-	portUpdateOpts := ports.UpdateOpts{
-		AllowedAddressPairs: &portpairs,
+	portpairs := ports.UpdateOpts{
+		AllowedAddressPairs: make([]ports.AddressPair, 0),
 	}
 
-	_, err := ports.Update(networkClient, portID, portUpdateOpts).Extract()
+	_, err := ports.Update(networkClient, portID, portpairs)
 	return err
 }
 

@@ -3,12 +3,10 @@ package iotda
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5/model"
 
@@ -16,6 +14,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API IoTDA POST /v5/iot/{project_id}/apps
+// @API IoTDA DELETE /v5/iot/{project_id}/apps/{app_id}
+// @API IoTDA GET /v5/iot/{project_id}/apps/{app_id}
 func ResourceSpace() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSpaceCreate,
@@ -37,9 +38,6 @@ func ResourceSpace() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`[A-Za-z-_0-9?'#().,&%@!]{1,64}`),
-					"The name contains a maximum of 64 characters. Only letters, digits, "+
-						"hyphens (-), underscore (_) and the following special characters are allowed: ?'#().,&%@!"),
 			},
 
 			"is_default": {
@@ -53,7 +51,8 @@ func ResourceSpace() *schema.Resource {
 func resourceSpaceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -81,7 +80,8 @@ func resourceSpaceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 func resourceSpaceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -103,7 +103,8 @@ func resourceSpaceRead(_ context.Context, d *schema.ResourceData, meta interface
 func resourceSpaceDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}

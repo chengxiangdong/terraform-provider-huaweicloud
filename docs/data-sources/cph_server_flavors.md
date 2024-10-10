@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Phone (CPH)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cph_server_flavors"
+description: ""
 ---
 
 # huaweicloud_cph_server_flavors
@@ -8,7 +11,7 @@ Use this data source to get available flavors of CPH server.
 
 ## Example Usage
 
-```
+```hcl
 data "huaweicloud_cph_server_flavors" "flavor" {
   type = 0
 }
@@ -35,7 +38,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `flavors` - The list of flavor detail.
   The [Flavors](#serverFlavors_Flavors) structure is documented below.

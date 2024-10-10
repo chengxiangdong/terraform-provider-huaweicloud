@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/smn/v2/subscriptions"
@@ -18,6 +17,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API SMN DELETE /v2/{project_id}/notifications/subscriptions/{subscriptionUrn}
+// @API SMN GET /v2/{project_id}/notifications/topics/{topicUrn}/subscriptions
+// @API SMN POST /v2/{project_id}/notifications/topics/{topicUrn}/subscriptions
 func ResourceSubscription() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSubscriptionCreate,
@@ -43,9 +45,6 @@ func ResourceSubscription() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					"email", "sms", "http", "https", "functionstage", "functiongraph",
-				}, false),
 			},
 			"endpoint": {
 				Type:     schema.TypeString,
@@ -99,6 +98,26 @@ func ResourceSubscription() *schema.Resource {
 			"status": {
 				Type:     schema.TypeInt,
 				Computed: true,
+			},
+			"filter_policies": {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: `The message filter policies of a subscriber.`,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: `The filter policy name. The policy name must be unique.`,
+						},
+						"string_equals": {
+							Type:        schema.TypeList,
+							Computed:    true,
+							Elem:        &schema.Schema{Type: schema.TypeString},
+							Description: `The string array for exact match.`,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -186,6 +205,7 @@ func resourceSubscriptionRead(_ context.Context, d *schema.ResourceData, meta in
 		d.Set("owner", targetSubscription.Owner),
 		d.Set("remark", targetSubscription.Remark),
 		d.Set("status", targetSubscription.Status),
+		d.Set("filter_policies", flattenSubscriptionFilterPolicies(targetSubscription.FilterPolicies)),
 	)
 
 	if err := mErr.ErrorOrNil(); err != nil {
@@ -210,6 +230,17 @@ func resourceSubscriptionDelete(_ context.Context, d *schema.ResourceData, meta 
 
 	log.Printf("[DEBUG] successfully delete subscription %s", id)
 	return nil
+}
+
+func flattenSubscriptionFilterPolicies(filterPolicies []subscriptions.FilterPolicy) []map[string]interface{} {
+	rst := make([]map[string]interface{}, len(filterPolicies))
+	for i, v := range filterPolicies {
+		rst[i] = map[string]interface{}{
+			"name":          v.Name,
+			"string_equals": v.StringEquals,
+		}
+	}
+	return rst
 }
 
 func resourceSubscriptionImport(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {

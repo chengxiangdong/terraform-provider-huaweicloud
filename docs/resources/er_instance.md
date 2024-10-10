@@ -1,5 +1,8 @@
 ---
 subcategory: "Enterprise Router (ER)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_er_instance"
+description: ""
 ---
 
 # huaweicloud_er_instance
@@ -31,8 +34,8 @@ The following arguments are supported:
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
 * `name` - (Required, String) The router name.  
-  The name can contain 1 to 64 characters, only english and chinese letters, digits, underscore (_) and hyphens (-) are
-  allowed.
+  The name can contain `1` to `64` characters, only English letters, Chinese characters, digits, underscore (_),
+  hyphens (-) and dots (.) allowed.
 
 * `availability_zones` - (Required, List) The availability zone list where the ER instance is located.
   The maximum number of availability zone is two. Select two AZs to configure active-active deployment for high
@@ -44,11 +47,10 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `description` - (Optional, String) The description of the ER instance.  
-  The description contain a maximum of 255 characters, and the angle brackets (< and >) are not allowed.
+  The description contain a maximum of `255` characters, and the angle brackets (< and >) are not allowed.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) The enterprise project ID to which the ER instance
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID to which the ER instance
 belongs.
-  Changing this parameter will create a new resource.
 
 * `enable_default_propagation` - (Optional, Bool) Whether to enable the propagation of the default route table.  
   The default value is **false**.
@@ -62,7 +64,13 @@ attachment.
 
 * `default_propagation_route_table_id` - (Optional, String) The ID of the default propagation route table.
 
+  -> Before modifying the default routing table of this instance (except cancel the default route table), make sure
+     `enable_default_propagation` is set to **true**.
+
 * `default_association_route_table_id` - (Optional, String) The ID of the default association route table.
+
+  -> Before modifying the default routing table of this instance (except cancel the default route table), make sure
+     `enable_default_association` is set to **true**.
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the instance.
 
@@ -90,6 +98,6 @@ This resource provides the following timeouts configuration options:
 
 The router instance can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_er_instance.test 0ce123456a00f2591fabc00385ff1234
 ```

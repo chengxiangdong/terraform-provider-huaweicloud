@@ -1,5 +1,8 @@
 ---
-subcategory: "Scalable File Service (SFS)"
+subcategory: "SFS Turbo"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_sfs_turbos"
+description: ""
 ---
 
 # huaweicloud_sfs_turbos
@@ -46,7 +49,7 @@ In addition to all arguments above, the following attributes are exported:
 <a name="turbo"></a>
 The `turbos` block supports:
 
-* `id` - The resource ID of the SFS turbo file system.
+* `id` - The data source ID of the SFS turbo file system.
 
 * `name` - The name of the SFS turbo file system.
 

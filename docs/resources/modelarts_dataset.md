@@ -1,5 +1,8 @@
 ---
 subcategory: "AI Development Platform (ModelArts)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_modelarts_dataset"
+description: ""
 ---
 
 # huaweicloud_modelarts_dataset
@@ -36,7 +39,7 @@ The following arguments are supported:
 * `region` - (Optional, String, ForceNew) The region in which to create the resource. If omitted, the
  provider-level region will be used. Changing this parameter will create a new resource.
 
-* `name` - (Required, String) Specifies the name of the dataset. The name consists of 1 to 100 characters,
+* `name` - (Required, String) Specifies the name of the dataset. The name consists of `1` to `100` characters,
  starting with a letter. Only letters, chinese characters, digits underscores (_) and hyphens (-) are allowed.
 
 * `type` - (Required, Int, ForceNew) Specifies the type of dataset. The options are as follows:
@@ -59,7 +62,7 @@ The following arguments are supported:
  as pictures/files/audio, etc.) in this directory and subdirectories to the dataset. Structure is documented below.
  Changing this parameter will create a new resource.
 
-* `description` - (Optional, String) Specifies the description of dataset. It contains a maximum of 256 characters and
+* `description` - (Optional, String) Specifies the description of dataset. It contains a maximum of `256` characters and
  cannot contain special characters `!<>=&"'`.
 
 * `import_labeled_enabled` - (Optional, Bool, ForceNew) Specifies whether to import labeled files.
@@ -103,7 +106,7 @@ The `data_source` block supports:
 * `cluster_id` - (Optional, String, ForceNew) Specifies the cluster ID of DWS/MRS when `data_type` is `1` or `4`.
  Changing this parameter will create a new resource.
 
-* `user_name` - (Optional, String, ForceNew) Specifies the user name of databse when `data_type` is `1`.
+* `user_name` - (Optional, String, ForceNew) Specifies the user name of database when `data_type` is `1`.
  Changing this parameter will create a new resource.
 
 * `password` - (Optional, String, ForceNew) Specifies the password of database when `data_type` is `1`.

@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Message Service (DMS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dms_kafka_flavors"
+description: ""
 ---
 
 # huaweicloud_dms_kafka_flavors
@@ -43,7 +46,7 @@ data "huaweicloud_dms_kafka_flavors" "test" {
 * `region` - (Optional, String) Specifies the region in which to obtain the dms kafka flavors.
   If omitted, the provider-level region will be used.
 
-* `flavor_id` - (Optional, String) Specifies the DMS flvaor ID, e.g. **c6.2u4g.cluster**.
+* `flavor_id` - (Optional, String) Specifies the DMS flavor ID, e.g. **c6.2u4g.cluster**.
 
 * `storage_spec_code` - (Optional, String) Specifies the disk IO encoding.
   + **dms.physical.storage.high.v2**: Type of the disk that uses high I/O.
@@ -56,7 +59,7 @@ data "huaweicloud_dms_kafka_flavors" "test" {
 * `availability_zones` - (Optional, List) Specifies the list of availability zones with available resources.
 
 * `charging_mode` - (Optional, String) Specifies the flavor billing mode.
-  The valid valus are **prePaid** and **postPaid**.
+  The valid values are **prePaid** and **postPaid**.
 
 ## Attribute Reference
 

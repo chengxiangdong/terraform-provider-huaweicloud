@@ -14,7 +14,7 @@ import (
 )
 
 func getDeviceGroupResourceFunc(conf *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := conf.HcIoTdaV5Client(acceptance.HW_REGION_NAME)
+	client, err := conf.HcIoTdaV5Client(acceptance.HW_REGION_NAME, WithDerivedAuth())
 	if err != nil {
 		return nil, fmt.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -38,6 +38,59 @@ func TestAccDeviceGroup_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testDeviceGroup_basic(name, deviceName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rName, "name", name),
+					resource.TestCheckResourceAttr(rName, "description", name),
+					resource.TestCheckResourceAttrPair(rName, "space_id", "huaweicloud_iotda_space.test", "id"),
+					resource.TestCheckResourceAttr(rName, "device_ids.#", "1"),
+					resource.TestCheckResourceAttrPair(rName, "device_ids.0", "huaweicloud_iotda_device.test", "id"),
+				),
+			},
+			{
+				Config: testDeviceGroup_basic_update(updateName, deviceName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(rName, "name", updateName),
+					resource.TestCheckResourceAttr(rName, "description", updateName),
+					resource.TestCheckResourceAttrPair(rName, "space_id", "huaweicloud_iotda_space.test", "id"),
+					resource.TestCheckResourceAttr(rName, "device_ids.#", "1"),
+					resource.TestCheckResourceAttrPair(rName, "device_ids.0", "huaweicloud_iotda_device.test2", "id"),
+				),
+			},
+			{
+				ResourceName:            rName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"space_id"},
+			},
+		},
+	})
+}
+
+func TestAccDeviceGroup_derived(t *testing.T) {
+	var obj model.ShowDeviceGroupResponse
+
+	deviceName := acceptance.RandomAccResourceName()
+	name := acceptance.RandomAccResourceName()
+	updateName := acceptance.RandomAccResourceName()
+	rName := "huaweicloud_iotda_device_group.test"
+
+	rc := acceptance.InitResourceCheck(
+		rName,
+		&obj,
+		getDeviceGroupResourceFunc,
+	)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckHWIOTDAAccessAddress(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{

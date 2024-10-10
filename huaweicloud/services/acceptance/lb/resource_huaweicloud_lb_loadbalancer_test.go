@@ -76,6 +76,42 @@ func TestAccLBV2LoadBalancer_basic(t *testing.T) {
 	})
 }
 
+func TestAccLBV2LoadBalancer_prepaid(t *testing.T) {
+	var lb loadbalancers.LoadBalancer
+	rName := acceptance.RandomAccResourceNameWithDash()
+	resourceName := "huaweicloud_lb_loadbalancer.loadbalancer_1"
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&lb,
+		getLoadBalancerResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLBV2LoadBalancerConfig_prepaid(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "description", "created by acceptance test"),
+				),
+			},
+			{
+				Config: testAccLBV2LoadBalancerConfig_prepaid_update(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "description", "created by acceptance test"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccLBV2LoadBalancer_secGroup(t *testing.T) {
 	var lb loadbalancers.LoadBalancer
 	var sg1, sg2 groups.SecurityGroup
@@ -162,6 +198,14 @@ func TestAccLBV2LoadBalancer_withEpsId(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", "0"),
+				),
+			},
+			{
+				Config: testAccLBV2LoadBalancerConfig_withEpsId_update(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
 					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id",
 						acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
 				),
@@ -170,6 +214,51 @@ func TestAccLBV2LoadBalancer_withEpsId(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccLBV2LoadBalancer_changeToPrePaid(t *testing.T) {
+	var lb loadbalancers.LoadBalancer
+	rName := acceptance.RandomAccResourceNameWithDash()
+
+	resourceName := "huaweicloud_lb_loadbalancer.loadbalancer_1"
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&lb,
+		getLoadBalancerResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLBV2LoadBalancerConfig_basic(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "postPaid"),
+				),
+			},
+			{
+				Config: testAccLBV2LoadBalancerConfig_changeToPrePaid(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "protection_status", "consoleProtection"),
+					resource.TestCheckResourceAttr(resourceName, "protection_reason", "test protection reason"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"period_unit", "period", "auto_renew"},
 			},
 		},
 	})
@@ -231,6 +320,56 @@ func testAccCheckNetworkingV3SecGroupExists(n string, secGroup *groups.SecurityG
 	}
 }
 
+func testAccLBV2LoadBalancerConfig_prepaid(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
+  name          = "%s"
+  description   = "created by acceptance test"
+  vip_subnet_id = huaweicloud_vpc_subnet.test.ipv4_subnet_id
+
+  charging_mode = "prePaid"
+  period_unit   = "month"
+  period        = 1
+  auto_renew    = "false"
+}
+`, common.TestVpc(rName), rName)
+}
+
+func testAccLBV2LoadBalancerConfig_prepaid_update(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
+  name          = "%s"
+  description   = "created by acceptance test"
+  vip_subnet_id = huaweicloud_vpc_subnet.test.ipv4_subnet_id
+
+  charging_mode = "prePaid"
+  period_unit   = "month"
+  period        = 1
+  auto_renew    = "true"
+}
+`, common.TestVpc(rName), rName)
+}
+
+func testAccLBV2LoadBalancerConfig_update(rName, rNameUpdate string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
+  name           = "%s"
+  vip_subnet_id  = huaweicloud_vpc_subnet.test.ipv4_subnet_id
+
+  tags = {
+    key1  = "value1"
+    owner = "terraform_update"
+  }
+}
+`, common.TestVpc(rName), rNameUpdate)
+}
+
 func testAccLBV2LoadBalancerConfig_basic(rName string) string {
 	return fmt.Sprintf(`
 %s
@@ -246,23 +385,6 @@ resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
   }
 }
 `, common.TestVpc(rName), rName)
-}
-
-func testAccLBV2LoadBalancerConfig_update(rName, rNameUpdate string) string {
-	return fmt.Sprintf(`
-%s
-
-resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
-  name           = "%s"
-  admin_state_up = "true"
-  vip_subnet_id  = huaweicloud_vpc_subnet.test.ipv4_subnet_id
-
-  tags = {
-    key1  = "value1"
-    owner = "terraform_update"
-  }
-}
-`, common.TestVpc(rName), rNameUpdate)
 }
 
 func testAccLBV2LoadBalancer_secGroup(rName, rNameSg1, rNameSg2 string) string {
@@ -348,6 +470,23 @@ func testAccLBV2LoadBalancerConfig_withEpsId(rName string) string {
 resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
   name                  = "%s"
   vip_subnet_id         = huaweicloud_vpc_subnet.test.ipv4_subnet_id
+  enterprise_project_id = "0"
+
+  tags = {
+    key   = "value"
+    owner = "terraform"
+  }
+}
+`, common.TestVpc(rName), rName)
+}
+
+func testAccLBV2LoadBalancerConfig_withEpsId_update(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
+  name                  = "%s"
+  vip_subnet_id         = huaweicloud_vpc_subnet.test.ipv4_subnet_id
   enterprise_project_id = "%s"
 
   tags = {
@@ -356,4 +495,22 @@ resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
   }
 }
 `, common.TestVpc(rName), rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccLBV2LoadBalancerConfig_changeToPrePaid(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
+  name              = "%s"
+  description       = "created by acceptance test"
+  vip_subnet_id     = huaweicloud_vpc_subnet.test.ipv4_subnet_id
+  charging_mode     = "prePaid"
+  period_unit       = "month"
+  period            = 1
+  auto_renew        = true
+  protection_status = "consoleProtection"
+  protection_reason = "test protection reason"
+}
+`, common.TestVpc(rName), rName)
 }

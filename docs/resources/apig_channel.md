@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Dedicated APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_apig_channel"
+description: ""
 ---
 
 # huaweicloud_apig_channel
@@ -160,9 +163,9 @@ The following arguments are supported:
   Changing this will create a new resource.
 
 * `name` - (Required, String) Specifies the channel name.  
-  The valid length is limited from `3` to `64`, only chinese and english letters, digits, hyphens (-), underscores (_)
-  and dots (.) are allowed.  
-  The name must start with a Chinese or English letter.
+  The valid length is limited from `3` to `64`, only chinese characters, english letters, digits, hyphens (-),
+  underscores (_) and dots (.) are allowed.  
+  The name must start with a Chinese character or English letter.
 
 * `port` - (Required, Int) Specifies the default port for health check in channel.  
   The valid value ranges from `1` to `65,535`.
@@ -184,13 +187,13 @@ The following arguments are supported:
   + **2**: Server type.
   + **3**: Microservice type.
 
-  Defaults to **2** (server type).
+  Defaults to `2` (server type).
 
 * `member_group` - (Optional, List) Specifies the backend (server) groups of the channel.  
   The [object](#channel_member_group) structure is documented below.
 
 * `member` - (Optional, List) Specifies the backend servers of the channel.  
-  This parameter is required and only available if the `type` is **2**.  
+  This parameter is required and only available if the `type` is `2`.  
   The [object](#channel_members) structure is documented below.
 
 * `health_check` - (Optional, List) Specifies the health configuration of cloud servers associated with the load balance
@@ -204,6 +207,9 @@ The following arguments are supported:
 The `member_group` block supports:
 
 * `name` - (Required, String) Specifies the name of the member group.
+  The valid length is limited from `3` to `64`, only chinese and english letters, digits, hyphens (-), underscores (_)
+  and dots (.) are allowed.  
+  The name must start with a Chinese or English letter.
 
 * `description` - (Optional, String) Specifies the description of the member group.
 
@@ -212,27 +218,25 @@ The `member_group` block supports:
 * `microservice_version` - (Optional, String) Specifies the microservice version of the backend server group.
 
 * `microservice_port` - (Optional, Int) Specifies the microservice port of the backend server group.  
-  The valid value ranges from `0` to `65535`.
+  The valid value ranges from `0` to `65,535`.
 
 * `microservice_labels` - (Optional, Map) Specifies the microservice tags of the backend server group.
 
 <a name="channel_members"></a>
 The `member` block supports:
 
-* `host` - (Optional, String) Specifies the IP address each backend servers.  
-  Required if the `member_type` is **ecs**.
-  This parameter and `member.id` are alternative.
+* `host` - (Optional, String) Specifies the IP address each backend servers.
 
-* `id` - (Optional, String) Specifies the ECS ID for each backend servers.  
-  Required if the `member_type` is **ecs**.
-  This parameter and `member.host` are alternative.
+* `id` - (Optional, String) Specifies the ECS ID for each backend servers.
+
+  -> One of the parameter `member.host` and `member.id` must be set if `member_type` is **ecs**.
+     The parameter `member.host` and `member.id` are alternative.
 
 * `name` - (Optional, String) Specifies the name of the backend server.  
-  Required if the `member.id` is set.
-  This parameter and `member.host` are alternative.
+  Required if the parameter `member.id` is set.
 
 * `weight` - (Optional, Int) Specifies the weight of current backend server.  
-  The valid value ranges from `0` to `10000`, defaults to `0`.
+  The valid value ranges from `0` to `10,000`, defaults to `0`.
 
 * `is_backup` - (Optional, Bool) Specifies whether this member is the backup member.  
   Defaults to **false**.
@@ -248,7 +252,7 @@ The `member` block supports:
   Defaults to **1** (normal).
 
 * `port` - (Optional, Int) Specifies the port of the backend server.  
-  The valid value ranges from `0` to `65535`.
+  The valid value ranges from `0` to `65,535`.
   If omitted, the default port of channel will be used.
 
 <a name="channel_health_check"></a>
@@ -279,7 +283,7 @@ The `health_check` block supports:
   The valid values are **GET** and **HEAD**.
 
 * `port` - (Optional, Int) Specifies the destination host port for health check.  
-  The valid value ranges from `0` to `65535`.
+  The valid value ranges from `0` to `65,535`.
 
 * `http_codes` - (Optional, String) Specifies the response codes for determining a successful HTTP response.  
   The valid value ranges from `100` to `599` and the valid formats are as follows:
@@ -295,7 +299,7 @@ The `health_check` block supports:
   + **1**: Normal.
   + **2**: Abnormal.
 
-  Defaults to **1** (normal).
+  Defaults to `1` (normal).
 
 <a name="channel_microservice"></a>
 The `microservice` block supports:

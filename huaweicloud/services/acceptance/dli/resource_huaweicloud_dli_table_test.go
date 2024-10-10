@@ -2,6 +2,7 @@ package dli
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -47,7 +48,8 @@ func TestAccResourceDliTable_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "database_name", name),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "data_location", tables.TableTypeDLI),
-					resource.TestCheckResourceAttr(resourceName, "description", "dli table test"),
+					// The description returned by the API may contain extra characters "}" at the end.
+					resource.TestMatchResourceAttr(resourceName, "description", regexp.MustCompile(`^dli table test?}$`)),
 				),
 			},
 			{
@@ -80,7 +82,7 @@ resource "huaweicloud_dli_table" "test" {
   }
 
   columns {
-    name = "addrss"
+    name        = "addrss"
     type        = "string"
     description = "home address"
   }
@@ -115,7 +117,8 @@ func TestAccResourceDliTable_OBS(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "database_name", name),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "data_location", tables.TableTypeOBS),
-					resource.TestCheckResourceAttr(resourceName, "description", "dli table test"),
+					// The description returned by the API may contain extra characters "}" at the end.
+					resource.TestMatchResourceAttr(resourceName, "description", regexp.MustCompile(`^dli table test?}$`)),
 				),
 			},
 			{
@@ -156,15 +159,16 @@ resource "huaweicloud_dli_table" "test" {
   bucket_location = "obs://${huaweicloud_obs_bucket_object.test.bucket}/user/data"
 
   columns {
-    name = "name"
+    name        = "name"
     type        = "string"
     description = "person name"
   }
 
   columns {
-    name = "addrss"
-    type        = "string"
-    description = "home address"
+    name         = "addrss"
+    type         = "string"
+    description  = "home address"
+    is_partition = true
   }
 
 }

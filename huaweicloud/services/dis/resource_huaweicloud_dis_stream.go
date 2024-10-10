@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/common/tags"
@@ -23,6 +22,11 @@ import (
 
 const disSysTagKeyEnterpriseProjectId = "_sys_enterprise_project_id"
 
+// @API DIS POST /v2/{project_id}/stream/{id}/tags/action
+// @API DIS DELETE /v2/{project_id}/streams/{streamName}
+// @API DIS GET /v2/{project_id}/streams/{streamName}
+// @API DIS PUT /v2/{project_id}/streams/{streamName}
+// @API DIS POST /v2/{project_id}/streams
 func ResourceDisStream() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceStreamCreate,
@@ -55,11 +59,10 @@ func ResourceDisStream() *schema.Resource {
 			},
 
 			"retention_period": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Default:      24,
-				ForceNew:     true,
-				ValidateFunc: validation.IntBetween(24, 72),
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  24,
+				ForceNew: true,
 			},
 
 			"stream_type": {

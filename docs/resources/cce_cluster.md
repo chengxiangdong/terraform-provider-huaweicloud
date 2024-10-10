@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_cluster"
+description: ""
 ---
 
 # huaweicloud_cce_cluster
@@ -113,7 +116,7 @@ resource "huaweicloud_vpc_subnet" "eni_test_2" {
 }
 
 resource "huaweicloud_cce_cluster" "test" {
-  name                   = cluster"
+  name                   = "cluster"
   flavor_id              = "cce.s1.small"
   vpc_id                 = huaweicloud_vpc.myvpc.id
   subnet_id              = huaweicloud_vpc_subnet.mysubnet.id
@@ -150,6 +153,31 @@ resource "huaweicloud_cce_cluster" "cluster" {
 }
 ```
 
+### Cluster with Component Configurations
+
+```hcl
+variable "vpc_id" {}
+variable "subnet_id" {}
+
+resource "huaweicloud_cce_cluster" "cluster" {
+  name                   = "cluster"
+  flavor_id              = "cce.s1.small"
+  vpc_id                 = var.vpc_id
+  subnet_id              = var.subnet_id
+  container_network_type = "overlay_l2"
+
+  component_configurations {
+    name           = "kube-apiserver"
+    configurations = jsonencode([
+      {
+        name  = "default-not-ready-toleration-seconds"
+        value = "100"
+      }
+    ])
+  }
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
@@ -160,8 +188,7 @@ The following arguments are supported:
 * `name` - (Required, String, ForceNew) Specifies the cluster name.
   Changing this parameter will create a new cluster resource.
 
-* `flavor_id` - (Required, String, ForceNew) Specifies the cluster specifications.
-  Changing this parameter will create a new cluster resource.
+* `flavor_id` - (Required, String) Specifies the cluster specifications.
   Possible values:
   + **cce.s1.small**: small-scale single cluster (up to 50 nodes).
   + **cce.s1.medium**: medium-scale single cluster (up to 200 nodes).
@@ -169,6 +196,8 @@ The following arguments are supported:
   + **cce.s2.medium**: medium-scale HA cluster (up to 200 nodes).
   + **cce.s2.large**: large-scale HA cluster (up to 1000 nodes).
   + **cce.s2.xlarge**: large-scale HA cluster (up to 2000 nodes).
+
+  -> Changing the number of control nodes or reducing cluster flavor is not supported.
 
 * `vpc_id` - (Required, String, ForceNew) Specifies the ID of the VPC used to create the node.
   Changing this parameter will create a new cluster resource.
@@ -191,8 +220,10 @@ The following arguments are supported:
   If updated, the modified security group will only be applied to nodes newly created or accepted.
   For existing nodes, you need to manually modify the security group rules for them.
 
-* `cluster_version` - (Optional, String, ForceNew) Specifies the cluster version, defaults to the latest supported
-  version. Changing this parameter will create a new cluster resource.
+* `cluster_version` - (Optional, String) Specifies the cluster version, defaults to the latest supported
+  version. Changing this parameter will not upgrade the cluster. If you want to upgrade the cluster, please use
+  resource `huaweicloud_cce_cluster_upgrade`. After upgrading cluster successfully, you can update this parameter
+  to avoid unexpected changing plan.
 
 * `cluster_type` - (Optional, String, ForceNew) Specifies the cluster Type, possible values are **VirtualMachine** and
   **ARM64**. Defaults to **VirtualMachine**. Changing this parameter will create a new cluster resource.
@@ -262,10 +293,9 @@ The following arguments are supported:
   The [object](#cce_cluster_extend_params) structure is documented below.
   Changing this parameter will create a new cluster resource.
 
-* `component_configurations` - (Optional, List, ForceNew) Specifies the kubernetes component configurations.
+* `component_configurations` - (Optional, List) Specifies the kubernetes component configurations.
   For details, see [documentation](https://support.huaweicloud.com/intl/en-us/usermanual-cce/cce_10_0213.html).
   The [object](#cce_cluster_component_configurations) structure is documented below.
-  Changing this parameter will create a new cluster resource.
 
 * `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the CCE cluster.
   Valid values are **prePaid** and **postPaid**, defaults to **postPaid**.
@@ -283,8 +313,7 @@ The following arguments are supported:
 
 * `auto_renew` - (Optional, String) Specifies whether auto renew is enabled. Valid values are **true** and **false**.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) The enterprise project ID of the CCE cluster.
-  Changing this parameter will create a new cluster resource.
+* `enterprise_project_id` - (Optional, String) The enterprise project ID of the CCE cluster.
 
 * `tags` - (Optional, Map) Specifies the tags of the CCE cluster, key/value pair format.
 
@@ -302,6 +331,13 @@ The following arguments are supported:
 
 * `delete_all` - (Optional, String) Specified whether to delete all associated storage resources when deleting the CCE
   cluster. valid values are **true**, **try** and **false**. Default is **false**.
+
+* `lts_reclaim_policy` - (Optional, String) Specified whether to delete LTS resources when deleting the CCE cluster.
+  Valid values are:
+  + **Delete_Log_Group**: Delete the log group, ignore it if it fails, and continue with the subsequent process.
+  + **Delete_Master_Log_Stream**: Delete the the log stream, ignore it if it fails, and continue the subsequent process.
+  The default option.
+  + **Retain**: Skip the deletion process.
 
 * `hibernate` - (Optional, Bool) Specifies whether to hibernate the CCE cluster. Defaults to **false**. After a cluster is
   hibernated, resources such as workloads cannot be created or managed in the cluster, and the cluster cannot be
@@ -360,11 +396,9 @@ The `extend_params` block supports:
 <a name="cce_cluster_component_configurations"></a>
 The `component_configurations` block supports:
 
-* `name` - (Required, String, ForceNew) Specifies the component name.
-  Changing this parameter will create a new cluster resource.
+* `name` - (Required, String) Specifies the component name.
 
-* `configurations` - (Optional, String, ForceNew) Specifies JSON string of the component configurations.
-  Changing this parameter will create a new cluster resource.
+* `configurations` - (Optional, String) Specifies JSON string of the component configurations.
 
 ## Attribute Reference
 
@@ -423,7 +457,7 @@ recommended running `terraform plan` after importing an CCE cluster. You can the
 the cluster, or the resource definition should be updated to align with the cluster. Also you can ignore changes as
 below.
 
-```
+```hcl
 resource "huaweicloud_cce_cluster" "cluster_1" {
     ...
 

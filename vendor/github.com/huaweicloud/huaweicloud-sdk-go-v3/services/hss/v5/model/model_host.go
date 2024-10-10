@@ -56,6 +56,9 @@ type Host struct {
 	// 云主机安全检测结果，包含如下4种。 - undetected ：未检测。 - clean ：无风险。 - risk ：有风险。 - scanning ：检测中。
 	DetectResult *string `json:"detect_result,omitempty"`
 
+	// 试用版到期时间（-1表示非试用版配额，当值不为-1时为试用版本过期时间）
+	ExpireTime *int64 `json:"expire_time,omitempty"`
+
 	// 收费模式，包含如下2种。   - packet_cycle ：包年/包月。   - on_demand ：按需。
 	ChargingMode *string `json:"charging_mode,omitempty"`
 
@@ -80,13 +83,13 @@ type Host struct {
 	// 资产风险
 	Asset *int32 `json:"asset,omitempty"`
 
-	// 漏洞风险
+	// 漏洞风险总数，包含Linux软件漏洞、Windows系统漏洞、Web-CMS漏洞、应用漏洞
 	Vulnerability *int32 `json:"vulnerability,omitempty"`
 
-	// 基线风险
+	// 基线风险总数，包含配置风险、弱口令
 	Baseline *int32 `json:"baseline,omitempty"`
 
-	// 入侵风险
+	// 入侵风险总数
 	Intrusion *int32 `json:"intrusion,omitempty"`
 
 	// 资产重要性，包含如下4种   - important ：重要资产   - common ：一般资产   - test ：测试资产
@@ -107,7 +110,7 @@ type Host struct {
 	// 升级状态，包含如下4种。   - not_upgrade ：未升级，也就是默认状态，客户还没有给这台机器下发过升级。   - upgrading ：正在升级中。   - upgrade_failed ：升级失败。   - upgrade_succeed ：升级成功。
 	UpgradeStatus *string `json:"upgrade_status,omitempty"`
 
-	// 升级失败原因，只有当 upgrade_status 为 upgrade_failed 时才显示，包含如下12种。   - package_unavailable ：升级包解析失败，升级文件有错误。   - network_access_timeout ：下载升级包失败，网络异常。   - agent_offline ：agent离线。   - hostguard_abnormal ：agent工作进程异常。   - insufficient_disk_space ：磁盘空间不足。   - failed_to_replace_file ：替换文件失败。
+	// 升级失败原因，只有当 upgrade_status 为 upgrade_failed 时才显示，包含如下6种。   - package_unavailable ：升级包解析失败，升级文件有错误。   - network_access_timeout ：下载升级包失败，网络异常。   - agent_offline ：agent离线。   - hostguard_abnormal ：agent工作进程异常。   - insufficient_disk_space ：磁盘空间不足。   - failed_to_replace_file ：替换文件失败。
 	UpgradeResultCode *string `json:"upgrade_result_code,omitempty"`
 
 	// 该服务器agent是否可升级
@@ -115,6 +118,9 @@ type Host struct {
 
 	// 开启防护时间，采用时间戳，默认毫秒，
 	OpenTime *int64 `json:"open_time,omitempty"`
+
+	// 防护是否中断
+	ProtectInterrupt *bool `json:"protect_interrupt,omitempty"`
 }
 
 func (o Host) String() string {

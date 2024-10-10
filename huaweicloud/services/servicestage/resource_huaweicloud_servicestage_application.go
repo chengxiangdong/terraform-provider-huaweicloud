@@ -3,12 +3,10 @@ package servicestage
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/servicestage/v2/applications"
@@ -18,6 +16,14 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API ServiceStage POST /v2/{project_id}/cas/applications
+// @API ServiceStage PUT /v2/{project_id}/cas/applications/{application_id}/configuration
+// @API ServiceStage GET /v2/{project_id}/cas/applications/{application_id}
+// @API ServiceStage GET /v2/{project_id}/cas/applications/{application_id}/components
+// @API ServiceStage GET /v2/{project_id}/cas/applications/{application_id}/configuration
+// @API ServiceStage PUT /v2/{project_id}/cas/applications/{application_id}
+// @API ServiceStage DELETE /v2/{project_id}/cas/applications/{application_id}/configuration
+// @API ServiceStage DELETE /v2/{project_id}/cas/applications/{application_id}
 func ResourceApplication() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceApplicationCreate,
@@ -39,17 +45,10 @@ func ResourceApplication() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z]([\w-]*[A-Za-z0-9])?$`),
-						"The name must start with a letter and end with a letter or digit, and can only contain "+
-							"letters, digits, underscores (_) and hyphens (-)."),
-					validation.StringLenBetween(2, 64),
-				),
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 128),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
@@ -74,17 +73,10 @@ func ResourceApplication() *schema.Resource {
 									"name": {
 										Type:     schema.TypeString,
 										Required: true,
-										ValidateFunc: validation.All(
-											validation.StringMatch(regexp.MustCompile(`^[A-Za-z-_][\w-.]*$`),
-												"The name can only contain letters, digits, underscores (_), "+
-													"hyphens (-) and dots (.), and cannot start with a digit or dot."),
-											validation.StringLenBetween(1, 64),
-										),
 									},
 									"value": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ValidateFunc: validation.StringLenBetween(1, 2048),
+										Type:     schema.TypeString,
+										Required: true,
 									},
 								},
 							},

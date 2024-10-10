@@ -22,6 +22,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API WAF GET /v1/{project_id}/waf/ip-group/{id}
+// @API WAF PUT /v1/{project_id}/waf/ip-group/{id}
+// @API WAF DELETE /v1/{project_id}/waf/ip-group/{id}
+// @API WAF POST /v1/{project_id}/waf/ip-groups
 func ResourceWafAddressGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAddressGroupCreate,
@@ -157,15 +161,15 @@ func buildWAFAddressGroupBodyParams(d *schema.ResourceData) map[string]interface
 	}
 
 	bodyParams := map[string]interface{}{
-		"name":        utils.ValueIngoreEmpty(d.Get("name")),
+		"name":        utils.ValueIgnoreEmpty(d.Get("name")),
 		"ips":         strings.Join(addresses, ","),
-		"description": utils.ValueIngoreEmpty(d.Get("description")),
+		"description": utils.ValueIgnoreEmpty(d.Get("description")),
 	}
 	return bodyParams
 }
 
-func buildWAFAddressGroupQueryParams(d *schema.ResourceData, conf *config.Config) string {
-	epsId := common.GetEnterpriseProjectID(d, conf)
+func buildWAFAddressGroupQueryParams(d *schema.ResourceData, cfg *config.Config) string {
+	epsId := cfg.GetEnterpriseProjectID(d)
 	if epsId == "" {
 		return ""
 	}
@@ -206,6 +210,7 @@ func resourceAddressGroupRead(_ context.Context, d *schema.ResourceData, meta in
 	getWAFAddressGroupResp, err := getWAFAddressGroupClient.Request("GET", getWAFAddressGroupPath,
 		&getWAFAddressGroupOpt)
 	if err != nil {
+		// If the address group does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving address group")
 	}
 
@@ -329,7 +334,8 @@ func resourceAddressGroupDelete(_ context.Context, d *schema.ResourceData, meta 
 	}
 	_, err = deleteWAFAddressGroupClient.Request("DELETE", deleteWAFAddressGroupPath, &deleteWAFAddressGroupOpt)
 	if err != nil {
-		return diag.Errorf("error deleting address group: %s", err)
+		// If the address group does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting address group")
 	}
 
 	return nil

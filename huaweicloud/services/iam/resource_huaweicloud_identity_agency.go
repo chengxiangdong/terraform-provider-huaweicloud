@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/identity/v3/agency"
@@ -27,6 +26,21 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IAM POST /v3.0/OS-AGENCY/agencies
+// @API IAM GET /v3.0/OS-AGENCY/agencies/{agency_id}
+// @API IAM PUT /v3.0/OS-AGENCY/agencies/{agency_id}
+// @API IAM DELETE /v3.0/OS-AGENCY/agencies/{agency_id}
+// @API IAM GET /v3.0/OS-AGENCY/domains/{domain_id}/agencies/{agency_id}/roles
+// @API IAM PUT /v3.0/OS-AGENCY/domains/{domain_id}/agencies/{agency_id}/roles/{role_id}
+// @API IAM DELETE /v3.0/OS-AGENCY/domains/{domain_id}/agencies/{agency_id}/roles/{role_id}
+// @API IAM GET /v3.0/OS-INHERIT/domains/{domain_id}/agencies/{agency_id}/roles/inherited_to_projects
+// @API IAM PUT /v3.0/OS-INHERIT/domains/{domain_id}/agencies/{agency_id}/roles/{role_id}/inherited_to_projects
+// @API IAM DELETE /v3.0/OS-INHERIT/domains/{domain_id}/agencies/{agency_id}/roles/{role_id}/inherited_to_projects
+// @API IAM GET /v3.0/OS-AGENCY/projects/{projectID}/agencies/{agency_id}/roles
+// @API IAM PUT /v3.0/OS-AGENCY/projects/{projectID}/agencies/{agency_id}/roles/{role_id}
+// @API IAM DELETE /v3.0/OS-AGENCY/projects/{projectID}/agencies/{agency_id}/roles/{role_id}
+// @API IAM GET /v3/projects
+// @API IAM GET /v3/roles
 func ResourceIAMAgencyV3() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIAMAgencyV3Create,
@@ -48,15 +62,11 @@ func ResourceIAMAgencyV3() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ExactlyOneOf: []string{"delegated_service_name"},
-				ValidateFunc: validation.StringDoesNotMatch(regexp.MustCompile("^op_svc_[A-Za-z]+"),
-					"the value can not start with op_svc_, use `delegated_service_name` instead"),
-				Description: "schema: Required",
+				Description:  "schema: Required",
 			},
 			"delegated_service_name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile("^op_svc_[A-Za-z]+"),
-					"the value must start with op_svc_."),
+				Type:        schema.TypeString,
+				Optional:    true,
 				Description: "schema: Internal",
 			},
 			"description": {

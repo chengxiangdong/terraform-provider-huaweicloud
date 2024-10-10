@@ -35,13 +35,13 @@ func TestAccDesktop_basic(t *testing.T) {
 		getDesktopFunc,
 	)
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDesktop_basic(rName),
+				Config: testAccDesktop_basic_step1(rName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(resourceName, "vpc_id", "huaweicloud_vpc.test", "id"),
@@ -58,10 +58,32 @@ func TestAccDesktop_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "data_volume.1.type", "SAS"),
 					resource.TestCheckResourceAttr(resourceName, "data_volume.1.size", "70"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttrPair(resourceName, "nic.0.network_id", "huaweicloud_vpc_subnet.test", "id"),
 				),
 			},
 			{
-				Config: testAccDesktop_update(rName),
+				Config: testAccDesktop_basic_step2(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(resourceName, "vpc_id", "huaweicloud_vpc.test", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "availability_zone",
+						"data.huaweicloud_availability_zones.test", "names.0"),
+					resource.TestCheckResourceAttr(resourceName, "flavor_id", "workspace.x86.ultimate.large2"),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "user_name", "user-"+rName),
+					resource.TestCheckResourceAttr(resourceName, "user_group", "administrators"),
+					resource.TestCheckResourceAttr(resourceName, "root_volume.0.type", "SAS"),
+					resource.TestCheckResourceAttr(resourceName, "root_volume.0.size", "100"),
+					resource.TestCheckResourceAttr(resourceName, "data_volume.0.type", "SAS"),
+					resource.TestCheckResourceAttr(resourceName, "data_volume.0.size", "50"),
+					resource.TestCheckResourceAttr(resourceName, "data_volume.1.type", "SAS"),
+					resource.TestCheckResourceAttr(resourceName, "data_volume.1.size", "70"),
+					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttrPair(resourceName, "nic.0.network_id", "huaweicloud_vpc_subnet.test", "id"),
+				),
+			},
+			{
+				Config: testAccDesktop_basic_step3(rName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "flavor_id", "workspace.x86.ultimate.large4"),
@@ -76,6 +98,7 @@ func TestAccDesktop_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "data_volume.3.type", "SAS"),
 					resource.TestCheckResourceAttr(resourceName, "data_volume.3.size", "40"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "baar"),
+					resource.TestCheckResourceAttrPair(resourceName, "nic.0.network_id", "huaweicloud_vpc_subnet.standby", "id"),
 				),
 			},
 			{
@@ -85,9 +108,159 @@ func TestAccDesktop_basic(t *testing.T) {
 				ImportStateVerifyIgnore: []string{
 					"delete_user",
 					"image_type",
-					"nic",
 					"user_email",
 					"vpc_id",
+					"power_action",
+					"power_action_type",
+				},
+			},
+		},
+	})
+}
+
+func testAccDesktop_basic_step1(rName string) string {
+	return testAccDesktop_basic(rName, 80)
+}
+
+func testAccDesktop_basic_step2(rName string) string {
+	return testAccDesktop_basic(rName, 100)
+}
+
+func testAccDesktop_basic_step3(rName string) string {
+	return testAccDesktop_basic_update(rName, 100)
+}
+
+func TestAccDesktop_UpdateWithEpsId(t *testing.T) {
+	var (
+		desktop      desktops.Desktop
+		resourceName = "huaweicloud_workspace_desktop.test"
+		rName        = acceptance.RandomAccResourceNameWithDash()
+	)
+	srcEPS := acceptance.HW_ENTERPRISE_PROJECT_ID_TEST
+	destEPS := acceptance.HW_ENTERPRISE_MIGRATE_PROJECT_ID_TEST
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&desktop,
+		getDesktopFunc,
+	)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckMigrateEpsID(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDesktop_withEPSId(rName, srcEPS),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(resourceName, "vpc_id", "huaweicloud_vpc.test", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "availability_zone",
+						"data.huaweicloud_availability_zones.test", "names.0"),
+					resource.TestCheckResourceAttr(resourceName, "flavor_id", "workspace.x86.ultimate.large2"),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "user_name", "user-"+rName),
+					resource.TestCheckResourceAttr(resourceName, "user_group", "administrators"),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", srcEPS),
+				),
+			},
+			{
+				Config: testAccDesktop_withEPSId(rName, destEPS),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "flavor_id", "workspace.x86.ultimate.large2"),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "user_name", "user-"+rName),
+					resource.TestCheckResourceAttr(resourceName, "user_group", "administrators"),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", destEPS),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDesktop_powerAction(t *testing.T) {
+	var (
+		desktop      desktops.Desktop
+		resourceName = "huaweicloud_workspace_desktop.test"
+		rName        = acceptance.RandomAccResourceNameWithDash()
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&desktop,
+		getDesktopFunc,
+	)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccdesktop_powerAction(rName, "os-stop", "SOFT"),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "power_action", "os-stop"),
+					resource.TestCheckResourceAttr(resourceName, "power_action_type", "SOFT"),
+					resource.TestCheckResourceAttr(resourceName, "status", "SHUTOFF"),
+				),
+			},
+			{
+				Config: testAccdesktop_powerAction(rName, "os-start", "SOFT"),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "power_action", "os-start"),
+					resource.TestCheckResourceAttr(resourceName, "power_action_type", "SOFT"),
+					resource.TestCheckResourceAttr(resourceName, "status", "ACTIVE"),
+				),
+			},
+			{
+				Config: testAccdesktop_powerAction(rName, "reboot", "SOFT"),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "power_action", "reboot"),
+					resource.TestCheckResourceAttr(resourceName, "power_action_type", "SOFT"),
+					resource.TestCheckResourceAttr(resourceName, "status", "ACTIVE"),
+				),
+			},
+			{
+				Config: testAccdesktop_powerAction(rName, "reboot", "HARD"),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "power_action", "reboot"),
+					resource.TestCheckResourceAttr(resourceName, "power_action_type", "HARD"),
+					resource.TestCheckResourceAttr(resourceName, "status", "ACTIVE"),
+				),
+			},
+			{
+				Config: testAccdesktop_powerAction(rName, "os-hibernate", "HARD"),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "power_action", "os-hibernate"),
+					resource.TestCheckResourceAttr(resourceName, "power_action_type", "HARD"),
+					resource.TestCheckResourceAttr(resourceName, "status", "SHUTOFF"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"delete_user",
+					"image_type",
+					"user_email",
+					"vpc_id",
+					"power_action",
+					"power_action_type",
 				},
 			},
 		},
@@ -96,7 +269,14 @@ func TestAccDesktop_basic(t *testing.T) {
 
 func testAccDesktop_base(rName string) string {
 	return fmt.Sprintf(`
-%s
+%[1]s
+
+resource "huaweicloud_vpc_subnet" "standby" {
+  name       = "%[2]s"
+  vpc_id     = huaweicloud_vpc.test.id
+  cidr       = "192.168.1.0/24"
+  gateway_ip = "192.168.1.1"
+}
 
 data "huaweicloud_availability_zones" "test" {}
 
@@ -105,12 +285,18 @@ resource "huaweicloud_workspace_service" "test" {
   vpc_id      = huaweicloud_vpc.test.id
   network_ids = [
     huaweicloud_vpc_subnet.test.id,
+    huaweicloud_vpc_subnet.standby.id,
   ]
 }
-`, common.TestBaseNetwork(rName))
+
+data "huaweicloud_images_images" "test" {
+  name_regex = "WORKSPACE"
+  visibility = "market"
+}
+`, common.TestBaseNetwork(rName), rName)
 }
 
-func testAccDesktop_basic(rName string) string {
+func testAccDesktop_basic(rName string, rootVolumeSize int) string {
 	return fmt.Sprintf(`
 %[1]s
 
@@ -121,7 +307,7 @@ locals {
 resource "huaweicloud_workspace_desktop" "test" {
   flavor_id         = "workspace.x86.ultimate.large2"
   image_type        = "market"
-  image_id          = "63aa8670-27ad-4747-8c44-6d8919e785a7"
+  image_id          = try(data.huaweicloud_images_images.test.images[0].id, "")
   availability_zone = data.huaweicloud_availability_zones.test.names[0]
   vpc_id            = huaweicloud_vpc.test.id
   security_groups   = [
@@ -140,7 +326,7 @@ resource "huaweicloud_workspace_desktop" "test" {
 
   root_volume {
     type = "SAS"
-    size = 80
+    size = %[3]d
   }
 
   dynamic "data_volume" {
@@ -158,10 +344,10 @@ resource "huaweicloud_workspace_desktop" "test" {
 
   delete_user = true
 }
-`, testAccDesktop_base(rName), rName)
+`, testAccDesktop_base(rName), rName, rootVolumeSize)
 }
 
-func testAccDesktop_update(rName string) string {
+func testAccDesktop_basic_update(rName string, rootVolumeSize int) string {
 	return fmt.Sprintf(`
 %[1]s
 
@@ -172,7 +358,7 @@ locals {
 resource "huaweicloud_workspace_desktop" "test" {
   flavor_id         = "workspace.x86.ultimate.large4"
   image_type        = "market"
-  image_id          = "63aa8670-27ad-4747-8c44-6d8919e785a7"
+  image_id          = try(data.huaweicloud_images_images.test.images[1].id, "")
   availability_zone = data.huaweicloud_availability_zones.test.names[0]
   vpc_id            = huaweicloud_vpc.test.id
   security_groups   = [
@@ -181,7 +367,7 @@ resource "huaweicloud_workspace_desktop" "test" {
   ]
 
   nic {
-    network_id = huaweicloud_vpc_subnet.test.id
+    network_id = huaweicloud_vpc_subnet.standby.id
   }
 
   name       = "%[2]s"
@@ -209,5 +395,89 @@ resource "huaweicloud_workspace_desktop" "test" {
 
   delete_user = true
 }
-`, testAccDesktop_base(rName), rName)
+`, testAccDesktop_base(rName), rName, rootVolumeSize)
+}
+
+func testAccDesktop_withEPSId(rName, epsId string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_workspace_desktop" "test" {
+  flavor_id             = "workspace.x86.ultimate.large2"
+  image_type            = "market"
+  image_id              = try(data.huaweicloud_images_images.test.images[0].id, "")
+  enterprise_project_id = "%[3]s"
+  availability_zone     = data.huaweicloud_availability_zones.test.names[0]
+  vpc_id                = huaweicloud_vpc.test.id
+  security_groups       = [
+    huaweicloud_workspace_service.test.desktop_security_group.0.id,
+    huaweicloud_networking_secgroup.test.id,
+  ]
+
+  nic {
+    network_id = huaweicloud_vpc_subnet.test.id
+  }
+
+  name       = "%[2]s"
+  user_name  = "user-%[2]s"
+  user_email = "terraform@example.com"
+  user_group = "administrators"
+
+  root_volume {
+    type = "SAS"
+    size = 80
+  }
+
+  data_volume {
+    type = "SAS"
+    size = 50
+  }
+
+  tags = {
+    foo = "bar"
+  }
+
+  delete_user = true
+}
+`, testAccDesktop_base(rName), rName, epsId)
+}
+
+func testAccdesktop_powerAction(rName string, powerAction string, powerActionType string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_workspace_desktop" "test" {
+  flavor_id         = "workspace.x86.ultimate.large2"
+  image_type        = "market"
+  image_id          = try(data.huaweicloud_images_images.test.images[0].id)
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  vpc_id            = huaweicloud_vpc.test.id
+  security_groups   = [
+    huaweicloud_workspace_service.test.desktop_security_group.0.id,
+    huaweicloud_networking_secgroup.test.id,
+  ]
+  
+  nic {
+    network_id = huaweicloud_vpc_subnet.test.id
+  }
+  
+  name               = "%[2]s"
+  user_name          = "user-%[2]s"
+  user_email         = "terraform@example.com"
+  user_group         = "administrators"
+  delete_user        = true
+  power_action       = "%[3]s"
+  power_action_type  = "%[4]s"
+
+  root_volume {
+    type = "SAS"
+    size = 80
+  }
+  
+  data_volume {
+    type = "SAS"
+    size = 50
+  }
+}
+`, testAccDesktop_base(rName), rName, powerAction, powerActionType)
 }

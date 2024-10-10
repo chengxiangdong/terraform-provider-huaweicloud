@@ -23,6 +23,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API DNS PUT /v2.1/recordsets/{recordset_id}/statuses/set
+// @API DNS POST /v2.1/zones/{zone_id}/recordsets
+// @API DNS DELETE /v2.1/zones/{zone_id}/recordsets/{recordset_id}
+// @API DNS GET /v2.1/zones/{zone_id}/recordsets/{recordset_id}
+// @API DNS PUT /v2.1/zones/{zone_id}/recordsets/{recordset_id}
 func ResourceDNSRecordSetV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDNSRecordSetV2Create,
@@ -57,9 +62,8 @@ func ResourceDNSRecordSetV2() *schema.Resource {
 				ForceNew: true,
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 255),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"records": {
 				Type:     schema.TypeList,
@@ -68,10 +72,9 @@ func ResourceDNSRecordSetV2() *schema.Resource {
 				MinItems: 1,
 			},
 			"ttl": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Default:      300,
-				ValidateFunc: validation.IntBetween(1, 2147483647),
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  300,
 			},
 			"type": {
 				Type:     schema.TypeString,
@@ -162,7 +165,7 @@ func resourceDNSRecordSetV2Read(_ context.Context, d *schema.ResourceData, meta 
 
 	dnsClient, zoneType, err := chooseDNSClientbyZoneID(d, zoneID, meta)
 	if err != nil {
-		return diag.FromErr(err)
+		return common.CheckDeletedDiag(d, err, "error creating DNS client")
 	}
 
 	n, err := recordsets.Get(dnsClient, zoneID, recordsetID).Extract()
@@ -211,7 +214,7 @@ func resourceDNSRecordSetV2Update(ctx context.Context, d *schema.ResourceData, m
 
 	dnsClient, zoneType, err := chooseDNSClientbyZoneID(d, zoneID, meta)
 	if err != nil {
-		return diag.FromErr(err)
+		return common.CheckDeletedDiag(d, err, "error creating DNS client")
 	}
 
 	if d.HasChanges("description", "ttl", "records") {
@@ -280,7 +283,7 @@ func resourceDNSRecordSetV2Delete(ctx context.Context, d *schema.ResourceData, m
 
 	dnsClient, _, err := chooseDNSClientbyZoneID(d, zoneID, meta)
 	if err != nil {
-		return diag.FromErr(err)
+		return common.CheckDeletedDiag(d, err, "error creating DNS client")
 	}
 
 	err = recordsets.Delete(dnsClient, zoneID, recordsetID).ExtractErr()
@@ -343,6 +346,10 @@ func parseDNSV2RecordSetID(id string) (zoneID string, recordsetID string, err er
 	return
 }
 
+// Use this function to build the client by DNS zone ID
+// For a public zone, the endpoint of client should be https://dns.myhuaweicloud.com
+// For a private zone, the endpoint of client should be https://dns.{region}.myhuaweicloud.com
+// In most regions, the both endpoints can work well, but it's very useful for regions like `la-north-2`
 func chooseDNSClientbyZoneID(d *schema.ResourceData, zoneID string, meta interface{}) (*golangsdk.ServiceClient, string, error) {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)

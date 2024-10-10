@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cpts/v1/model"
 
@@ -17,6 +16,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CPTS PUT /v1/{project_id}/test-suites/{test_suite_id}
+// @API CPTS DELETE /v1/{project_id}/test-suites/{test_suite_id}
+// @API CPTS GET /v1/{project_id}/test-suites/{test_suite_id}
+// @API CPTS POST /v1/{project_id}/test-suites
 func ResourceProject() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceProjectCreate,
@@ -36,15 +39,13 @@ func ResourceProject() *schema.Resource {
 			},
 
 			"name": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringLenBetween(1, 42),
+				Type:     schema.TypeString,
+				Required: true,
 			},
 
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 50),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			"created_at": {

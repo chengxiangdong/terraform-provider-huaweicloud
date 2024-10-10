@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -22,6 +21,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API UCS POST /v1/clustergroups
+// @API UCS DELETE /v1/clustergroups/{id}
+// @API UCS GET /v1/clustergroups/{id}
+// @API UCS PUT /v1/clustergroups/{id}/associatedrules
+// @API UCS PUT /v1/clustergroups/{id}/description
 func ResourceFleet() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceFleetCreate,
@@ -82,13 +86,14 @@ func FleetPermissionSchema() *schema.Resource {
 
 func resourceFleetCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// createFleet: Create a UCS Fleet.
 	var (
 		createFleetHttpUrl = "v1/clustergroups"
 		createFleetProduct = "ucs"
 	)
-	createFleetClient, err := cfg.NewServiceClient(createFleetProduct, "")
+	createFleetClient, err := cfg.NewServiceClient(createFleetProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}
@@ -113,11 +118,11 @@ func resourceFleetCreate(ctx context.Context, d *schema.ResourceData, meta inter
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("uid", createFleetRespBody)
-	if err != nil {
+	id := utils.PathSearch("uid", createFleetRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating Fleet: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	if _, ok := d.GetOk("permissions"); ok {
 		err := updatePermissions(d, createFleetClient)
@@ -132,7 +137,7 @@ func resourceFleetCreate(ctx context.Context, d *schema.ResourceData, meta inter
 func buildCreateFleetBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name": utils.ValueIngoreEmpty(d.Get("name")),
+			"name": utils.ValueIgnoreEmpty(d.Get("name")),
 		},
 		"spec": buildCreateFleetSpecOpts(d),
 	}
@@ -141,7 +146,7 @@ func buildCreateFleetBodyParams(d *schema.ResourceData) map[string]interface{} {
 
 func buildCreateFleetSpecOpts(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"description": utils.ValueIngoreEmpty(d.Get("description")),
+		"description": utils.ValueIgnoreEmpty(d.Get("description")),
 	}
 
 	return bodyParams
@@ -149,6 +154,7 @@ func buildCreateFleetSpecOpts(d *schema.ResourceData) map[string]interface{} {
 
 func resourceFleetRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var mErr *multierror.Error
 
@@ -157,7 +163,7 @@ func resourceFleetRead(_ context.Context, d *schema.ResourceData, meta interface
 		getFleetHttpUrl = "v1/clustergroups/{id}"
 		getFleetProduct = "ucs"
 	)
-	getFleetClient, err := cfg.NewServiceClient(getFleetProduct, "")
+	getFleetClient, err := cfg.NewServiceClient(getFleetProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}
@@ -213,8 +219,9 @@ func flattenPermissions(permissionsRaw interface{}) []map[string]interface{} {
 
 func resourceFleetUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 	updateFleetProduct := "ucs"
-	updateFleetClient, err := cfg.NewServiceClient(updateFleetProduct, "")
+	updateFleetClient, err := cfg.NewServiceClient(updateFleetProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}
@@ -223,7 +230,7 @@ func resourceFleetUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		// updateFleet: Update the UCS Fleet
 		updateFleetHttpUrl := "v1/clustergroups/{id}/description"
 
-		updateFleetClient, err := cfg.NewServiceClient(updateFleetProduct, "")
+		updateFleetClient, err := cfg.NewServiceClient(updateFleetProduct, region)
 		if err != nil {
 			return diag.Errorf("error creating UCS Client: %s", err)
 		}
@@ -301,8 +308,8 @@ func buildUpdateFleetPermissionsRequestBodyPolicy(rawParams interface{}) []map[s
 		for i, v := range rawArray {
 			raw := v.(map[string]interface{})
 			rst[i] = map[string]interface{}{
-				"ruleIDs":    utils.ValueIngoreEmpty(raw["policy_ids"]),
-				"namespaces": utils.ValueIngoreEmpty(raw["namespaces"]),
+				"ruleIDs":    utils.ValueIgnoreEmpty(raw["policy_ids"]),
+				"namespaces": utils.ValueIgnoreEmpty(raw["namespaces"]),
 			}
 		}
 		return rst
@@ -312,13 +319,14 @@ func buildUpdateFleetPermissionsRequestBodyPolicy(rawParams interface{}) []map[s
 
 func resourceFleetDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// deleteFleet: Delete an existing UCS Fleet
 	var (
 		deleteFleetHttpUrl = "v1/clustergroups/{id}"
 		deleteFleetProduct = "ucs"
 	)
-	deleteFleetClient, err := cfg.NewServiceClient(deleteFleetProduct, "")
+	deleteFleetClient, err := cfg.NewServiceClient(deleteFleetProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating UCS Client: %s", err)
 	}

@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Data Migration (CDM)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cdm_job"
+description: ""
 ---
 
 # huaweicloud_cdm_job
@@ -85,8 +88,8 @@ The following arguments are supported:
 * `region` - (Optional, String, ForceNew) The region in which to create the job resource. If omitted, the
   provider-level region will be used. Changing this parameter will create a new resource.
 
-* `name` - (Required, String) Specifies job name, which can contains of 1 to 240 characters, starting with a
- letter. Only letters, digits, hyphens (-), and underscores (_) are allowed.
+* `name` - (Required, String) Specifies job name, which can contains of `1` to `240` characters, starting with a letter.
+  Only letters, digits, hyphens (-), and underscores (_) are allowed.
 
 * `cluster_id` - (Required, String, ForceNew) Specifies the ID of CDM cluster which this job run in.
  Changing this parameter will create a new resource.
@@ -112,12 +115,13 @@ The following arguments are supported:
   + **From HDFS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0046.html)
   + **From Hive**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0047.html)
   + **From HBase/CloudTable**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0048.html)
-  + **From FTP/SFTP/NAS/SFS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0049.html)
+  + **From FTP/SFTP**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0049.html)
+  + **From HTTP/HTTPS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0086.html)
   + **From MongoDB/DDS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0071.html)
+  + **From Redis**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0050.html)
   + **From DIS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0078.html)
   + **From Kafka**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0079.html)
   + **From Elasticsearch/Cloud Search Service**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0067.html)
-  + **From OpenTSDB**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0090.html)
 
 -> Please remove the `fromJobConfig.` in the parameter key listed in the document.
 
@@ -135,12 +139,10 @@ The following arguments are supported:
   + **To HDFS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0054.html)
   + **To Hive**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0055.html)
   + **To HBase/CloudTable**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0056.html)
-  + **To FTP/SFTP/NAS/SFS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0057.html)
   + **To DDS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0084.html)
   + **To DLI**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0080.html)
   + **To DIS**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0088.html)
   + **To Elasticsearch/Cloud Search Service**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0077.html)
-  + **To OpenTSDB**: [configuration detail](https://support.huaweicloud.com/intl/en-us/api-cdm/cdm_02_0091.html)
 
 -> Please remove the `toJobConfig.` in the parameter key listed in the document.
 
@@ -206,7 +208,7 @@ The `config` block supports:
   + **NONE**: The job will not be deleted after it is executed.
   + **DELETE_AFTER_SUCCEED**: The job will be deleted only after it is successfully executed. It is applicable to
     massive one-time jobs.
-  + **DELETE**: Thejob will be deleted after it is executed, regardless of the execution result.
+  + **DELETE**: The job will be deleted after it is executed, regardless of the execution result.
 
 ## Attribute Reference
 

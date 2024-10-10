@@ -1,5 +1,8 @@
 ---
 subcategory: "Data Lake Insight (DLI)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dli_package"
+description: ""
 ---
 
 # huaweicloud_dli_package
@@ -29,13 +32,14 @@ The following arguments are supported:
   If omitted, the provider-level region will be used.
   Changing this parameter will delete the current package and upload a new package.
 
-* `group_name` - (Required, String, ForceNew) Specifies the group name which the package belongs to.
+* `group_name` - (Optional, String, ForceNew) Specifies the group name which the package belongs to.
   Changing this parameter will delete the current package and upload a new package.
 
 * `type` - (Required, String, ForceNew) Specifies the package type.
   + **jar**: `.jar` or jar related files.
   + **pyFile**: `.py` or python related files.
   + **file**: Other user files.
+  + **modelFile**: User AI model files.
 
   Changing this parameter will delete the current package and upload a new package.
 
@@ -48,11 +52,15 @@ The following arguments are supported:
 
 * `owner` - (Optional, String) Specifies the name of the package owner. The owner must be IAM user.
 
+* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the package.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - Resource ID. The ID is constructed from the `group_name` and `object_name`, separated by slash.
+* `id` - The resource ID.
+  If `group_name` is specified, the ID is constructed from the `group_name` and `object_name`,
+  the format is `<group_name>#<object_name>`, otherwise the resource ID which equals the `object_name`.
 
 * `object_name` - The package name.
 
@@ -60,4 +68,4 @@ In addition to all arguments above, the following attributes are exported:
 
 * `created_at` - Time when a queue is created.
 
-* `updated_at` - The last time when the package configuration update has complated.
+* `updated_at` - The last time when the package configuration update has completed.

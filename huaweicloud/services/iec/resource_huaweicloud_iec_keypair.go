@@ -14,6 +14,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API IEC DELETE /v1/os-keypairs/{keypair_name}
+// @API IEC GET /v1/os-keypairs/{keypair_name}
+// @API IEC POST /v1/os-keypairs
 func ResourceKeypair() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceKeypairCreate,
@@ -53,7 +56,7 @@ func resourceKeypairCreate(ctx context.Context, d *schema.ResourceData, meta int
 	cfg := meta.(*config.Config)
 	iecClient, err := cfg.IECV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return diag.Errorf("error creating IEC v1 client: %s", err)
+		return diag.Errorf("error creating IEC client: %s", err)
 	}
 
 	createOpts := keypairs.CreateOpts{
@@ -76,7 +79,7 @@ func resourceKeypairRead(_ context.Context, d *schema.ResourceData, meta interfa
 	cfg := meta.(*config.Config)
 	iecClient, err := cfg.IECV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return diag.Errorf("error creating IEC v1 client: %s", err)
+		return diag.Errorf("error creating IEC client: %s", err)
 	}
 
 	kp, err := keypairs.Get(iecClient, d.Id()).Extract()
@@ -100,7 +103,7 @@ func resourceKeypairDelete(_ context.Context, d *schema.ResourceData, meta inter
 	cfg := meta.(*config.Config)
 	iecClient, err := cfg.IECV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return diag.Errorf("error creating IEC v1 client: %s", err)
+		return diag.Errorf("error creating IEC client: %s", err)
 	}
 
 	err = keypairs.Delete(iecClient, d.Id()).ExtractErr()

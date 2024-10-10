@@ -168,12 +168,18 @@ func Get(c *golangsdk.ServiceClient, id string) (r GetResult) {
 }
 
 // GetCert retrieves a particular cluster certificate based on its unique ID.
-func GetCert(c *golangsdk.ServiceClient, id string) (r GetCertResult) {
-	_, r.Err = c.Get(certificateURL(c, id), &r.Body, &golangsdk.RequestOpts{
-		OkCodes:     []int{200},
-		MoreHeaders: RequestOpts.MoreHeaders, JSONBody: nil,
-	})
+func GetCert(c *golangsdk.ServiceClient, id string, opts GetCertOpts) (r GetCertResult) {
+	body, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		r.Err = err
+		return
+	}
+	_, r.Err = c.Post(certificateURL(c, id), body, &r.Body, nil)
 	return
+}
+
+type GetCertOpts struct {
+	Duration int `json:"duration" required:"true"`
 }
 
 // UpdateOpts contains all the values needed to update a new cluster
@@ -237,14 +243,15 @@ func Update(c *golangsdk.ServiceClient, id string, opts UpdateOptsBuilder) (r Up
 }
 
 type DeleteOpts struct {
-	ErrorStatus string `q:"errorStatus"`
-	DeleteEfs   string `q:"delete_efs"`
-	DeleteENI   string `q:"delete_eni"`
-	DeleteEvs   string `q:"delete_evs"`
-	DeleteNet   string `q:"delete_net"`
-	DeleteObs   string `q:"delete_obs"`
-	DeleteSfs   string `q:"delete_sfs"`
-	DeleteSfs30 string `q:"delete_sfs30"`
+	ErrorStatus      string `q:"errorStatus"`
+	DeleteEfs        string `q:"delete_efs"`
+	DeleteENI        string `q:"delete_eni"`
+	DeleteEvs        string `q:"delete_evs"`
+	DeleteNet        string `q:"delete_net"`
+	DeleteObs        string `q:"delete_obs"`
+	DeleteSfs        string `q:"delete_sfs"`
+	DeleteSfs30      string `q:"delete_sfs30"`
+	LtsReclaimPolicy string `q:"lts_reclaim_policy"`
 }
 
 type DeleteOptsBuilder interface {
@@ -321,6 +328,35 @@ func Operation(c *golangsdk.ServiceClient, id, action string) (r OperationResult
 		MoreHeaders: RequestOpts.MoreHeaders, JSONBody: nil,
 	})
 	return
+}
+
+type ResizeOpts struct {
+	FavorResize string             `json:"flavorResize" required:"true"`
+	ExtendParam *ResizeExtendParam `json:"extendParam,omitempty"`
+}
+
+type ResizeExtendParam struct {
+	DecMasterFlavor string `json:"decMasterFlavor,omitempty"`
+	IsAutoPay       string `json:"isAutoPay,omitempty"`
+}
+
+type ResizeResp struct {
+	JobID   string `json:"jobID"`
+	OrderID string `json:"orderID"`
+}
+
+func Resize(c *golangsdk.ServiceClient, id string, opts ResizeOpts) (ResizeResp, error) {
+	var r ResizeResp
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return r, err
+	}
+
+	_, err = c.Post(operationURL(c, id, "resize"), b, &r, &golangsdk.RequestOpts{
+		OkCodes:     []int{201},
+		MoreHeaders: RequestOpts.MoreHeaders,
+	})
+	return r, err
 }
 
 type UpdateTagsOpts struct {

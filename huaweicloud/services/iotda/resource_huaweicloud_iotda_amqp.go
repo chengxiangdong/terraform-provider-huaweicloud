@@ -3,12 +3,10 @@ package iotda
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -18,6 +16,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API IoTDA DELETE /v5/iot/{project_id}/amqp-queues/{queue_id}
+// @API IoTDA GET /v5/iot/{project_id}/amqp-queues/{queue_id}
+// @API IoTDA POST /v5/iot/{project_id}/amqp-queues
 func ResourceAmqp() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAmqpCreate,
@@ -39,11 +40,6 @@ func ResourceAmqp() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(8, 128),
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z-_0-9.:]*$`),
-						"Only letters, digits, hyphens (-), underscores (_), dots (.) and colons (:) are allowed"),
-				),
 			},
 		},
 	}
@@ -52,7 +48,8 @@ func ResourceAmqp() *schema.Resource {
 func resourceAmqpCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -80,7 +77,8 @@ func resourceAmqpCreate(ctx context.Context, d *schema.ResourceData, meta interf
 func resourceAmqpRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -106,7 +104,8 @@ func resourceAmqpRead(_ context.Context, d *schema.ResourceData, meta interface{
 func resourceAmqpDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}

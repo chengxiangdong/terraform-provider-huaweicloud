@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -22,6 +21,12 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+var alarmTemplateNonUpdatableParams = []string{"type"}
+
+// @API CES POST /v2/{project_id}/alarm-templates
+// @API CES GET /v2/{project_id}/alarm-templates/{template_id}
+// @API CES PUT /v2/{project_id}/alarm-templates/{template_id}
+// @API CES POST /v2/{project_id}/alarm-templates/batch-delete
 func ResourceCesAlarmTemplate() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCesAlarmTemplateCreate,
@@ -31,6 +36,8 @@ func ResourceCesAlarmTemplate() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+
+		CustomizeDiff: config.FlexibleForceNew(alarmTemplateNonUpdatableParams),
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -50,6 +57,11 @@ func ResourceCesAlarmTemplate() *schema.Resource {
 				Required:    true,
 				Description: `Specifies the policy list of the CES alarm template.`,
 			},
+			"type": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: `Specifies the type of the CES alarm template.`,
+			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -59,12 +71,7 @@ func ResourceCesAlarmTemplate() *schema.Resource {
 			"delete_associate_alarm": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				Description: `Specifies whether delete the alarm rule which the alarm template associated with`,
-			},
-			"type": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: `Indicates the type of the CES alarm template.`,
+				Description: `Specifies whether delete the alarm rule which the alarm template associated with.`,
 			},
 			"association_alarm_total": {
 				Type:        schema.TypeInt,
@@ -82,11 +89,6 @@ func AlarmTemplatePolicySchema() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `Specifies the namespace of the service.`,
-			},
-			"dimension_name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: `Specifies the Resource dimension.`,
 			},
 			"metric_name": {
 				Type:        schema.TypeString,
@@ -113,12 +115,6 @@ func AlarmTemplatePolicySchema() *schema.Resource {
 				Required:    true,
 				Description: `Specifies the alarm threshold.`,
 			},
-			"unit": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
-				Description: `Specifies the unit string of the alarm threshold.`,
-			},
 			"count": {
 				Type:        schema.TypeInt,
 				Required:    true,
@@ -134,6 +130,17 @@ func AlarmTemplatePolicySchema() *schema.Resource {
 				Optional:    true,
 				Computed:    true,
 				Description: `Specifies the alarm level.`,
+			},
+			"unit": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: `Specifies the unit string of the alarm threshold.`,
+			},
+			"dimension_name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: `Specifies the resource dimension.`,
 			},
 		},
 	}
@@ -151,7 +158,7 @@ func resourceCesAlarmTemplateCreate(ctx context.Context, d *schema.ResourceData,
 	)
 	createAlarmTemplateClient, err := cfg.NewServiceClient(createAlarmTemplateProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	createAlarmTemplatePath := createAlarmTemplateClient.Endpoint + createAlarmTemplateHttpUrl
@@ -160,9 +167,6 @@ func resourceCesAlarmTemplateCreate(ctx context.Context, d *schema.ResourceData,
 
 	createAlarmTemplateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			201,
-		},
 	}
 	createAlarmTemplateOpt.JSONBody = utils.RemoveNil(buildAlarmTemplateBodyParams(d))
 	createAlarmTemplateResp, err := createAlarmTemplateClient.Request("POST",
@@ -176,11 +180,11 @@ func resourceCesAlarmTemplateCreate(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("template_id", createAlarmTemplateRespBody)
-	if err != nil {
+	id := utils.PathSearch("template_id", createAlarmTemplateRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating CES alarm template: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceCesAlarmTemplateRead(ctx, d, meta)
 }
@@ -203,7 +207,7 @@ func resourceCesAlarmTemplateUpdate(ctx context.Context, d *schema.ResourceData,
 		)
 		updateAlarmTemplateClient, err := cfg.NewServiceClient(updateAlarmTemplateProduct, region)
 		if err != nil {
-			return diag.Errorf("error creating CES Client: %s", err)
+			return diag.Errorf("error creating CES client: %s", err)
 		}
 
 		updateAlarmTemplatePath := updateAlarmTemplateClient.Endpoint + updateAlarmTemplateHttpUrl
@@ -228,8 +232,9 @@ func resourceCesAlarmTemplateUpdate(ctx context.Context, d *schema.ResourceData,
 
 func buildAlarmTemplateBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"template_name":        utils.ValueIngoreEmpty(d.Get("name")),
-		"template_description": utils.ValueIngoreEmpty(d.Get("description")),
+		"template_name":        d.Get("name"),
+		"template_type":        utils.ValueIgnoreEmpty(d.Get("type")),
+		"template_description": utils.ValueIgnoreEmpty(d.Get("description")),
 		"policies":             buildAlarmTemplatePoliciesChildBody(d),
 	}
 	return bodyParams
@@ -245,16 +250,16 @@ func buildAlarmTemplatePoliciesChildBody(d *schema.ResourceData) []map[string]in
 	for _, rawParam := range rawParams {
 		raw := rawParam.(map[string]interface{})
 		param := map[string]interface{}{
-			"namespace":           utils.ValueIngoreEmpty(raw["namespace"]),
-			"dimension_name":      utils.ValueIngoreEmpty(raw["dimension_name"]),
-			"metric_name":         utils.ValueIngoreEmpty(raw["metric_name"]),
-			"period":              utils.ValueIngoreEmpty(raw["period"]),
-			"filter":              utils.ValueIngoreEmpty(raw["filter"]),
-			"comparison_operator": utils.ValueIngoreEmpty(raw["comparison_operator"]),
+			"namespace":           utils.ValueIgnoreEmpty(raw["namespace"]),
+			"dimension_name":      utils.ValueIgnoreEmpty(raw["dimension_name"]),
+			"metric_name":         utils.ValueIgnoreEmpty(raw["metric_name"]),
+			"period":              raw["period"],
+			"filter":              utils.ValueIgnoreEmpty(raw["filter"]),
+			"comparison_operator": utils.ValueIgnoreEmpty(raw["comparison_operator"]),
 			"value":               raw["value"],
-			"unit":                utils.ValueIngoreEmpty(raw["unit"]),
-			"count":               utils.ValueIngoreEmpty(raw["count"]),
-			"alarm_level":         utils.ValueIngoreEmpty(raw["alarm_level"]),
+			"unit":                utils.ValueIgnoreEmpty(raw["unit"]),
+			"count":               utils.ValueIgnoreEmpty(raw["count"]),
+			"alarm_level":         utils.ValueIgnoreEmpty(raw["alarm_level"]),
 			"suppress_duration":   raw["suppress_duration"],
 		}
 		params = append(params, param)
@@ -275,7 +280,7 @@ func resourceCesAlarmTemplateRead(_ context.Context, d *schema.ResourceData, met
 	)
 	getAlarmTemplateClient, err := cfg.NewServiceClient(getAlarmTemplateProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	getAlarmTemplatePath := getAlarmTemplateClient.Endpoint + getAlarmTemplateHttpUrl
@@ -285,9 +290,6 @@ func resourceCesAlarmTemplateRead(_ context.Context, d *schema.ResourceData, met
 
 	getAlarmTemplateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	getAlarmTemplateResp, err := getAlarmTemplateClient.Request("GET", getAlarmTemplatePath, &getAlarmTemplateOpt)
 
@@ -300,11 +302,19 @@ func resourceCesAlarmTemplateRead(_ context.Context, d *schema.ResourceData, met
 		return diag.FromErr(err)
 	}
 
+	rawTemplateType := utils.PathSearch("template_type", getAlarmTemplateRespBody, "")
+	templateType := -1
+	if rawTemplateType == "custom" {
+		templateType = 0
+	} else if rawTemplateType == "custom_event" {
+		templateType = 2
+	}
+
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
 		d.Set("name", utils.PathSearch("template_name", getAlarmTemplateRespBody, nil)),
-		d.Set("type", utils.PathSearch("template_type", getAlarmTemplateRespBody, nil)),
+		d.Set("type", templateType),
 		d.Set("description", utils.PathSearch("template_description",
 			getAlarmTemplateRespBody, nil)),
 		d.Set("association_alarm_total", utils.PathSearch("association_alarm_total",
@@ -351,7 +361,7 @@ func resourceCesAlarmTemplateDelete(_ context.Context, d *schema.ResourceData, m
 	)
 	deleteAlarmTemplateClient, err := cfg.NewServiceClient(deleteAlarmTemplateProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	deleteAlarmTemplatePath := deleteAlarmTemplateClient.Endpoint + deleteAlarmTemplateHttpUrl
@@ -360,9 +370,6 @@ func resourceCesAlarmTemplateDelete(_ context.Context, d *schema.ResourceData, m
 
 	deleteAlarmTemplateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	deleteAlarmTemplateOpt.JSONBody = utils.RemoveNil(buildDeleteAlarmTemplateBodyParams(d))
 	fmt.Println("")
@@ -377,7 +384,7 @@ func resourceCesAlarmTemplateDelete(_ context.Context, d *schema.ResourceData, m
 func buildDeleteAlarmTemplateBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"template_ids":           []interface{}{d.Id()},
-		"delete_associate_alarm": utils.ValueIngoreEmpty(d.Get("delete_associate_alarm")),
+		"delete_associate_alarm": utils.ValueIgnoreEmpty(d.Get("delete_associate_alarm")),
 	}
 	return bodyParams
 }

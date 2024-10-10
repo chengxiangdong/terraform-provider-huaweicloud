@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Eye (CES)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_ces_resource_group"
+description: ""
 ---
 
 # huaweicloud_ces_resource_group
@@ -91,9 +94,7 @@ The following arguments are supported:
 
   Changing this parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID of the resource group.
-
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID of the resource group.
 
 * `tags` - (Optional, Map) Specifies the key/value to match resources.
   It's required if the value of type is **TAG**.

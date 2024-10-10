@@ -21,6 +21,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API WAF POST /v1/{project_id}/waf/policy/{policy_id}/punishment
+// @API WAF GET /v1/{project_id}/waf/policy/{policy_id}/punishment/{rule_id}
+// @API WAF PUT /v1/{project_id}/waf/policy/{policy_id}/punishment/{rule_id}
+// @API WAF DELETE /v1/{project_id}/waf/policy/{policy_id}/punishment/{rule_id}
 func ResourceRuleKnownAttack() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRuleKnownAttackCreate,
@@ -148,6 +152,7 @@ func resourceRuleKnownAttackRead(_ context.Context, d *schema.ResourceData, meta
 
 	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
+		// If the known attack source rule does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving WAF known attack source rule")
 	}
 
@@ -228,7 +233,8 @@ func resourceRuleKnownAttackDelete(_ context.Context, d *schema.ResourceData, me
 
 	_, err = client.Request("DELETE", deletePath, &deleteRuleKnownAttackOpt)
 	if err != nil {
-		return diag.Errorf("error deleting WAF known attack source rule: %s", err)
+		// If the known attack source rule does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF known attack source rule")
 	}
 
 	return nil

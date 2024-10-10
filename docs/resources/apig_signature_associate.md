@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Dedicated APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_apig_signature_associate"
+description: ""
 ---
 
 # huaweicloud_apig_signature_associate
@@ -46,6 +49,14 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - Resource ID. The format is `<instance_id>/<signature_id>`.
+
+## Timeouts
+
+This resource provides the following timeouts configuration options:
+
+* `create` - Default is 3 minutes.
+* `update` - Default is 3 minutes.
+* `delete` - Default is 3 minutes.
 
 ## Import
 

@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Data Migration (CDM)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cdm_cluster"
+description: ""
 ---
 
 # huaweicloud_cdm_cluster
@@ -53,8 +56,7 @@ The following arguments are supported:
 
 * `version` - (Optional, String, ForceNew) Specifies the cluster version. Changing this parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project id.
- Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project id.
 
 * `is_auto_off` - (Optional, Bool, ForceNew) Specifies Whether to enable auto shutdown. The auto shutdown and scheduled
  startup/shutdown functions cannot be enabled at the same time. When auto shutdown is enabled, if no job is running in
@@ -80,7 +82,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` -  The resource ID in UUID format.
+* `id` - The resource ID in UUID format.
 
 * `created` - Create time. The format is: `YYYY-MM-DDThh:mm:ss`.
 
@@ -89,6 +91,8 @@ In addition to all arguments above, the following attributes are exported:
 * `publid_ip` - Public ip.
 
 * `public_endpoint` - EIP bound to the cluster.
+
+* `flavor_name` - The flavor name. Format is `cdm.<flavor_type>`
 
 * `instances` - Instance list. Structure is documented below.
 

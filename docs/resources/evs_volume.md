@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Volume Service (EVS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_evs_volume"
+description: ""
 ---
 
 # huaweicloud_evs_volume
@@ -41,6 +44,40 @@ resource "huaweicloud_evs_volume" "volume" {
 }
 ```
 
+## Example Usage with server_id
+
+```hcl
+variable "security_group_id" {}
+variable "availability_zone" {}
+
+resource "huaweicloud_compute_instance" "myinstance" {
+  name               = "instance"
+  image_id           = "ad091b52-742f-469e-8f3c-fd81cadf0743"
+  flavor_id          = "s6.small.1"
+  key_pair           = "my_key_pair_name"
+  security_group_ids = [var.security_group_id]
+  availability_zone  = var.availability_zone
+
+  network {
+    uuid = "55534eaa-533a-419d-9b40-ec427ea7195a"
+  }
+}
+
+resource "huaweicloud_evs_volume" "volume" {
+  name              = "volume"
+  description       = "my volume"
+  volume_type       = "SAS"
+  size              = 20
+  availability_zone = var.availability_zone
+  server_id         = huaweicloud_compute_instance.myinstance.id
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
@@ -63,7 +100,7 @@ The following arguments are supported:
   -> If the specified disk type is not available in the AZ, the disk will fail to create.
   The volume type **ESSD2** only support in postpaid charging mode.
 
-* `iops` - (Optional, Int, ForceNew) Specifies the IOPS(Input/Output Operations Per Second) for the volume.
+* `iops` - (Optional, Int) Specifies the IOPS(Input/Output Operations Per Second) for the volume.
   The field is valid and required when `volume_type` is set to **GPSSD2** or **ESSD2**.
 
   + If `volume_type` is set to **GPSSD2**. The field `iops` ranging from 3,000 to 128,000.
@@ -72,15 +109,11 @@ The following arguments are supported:
   + If `volume_type` is set to **ESSD2**. The field `iops` ranging from 100 to 256,000.
     This IOPS must also be less than or equal to 1000 multiplying the capacity.
 
-  Changing this creates a new disk.
-
-* `throughput` - (Optional, Int, ForceNew) Specifies the throughput for the volume. The Unit is MiB/s.
+* `throughput` - (Optional, Int) Specifies the throughput for the volume. The Unit is MiB/s.
   The field is valid and required when `volume_type` is set to **GPSSD2**.
 
   + If `volume_type` is set to **GPSSD2**. The field `throughput` ranging from 125 to 1,000.
     This throughput must also be less than or equal to the IOPS divided by 4.
-
-  Changing this creates a new disk.
 
 * `name` - (Optional, String) Specifies the disk name. The value can contain a maximum of 255 bytes.
 
@@ -151,6 +184,12 @@ The following arguments are supported:
 * `auto_renew` - (Optional, String) Specifies whether auto renew is enabled.
   Valid values are **true** and **false**.
 
+* `server_id` - (Optional, String, ForceNew) Specify the server ID to which the cloudvolume is to be mounted.
+  After specifying the value of this field, the cloudvolume will be automatically attached on the cloudserver.
+  The charging_mode of the created cloudvolume will be consistent with that of the cloudserver.
+  Currently, only ECS cloudservers are supported, and BMS bare metal cloudservers are not supported yet.
+  Changing this creates a new disk.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -175,23 +214,23 @@ The `attachment` block supports:
 
 Volumes can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_evs_volume.volume_1 14a80bc7-c12c-4fe0-a38a-cb77eeac9bd6
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response, security or some other reason. The missing attributes include: **cascade**, **period_unit**, **period**
-and **auto_renew**. It is generally recommended running terraform plan after importing an disk.
+API response, security or some other reason. The missing attributes include: **cascade**, **period_unit**, **period**,
+**server_id** and **auto_renew**. It is generally recommended running terraform plan after importing an disk.
 You can then decide if changes should be applied to the disk, or the resource definition should be updated to align
 with the disk. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_evs_volume" "volume_1" {
     ...
 
   lifecycle {
     ignore_changes = [
-      cascade,
+      cascade, server_id, charging_mode, period, period_unit,
     ]
   }
 }

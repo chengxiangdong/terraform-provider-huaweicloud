@@ -1,5 +1,8 @@
 ---
 subcategory: "Domain Name Service (DNS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dns_recordset"
+description: ""
 ---
 
 # huaweicloud_dns_recordset
@@ -98,7 +101,7 @@ The following arguments are supported:
 * `records` - (Required, List) Specifies an array of DNS records. The value rules vary depending on the record set type.
 
 * `ttl` - (Optional, Int) Specifies the time to live (TTL) of the record set (in seconds).
-  The value range is 1–2147483647. The default value is 300.
+  The valid value is range from `1` to `2,147,483,647`. The default value is `300`.
 
 * `status` - (Optional, String) Specifies the status of the record set.
   Value options: **ENABLE**, **DISABLE**. The default value is **ENABLE**.
@@ -114,7 +117,7 @@ The following arguments are supported:
 from [Resolution Lines](https://support.huaweicloud.com/intl/en-us/api-dns/en-us_topic_0085546214.html).
 
 * `weight` - (Optional, Int) Specifies the weight of the record set.
-  Only public zone support. The value range is 0–1000.
+  Only public zone support. The valid value is range from `1` to `1,000`.
 
 ## Attribute Reference
 
@@ -123,6 +126,8 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - The resource ID.
 
 * `zone_name` - The zone name of the record set.
+
+* `zone_type` - The type of zone. The value can be **public** or **private**.
 
 ## Timeouts
 

@@ -3,7 +3,6 @@ package nat
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -24,6 +23,11 @@ const (
 	PrivateSpecTypeExtraLarge string = "Extra-Large"
 )
 
+// @API NAT POST /v3/{project_id}/private-nat/gateways
+// @API NAT GET /v3/{project_id}/private-nat/gateways/{gateway_id}
+// @API NAT PUT /v3/{project_id}/private-nat/gateways/{gateway_id}
+// @API NAT DELETE /v3/{project_id}/private-nat/gateways/{gateway_id}
+// @API NAT POST /v3/{project_id}/private-nat-gateways/{resource_id}/tags/action
 func ResourcePrivateGateway() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourcePrivateGatewayCreate,
@@ -50,23 +54,13 @@ func ResourcePrivateGateway() *schema.Resource {
 				Description: "The network ID of the subnet to which the private NAT gateway belongs.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\x{4E00}-\x{9FFC}\w-]*$`),
-						"Only letters, chinese characters, digits, underscores (_) and hyphens (-) are allowed."),
-					validation.StringLenBetween(1, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The name of the private NAT gateway.",
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile(`^[^<>]*$`),
-						"The angle brackets (< and >) are not allowed."),
-				),
+				Type:        schema.TypeString,
+				Optional:    true,
 				Description: "The description of the private NAT gateway.",
 			},
 			"spec": {
@@ -103,6 +97,11 @@ func ResourcePrivateGateway() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "The current status of the private NAT gateway.",
+			},
+			"vpc_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The ID of the VPC to which the private NAT gateway belongs.",
 			},
 		},
 	}
@@ -152,7 +151,8 @@ func resourcePrivateGatewayRead(_ context.Context, d *schema.ResourceData, meta 
 
 	resp, err := gateways.Get(natClient, d.Id())
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "Private NAT gateway")
+		// If the private NAT gateway does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error retrieving private NAT gateway")
 	}
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
@@ -165,6 +165,7 @@ func resourcePrivateGatewayRead(_ context.Context, d *schema.ResourceData, meta 
 		d.Set("created_at", resp.CreatedAt),
 		d.Set("updated_at", resp.UpdatedAt),
 		d.Set("status", resp.Status),
+		d.Set("vpc_id", utils.PathSearch("[0].VpcId", resp.DownLinkVpcs, nil)),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error saving private NAT gateway fields: %s", err)
@@ -217,7 +218,8 @@ func resourcePrivateGatewayDelete(_ context.Context, d *schema.ResourceData, met
 	gatewayId := d.Id()
 	err = gateways.Delete(client, gatewayId)
 	if err != nil {
-		return diag.Errorf("error deleting private NAT gateway (%s): %s", gatewayId, err)
+		// If the private NAT gateway does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting private NAT gateway")
 	}
 
 	return nil

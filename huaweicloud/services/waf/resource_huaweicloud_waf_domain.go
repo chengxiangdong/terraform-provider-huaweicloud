@@ -3,7 +3,7 @@ package waf
 import (
 	"context"
 	"fmt"
-	"log"
+	"strconv"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/waf_hw/v1/domains"
-	"github.com/chnsz/golangsdk/openstack/waf_hw/v1/policies"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
@@ -26,6 +25,13 @@ const (
 	protocolHTTPS = "HTTPS"
 )
 
+// @API WAF GET /v1/{project_id}/waf/instance/{instance_id}
+// @API WAF PUT /v1/{project_id}/waf/instance/{instance_id}
+// @API WAF DELETE /v1/{project_id}/waf/instance/{instance_id}
+// @API WAF POST /v1/{project_id}/waf/instance
+// @API WAF PUT /v1/{project_id}/waf/instance/{instance_id}/protect-status
+// @API WAF DELETE /v1/{project_id}/waf/policy/{policy_id}
+// @API WAF PATCH /v1/{project_id}/waf/policy/{policy_id}
 func ResourceWafDomain() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceWafDomainCreate,
@@ -65,13 +71,12 @@ func ResourceWafDomain() *schema.Resource {
 			"policy_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 			"keep_policy": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: `schema: Deprecated; This field is useless when deleting resource.`,
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 			"proxy": {
 				Type:     schema.TypeBool,
@@ -92,12 +97,99 @@ func ResourceWafDomain() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"custom_page": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem:     domainCustomPageSchema(),
+			},
+			"redirect_url": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ConflictsWith: []string{
+					"custom_page",
+				},
+			},
+			"pci_3ds": {
+				Type:         schema.TypeBool,
+				Optional:     true,
+				Computed:     true,
+				RequiredWith: []string{"tls", "cipher"},
+			},
+			"pci_dss": {
+				Type:         schema.TypeBool,
+				Optional:     true,
+				Computed:     true,
+				RequiredWith: []string{"tls", "cipher"},
+			},
+			"tls": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"cipher": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"traffic_mark": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem:     dedicatedDomainTrafficMarkSchema(),
+			},
+			"website_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"lb_algorithm": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"forward_header_map": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"http2_enable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+			"ipv6_enable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+			"timeout_settings": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem:     domainTimeoutSettingSchema(),
+			},
 			"protect_status": {
 				Type:     schema.TypeInt,
+				Optional: true,
 				Computed: true,
 			},
 			"access_status": {
 				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"access_code": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"protocol": {
@@ -130,9 +222,18 @@ func domainServerSchema() *schema.Resource {
 				Required: true,
 			},
 			"port": {
-				Type:         schema.TypeInt,
-				ValidateFunc: validation.IntBetween(0, 65535),
-				Required:     true,
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+			"type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "schema: Required",
+			},
+			"weight": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  1,
 			},
 		},
 	}
@@ -147,6 +248,11 @@ func buildCreateDomainHostOpts(d *schema.ResourceData, cfg *config.Config) *doma
 		Servers:             buildWafDomainServers(d),
 		Proxy:               utils.Bool(d.Get("proxy").(bool)),
 		PaidType:            d.Get("charging_mode").(string),
+		PolicyId:            d.Get("policy_id").(string),
+		Description:         d.Get("description").(string),
+		ForwardHeaderMap:    buildHostForwardHeaderMapOpts(d),
+		LbAlgorithm:         d.Get("lb_algorithm").(string),
+		WebTag:              d.Get("website_name").(string),
 		EnterpriseProjectId: cfg.GetEnterpriseProjectID(d),
 	}
 }
@@ -162,6 +268,8 @@ func buildWafDomainServers(d *schema.ResourceData) []domains.ServerOpts {
 			BackProtocol:  server["server_protocol"].(string),
 			Address:       server["address"].(string),
 			Port:          server["port"].(int),
+			Type:          server["type"].(string),
+			Weight:        server["weight"].(int),
 		}
 	}
 
@@ -176,25 +284,215 @@ func flattenDomainServerAttrs(dm *domains.Domain) []map[string]interface{} {
 			"server_protocol": server.BackProtocol,
 			"address":         server.Address,
 			"port":            server.Port,
+			"type":            server.Type,
+			"weight":          server.Weight,
 		}
 	}
 	return servers
 }
 
-func updateWafDomain(wafClient *golangsdk.ServiceClient, d *schema.ResourceData, cfg *config.Config) error {
-	if d.HasChanges("certificate_id", "server", "proxy") {
-		updateOpts := domains.UpdateOpts{
-			CertificateId:       d.Get("certificate_id").(string),
-			CertificateName:     d.Get("certificate_name").(string),
-			Servers:             buildWafDomainServers(d),
-			Proxy:               utils.Bool(d.Get("proxy").(bool)),
-			EnterpriseProjectId: cfg.GetEnterpriseProjectID(d),
-		}
+func flattenDomainCustomPage(dm *domains.Domain) []map[string]interface{} {
+	if dm.BlockPage.Template != customBlockPageTemplate {
+		return nil
+	}
 
-		if _, err := domains.Update(wafClient, d.Id(), updateOpts).Extract(); err != nil {
-			return fmt.Errorf("error updating WAF domain: %s", err)
+	customPage := dm.BlockPage.CustomPage
+	return []map[string]interface{}{
+		{
+			"http_return_code": customPage.StatusCode,
+			"block_page_type":  customPage.ContentType,
+			"page_content":     customPage.Content,
+		},
+	}
+}
+
+func flattenDomainTimeoutSetting(dm *domains.Domain) []map[string]interface{} {
+	timeoutConfig := dm.TimeoutConfig
+	return []map[string]interface{}{
+		{
+			"connection_timeout": timeoutConfig.ConnectTimeout,
+			"read_timeout":       timeoutConfig.ReadTimeout,
+			"write_timeout":      timeoutConfig.SendTimeout,
+		},
+	}
+}
+
+func flattenDomainTrafficMark(dm *domains.Domain) []map[string]interface{} {
+	trafficMark := dm.TrafficMark
+	return []map[string]interface{}{
+		{
+			"ip_tags":     trafficMark.Sip,
+			"session_tag": trafficMark.Cookie,
+			"user_tag":    trafficMark.Params,
+		},
+	}
+}
+
+func buildUpdateDomainBlockPageOpts(d *schema.ResourceData) *domains.BlockPage {
+	if v, ok := d.GetOk("redirect_url"); ok {
+		return &domains.BlockPage{
+			Template:    redirectBlockPageTemplate,
+			RedirectUrl: v.(string),
 		}
 	}
+
+	if v, ok := d.GetOk("custom_page"); ok {
+		rawArray, isArray := v.([]interface{})
+		if !isArray || len(rawArray) == 0 {
+			return nil
+		}
+
+		raw, isMap := rawArray[0].(map[string]interface{})
+		if !isMap {
+			return nil
+		}
+		return &domains.BlockPage{
+			Template: customBlockPageTemplate,
+			CustomPage: &domains.CustomPage{
+				StatusCode:  raw["http_return_code"].(string),
+				ContentType: raw["block_page_type"].(string),
+				Content:     raw["page_content"].(string),
+			},
+		}
+	}
+
+	return &domains.BlockPage{
+		Template: defaultBlockPageTemplate,
+	}
+}
+
+func buildUpdateDomainTimeoutSettingOpts(d *schema.ResourceData) *domains.TimeoutConfig {
+	if v, ok := d.GetOk("timeout_settings"); ok {
+		rawArray, isArray := v.([]interface{})
+		if !isArray || len(rawArray) == 0 {
+			return nil
+		}
+
+		raw, isMap := rawArray[0].(map[string]interface{})
+		if !isMap {
+			return nil
+		}
+
+		return &domains.TimeoutConfig{
+			ConnectTimeout: utils.Int(raw["connection_timeout"].(int)),
+			ReadTimeout:    utils.Int(raw["read_timeout"].(int)),
+			SendTimeout:    utils.Int(raw["write_timeout"].(int)),
+		}
+	}
+	return nil
+}
+
+func buildDomainHostFlag(d *schema.ResourceData) (*domains.Flag, error) {
+	pci3ds := d.Get("pci_3ds").(bool)
+	pciDss := d.Get("pci_dss").(bool)
+	if !pci3ds && !pciDss {
+		return nil, nil
+	}
+
+	// required tls="TLS v1.2" && cipher="cipher_2"
+	if d.Get("tls").(string) != "TLS v1.2" || d.Get("cipher").(string) != "cipher_2" {
+		return nil, fmt.Errorf("pci_3ds and pci_dss must be used together with tls and cipher. " +
+			"Tls must be set to TLS v1.2, and cipher must be set to cipher_2")
+	}
+	return &domains.Flag{
+		Pci3ds: strconv.FormatBool(pci3ds),
+		PciDss: strconv.FormatBool(pciDss),
+	}, nil
+}
+
+func updatePremiumHostTrafficMarkOpts(d *schema.ResourceData) *domains.TrafficMark {
+	if v, ok := d.GetOk("traffic_mark"); ok {
+		rawArray, isArray := v.([]interface{})
+		if !isArray || len(rawArray) == 0 {
+			return nil
+		}
+
+		raw, isMap := rawArray[0].(map[string]interface{})
+		if !isMap {
+			return nil
+		}
+
+		return &domains.TrafficMark{
+			Sip:    utils.ExpandToStringList(raw["ip_tags"].([]interface{})),
+			Cookie: raw["session_tag"].(string),
+			Params: raw["user_tag"].(string),
+		}
+	}
+	return nil
+}
+
+func updateWafDomain(wafClient *golangsdk.ServiceClient, d *schema.ResourceData, cfg *config.Config) error {
+	// Check whether ipv6_enable is valid.
+	servers := buildWafDomainServers(d)
+	ipv6Enable := d.Get("ipv6_enable").(bool)
+	for _, server := range servers {
+		if server.Type == "ipv6" && !ipv6Enable {
+			return fmt.Errorf("when type in server contains IPv6 address, `ipv6_enable` should be configured to true")
+		}
+	}
+
+	updateOpts := domains.UpdateOpts{
+		EnterpriseProjectId: cfg.GetEnterpriseProjectID(d),
+	}
+
+	// Fields "certificate_id", "proxy", and "ipv6_enable" are valid only when they are used together with fields "server" in the update interface
+	if d.HasChanges("certificate_id", "server", "proxy", "ipv6_enable") {
+		updateOpts.CertificateId = d.Get("certificate_id").(string)
+		updateOpts.CertificateName = d.Get("certificate_name").(string)
+		updateOpts.Servers = servers
+		updateOpts.Proxy = utils.Bool(d.Get("proxy").(bool))
+		updateOpts.Ipv6Enable = utils.Bool(ipv6Enable)
+	}
+
+	if d.HasChanges("custom_page", "redirect_url") {
+		updateOpts.BlockPage = buildUpdateDomainBlockPageOpts(d)
+	}
+
+	if d.HasChange("http2_enable") {
+		updateOpts.Http2Enable = utils.Bool(d.Get("http2_enable").(bool))
+	}
+
+	if d.HasChange("timeout_settings") {
+		updateOpts.TimeoutConfig = buildUpdateDomainTimeoutSettingOpts(d)
+	}
+
+	if d.HasChange("description") && !d.IsNewResource() {
+		updateOpts.Description = utils.String(d.Get("description").(string))
+	}
+
+	if d.HasChange("forward_header_map") && !d.IsNewResource() {
+		updateOpts.ForwardHeaderMap = buildHostForwardHeaderMapOpts(d)
+	}
+
+	if d.HasChange("lb_algorithm") && !d.IsNewResource() {
+		updateOpts.LbAlgorithm = utils.String(d.Get("lb_algorithm").(string))
+	}
+
+	if d.HasChange("website_name") && !d.IsNewResource() {
+		updateOpts.WebTag = utils.String(d.Get("website_name").(string))
+	}
+
+	if d.HasChanges("tls", "cipher", "pci_3ds", "pci_dss") {
+		updateOpts.Tls = d.Get("tls").(string)
+		updateOpts.Cipher = d.Get("cipher").(string)
+		// `pci_3ds` and `pci_dss` must be used together with `tls` and `cipher`.
+		if d.HasChanges("pci_3ds", "pci_dss") {
+			flag, err := buildDomainHostFlag(d)
+			if err != nil {
+				return err
+			}
+			updateOpts.Flag = flag
+		}
+	}
+
+	if d.HasChange("traffic_mark") {
+		updateOpts.TrafficMark = updatePremiumHostTrafficMarkOpts(d)
+	}
+
+	if _, err := domains.Update(wafClient, d.Id(), updateOpts).Extract(); err != nil {
+		return fmt.Errorf("error updating WAF domain: %s", err)
+	}
+
 	return nil
 }
 
@@ -213,28 +511,28 @@ func resourceWafDomainCreate(ctx context.Context, d *schema.ResourceData, meta i
 	}
 	d.SetId(domain.Id)
 
-	if v, ok := d.GetOk("policy_id"); ok {
-		policyID := v.(string)
-		hosts := []string{d.Id()}
-		epsID := cfg.GetEnterpriseProjectID(d)
-		updateHostsOpts := policies.UpdateHostsOpts{
-			Hosts:               hosts,
-			EnterpriseProjectId: epsID,
-		}
+	if err := updateWafDomain(wafClient, d, cfg); err != nil {
+		return diag.FromErr(err)
+	}
 
-		_, err = policies.UpdateHosts(wafClient, policyID, updateHostsOpts).Extract()
-		if err != nil {
-			return diag.Errorf("error updating WAF policy Hosts: %s", err)
-		}
-
-		// delete the policy that was auto-created by domain
-		err = policies.DeleteWithEpsID(wafClient, domain.PolicyId, epsID).ExtractErr()
-		if err != nil {
-			log.Printf("[WARN] error deleting WAF policy %s: %s", domain.PolicyId, err)
+	if d.Get("protect_status").(int) != protectStatusEnable {
+		if err := updateWafDomainProtectStatus(wafClient, d, cfg); err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
 	return resourceWafDomainRead(ctx, d, meta)
+}
+
+func updateWafDomainProtectStatus(wafClient *golangsdk.ServiceClient, d *schema.ResourceData,
+	cfg *config.Config) error {
+	protectStatus := d.Get("protect_status").(int)
+	epsID := cfg.GetEnterpriseProjectID(d)
+	_, err := domains.UpdateProtectStatus(wafClient, protectStatus, d.Id(), epsID)
+	if err != nil {
+		return fmt.Errorf("error updating WAF domain protect status: %s", err)
+	}
+	return nil
 }
 
 func resourceWafDomainRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -246,7 +544,8 @@ func resourceWafDomainRead(_ context.Context, d *schema.ResourceData, meta inter
 
 	dm, err := domains.GetWithEpsID(wafClient, d.Id(), cfg.GetEnterpriseProjectID(d)).Extract()
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "Error obtain WAF domain information")
+		// If the domain does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error retrieving WAF domain")
 	}
 
 	// charging_mode not returned by API
@@ -259,9 +558,29 @@ func resourceWafDomainRead(_ context.Context, d *schema.ResourceData, meta inter
 		d.Set("proxy", dm.Proxy),
 		d.Set("protect_status", dm.ProtectStatus),
 		d.Set("access_status", dm.AccessStatus),
+		d.Set("access_code", dm.AccessCode),
 		d.Set("protocol", dm.Protocol),
 		d.Set("server", flattenDomainServerAttrs(dm)),
+		d.Set("custom_page", flattenDomainCustomPage(dm)),
+		d.Set("redirect_url", dm.BlockPage.RedirectUrl),
+		d.Set("http2_enable", dm.Http2Enable),
+		d.Set("timeout_settings", flattenDomainTimeoutSetting(dm)),
+		d.Set("description", dm.Description),
+		d.Set("forward_header_map", dm.ForwardHeaderMap),
+		d.Set("lb_algorithm", dm.LbAlgorithm),
+		d.Set("website_name", dm.WebTag),
+		d.Set("cipher", dm.Cipher),
+		d.Set("tls", dm.Tls),
+		d.Set("traffic_mark", flattenDomainTrafficMark(dm)),
 	)
+
+	if dm.Flag.Pci3ds != "" {
+		mErr = multierror.Append(mErr, d.Set("pci_3ds", utils.StringToBool(dm.Flag.Pci3ds)))
+	}
+
+	if dm.Flag.PciDss != "" {
+		mErr = multierror.Append(mErr, d.Set("pci_dss", utils.StringToBool(dm.Flag.PciDss)))
+	}
 
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting WAF domain fields: %s", err)
@@ -281,6 +600,18 @@ func resourceWafDomainUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.FromErr(err)
 	}
 
+	if d.HasChanges("policy_id") {
+		if err := updateWafDomainPolicyHost(d, cfg); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChanges("protect_status") {
+		if err := updateWafDomainProtectStatus(wafClient, d, cfg); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceWafDomainRead(ctx, d, meta)
 }
 
@@ -297,9 +628,9 @@ func resourceWafDomainDelete(_ context.Context, d *schema.ResourceData, meta int
 	}
 	err = domains.Delete(wafClient, d.Id(), delOpts).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting WAF domain: %s", err)
+		// If the domain does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF domain")
 	}
 
-	d.SetId("")
 	return nil
 }

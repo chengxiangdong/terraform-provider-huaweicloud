@@ -5,10 +5,27 @@
         "huaweicloud_apig_group": {
           "block": {
             "attributes": {
+              "created_at": {
+                "type": "string",
+                "description": "The creation time of the group, in RFC3339 format.",
+                "computed": true
+              },
               "description": {
                 "type": "string",
                 "description": "The group description.",
                 "optional": true
+              },
+              "domain_access_enabled": {
+                "type": "bool",
+                "description": "Specifies whether to use the debugging domain name to access the APIs within the group.",
+                "optional": true,
+                "computed": true
+              },
+              "force_destroy": {
+                "type": "bool",
+                "description": "Whether to delete all sub-resources (for API) from this group.",
+                "optional": true,
+                "computed": true
               },
               "id": {
                 "type": "string",
@@ -30,14 +47,9 @@
                 "description": "The region where the dedicated instance is located.",
                 "computed": true
               },
-              "registration_time": {
-                "type": "string",
-                "description": "The registration time.",
-                "computed": true
-              },
               "updated_at": {
                 "type": "string",
-                "description": "The latest update time of the group.",
+                "description": "The latest update time of the group, in RFC3339 format.",
                 "computed": true
               }
             },
@@ -80,6 +92,28 @@
                   "description": "The array of one or more environments of the associated group."
                 },
                 "nesting_mode": "set"
+              },
+              "url_domains": {
+                "block": {
+                  "attributes": {
+                    "is_http_redirect_to_https": {
+                      "type": "bool",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "min_ssl_version": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "name": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "set",
+                "max_items": 5
               }
             }
           },

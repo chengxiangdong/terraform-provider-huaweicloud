@@ -1,0 +1,16 @@
+info:
+    version: ""
+    title: resource_huaweicloud_cdm_cluster_action
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: CDM
+paths:
+    /v1.1/{project_id}/clusters/{cluster_id}/action:
+        POST:
+            tag: CDM
+    /v1.1/{project_id}/clusters/{clusterId}:
+        GET:
+            tag: CDM

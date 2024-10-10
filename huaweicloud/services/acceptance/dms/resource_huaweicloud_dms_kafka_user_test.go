@@ -2,6 +2,7 @@ package dms
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -55,6 +56,8 @@ func TestAccDmsKafkaUser_basic(t *testing.T) {
 	resourceName := "huaweicloud_dms_kafka_user.test"
 	password := acceptance.RandomPassword()
 	passwordUpdate := password + "update"
+	description := "add destription"
+	descriptionUpdate := ""
 
 	rc := acceptance.InitResourceCheck(
 		resourceName,
@@ -68,17 +71,23 @@ func TestAccDmsKafkaUser_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDmsKafkaUser_basic(rName, password),
+				Config: testAccDmsKafkaUser_basic(rName, password, description),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "description", description),
+					resource.TestCheckResourceAttrSet(resourceName, "default_app"),
+					resource.TestCheckResourceAttrSet(resourceName, "role"),
+					resource.TestMatchResourceAttr(resourceName, "created_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
 				),
 			},
 			{
-				Config: testAccDmsKafkaUser_basic(rName, passwordUpdate),
+				Config: testAccDmsKafkaUser_basic(rName, passwordUpdate, descriptionUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "description", descriptionUpdate),
 				),
 			},
 			{
@@ -91,14 +100,15 @@ func TestAccDmsKafkaUser_basic(t *testing.T) {
 	})
 }
 
-func testAccDmsKafkaUser_basic(rName, password string) string {
+func testAccDmsKafkaUser_basic(rName, password string, description string) string {
 	return fmt.Sprintf(`
-%s
+%[1]s
 
 resource "huaweicloud_dms_kafka_user" "test" {
   instance_id = huaweicloud_dms_kafka_instance.test.id
-  name        = "%s"
-  password    = "%s"
+  name        = "%[2]s"
+  password    = "%[3]s"
+  description = "%[4]s"
 }
-`, testAccKafkaInstance_basic(rName), rName, password)
+`, testAccKafkaInstance_newFormat(rName), rName, password, description)
 }

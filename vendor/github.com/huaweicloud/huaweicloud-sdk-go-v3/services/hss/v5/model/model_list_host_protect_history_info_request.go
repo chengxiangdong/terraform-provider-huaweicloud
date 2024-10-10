@@ -12,16 +12,16 @@ type ListHostProtectHistoryInfoRequest struct {
 	// Region Id
 	Region string `json:"region"`
 
-	// 企业项目
+	// 企业项目ID
 	EnterpriseProjectId *string `json:"enterprise_project_id,omitempty"`
 
-	// Host Id
-	HostId string `json:"host_id"`
+	// Host Id，为空时查所有主机
+	HostId *string `json:"host_id,omitempty"`
 
-	// 起始时间
+	// 起始时间(ms)
 	StartTime int64 `json:"start_time"`
 
-	// 终止时间
+	// 终止时间(ms)
 	EndTime int64 `json:"end_time"`
 
 	// limit
@@ -29,6 +29,18 @@ type ListHostProtectHistoryInfoRequest struct {
 
 	// offset
 	Offset int32 `json:"offset"`
+
+	// 服务器名称
+	HostName *string `json:"host_name,omitempty"`
+
+	// 服务器ip
+	HostIp *string `json:"host_ip,omitempty"`
+
+	// 防护文件
+	FilePath *string `json:"file_path,omitempty"`
+
+	// 文件操作类型   - add: 新增   - delete: 删除   - modify: 修改内容   - attribute: 修改属性
+	FileOperation *string `json:"file_operation,omitempty"`
 }
 
 func (o ListHostProtectHistoryInfoRequest) String() string {

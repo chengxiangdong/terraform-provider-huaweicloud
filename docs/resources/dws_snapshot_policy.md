@@ -1,10 +1,14 @@
 ---
-subcategory: "Data Warehouse Service (DWS)"
+subcategory: "GaussDB(DWS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dws_snapshot_policy"
+description: |-
+  Manages a GaussDB(DWS) automated snapshot policy resource within HuaweiCloud.  
 ---
 
 # huaweicloud_dws_snapshot_policy
 
-Manages a DWS automated snapshot policy resource within HuaweiCloud.  
+Manages a GaussDB(DWS) automated snapshot policy resource within HuaweiCloud.  
 
 ## Example Usage
 
@@ -84,7 +88,7 @@ In addition to all arguments above, the following attributes are exported:
 
 ## Import
 
-The DWS snapshot policy can be imported using `cluster_id`, `id`, separated by slashes, e.g.
+The DWS snapshot policy can be imported using `cluster_id` and `id`, separated by a slash, e.g.
 
 ```bash
 $ terraform import huaweicloud_dws_snapshot_policy.test <cluster_id>/<id>

@@ -43,6 +43,9 @@ const (
 )
 
 // ResourceMRSJobV2 is a schema resource to provider the MRS job.
+// @API MRS POST /v2/{project_id}/clusters/{cluster_id}/job-executions/batch-delete
+// @API MRS GET /v2/{project_id}/clusters/{cluster_id}/job-executions/{job_execution_id}
+// @API MRS POST /v2/{project_id}/clusters/{cluster_id}/job-executions
 func ResourceMRSJobV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceMRSJobV2Create,
@@ -72,10 +75,6 @@ func ResourceMRSJobV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.StringMatch(
-					regexp.MustCompile("^[A-Za-z0-9_-]{1,64}$"),
-					"The name consists of 1 to 64 characters, which only letters, digits, hyphens (-) and "+
-						"underscores (_) are allowed."),
 			},
 			"type": {
 				Type:     schema.TypeString,

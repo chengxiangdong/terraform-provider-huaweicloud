@@ -5,9 +5,20 @@
         "huaweicloud_drs_job": {
           "block": {
             "attributes": {
+              "action": {
+                "type": "string",
+                "optional": true
+              },
               "created_at": {
                 "type": "string",
                 "computed": true
+              },
+              "databases": {
+                "type": [
+                  "set",
+                  "string"
+                ],
+                "optional": true
               },
               "description": {
                 "type": "string",
@@ -49,6 +60,19 @@
                 "type": "string",
                 "computed": true
               },
+              "is_sync_re_edit": {
+                "type": "bool",
+                "optional": true
+              },
+              "master_az": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
+              },
+              "master_job_id": {
+                "type": "string",
+                "computed": true
+              },
               "migrate_definer": {
                 "type": "bool",
                 "optional": true,
@@ -77,7 +101,19 @@
                 "forcenew": true,
                 "default": "eip"
               },
+              "order_id": {
+                "type": "string",
+                "computed": true
+              },
+              "pause_mode": {
+                "type": "string",
+                "optional": true
+              },
               "private_ip": {
+                "type": "string",
+                "computed": true
+              },
+              "progress": {
                 "type": "string",
                 "computed": true
               },
@@ -89,12 +125,30 @@
                 "type": "string",
                 "computed": true
               },
-              "start_time": {
+              "security_group_id": {
+                "type": "string",
+                "computed": true
+              },
+              "slave_az": {
                 "type": "string",
                 "optional": true,
                 "forcenew": true
               },
+              "slave_job_id": {
+                "type": "string",
+                "computed": true
+              },
+              "start_time": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
               "status": {
+                "type": "string",
+                "computed": true
+              },
+              "subnet_id": {
                 "type": "string",
                 "computed": true
               },
@@ -103,16 +157,55 @@
                   "map",
                   "string"
                 ],
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "type": {
                 "type": "string",
                 "required": true,
                 "forcenew": true
+              },
+              "updated_at": {
+                "type": "string",
+                "computed": true
+              },
+              "vpc_id": {
+                "type": "string",
+                "computed": true
               }
             },
             "block_types": {
+              "alarm_notify": {
+                "block": {
+                  "attributes": {
+                    "delay_time": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    },
+                    "rpo_delay": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    },
+                    "rto_delay": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    },
+                    "topic_urn": {
+                      "type": "string",
+                      "required": true,
+                      "forcenew": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "forcenew": true,
+                "max_items": 1
+              },
               "destination_db": {
                 "block": {
                   "attributes": {
@@ -154,6 +247,10 @@
                       "computed": true,
                       "forcenew": true
                     },
+                    "security_group_id": {
+                      "type": "string",
+                      "computed": true
+                    },
                     "ssl_cert_check_sum": {
                       "type": "string",
                       "optional": true,
@@ -189,6 +286,12 @@
                       "type": "string",
                       "required": true,
                       "forcenew": true
+                    },
+                    "vpc_id": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
                     }
                   }
                 },
@@ -217,9 +320,36 @@
                     }
                   }
                 },
-                "nesting_mode": "list",
+                "nesting_mode": "set",
                 "forcenew": true,
                 "max_items": 3
+              },
+              "policy_config": {
+                "block": {
+                  "attributes": {
+                    "conflict_policy": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    },
+                    "filter_ddl_policy": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    },
+                    "index_trans": {
+                      "type": "bool",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "forcenew": true,
+                "max_items": 1
               },
               "source_db": {
                 "block": {
@@ -262,6 +392,10 @@
                       "computed": true,
                       "forcenew": true
                     },
+                    "security_group_id": {
+                      "type": "string",
+                      "computed": true
+                    },
                     "ssl_cert_check_sum": {
                       "type": "string",
                       "optional": true,
@@ -297,6 +431,12 @@
                       "type": "string",
                       "required": true,
                       "forcenew": true
+                    },
+                    "vpc_id": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
                     }
                   }
                 },
@@ -304,6 +444,24 @@
                 "forcenew": true,
                 "min_items": 1,
                 "max_items": 1
+              },
+              "tables": {
+                "block": {
+                  "attributes": {
+                    "database": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "table_names": {
+                      "type": [
+                        "set",
+                        "string"
+                      ],
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "set"
               }
             }
           },

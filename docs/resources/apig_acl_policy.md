@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Dedicated APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_apig_acl_policy"
+description: ""
 ---
 
 # huaweicloud_apig_acl_policy
@@ -14,7 +17,7 @@ Manages an ACL policy resource within HuaweiCloud.
 variable "instance_id" {}
 variable "policy_name" {}
 variable "ip_addresses" {
-  type = list(stirng)
+  type = list(string)
 }
 
 resource "huaweicloud_apig_acl_policy" "ip_rule" {
@@ -22,7 +25,7 @@ resource "huaweicloud_apig_acl_policy" "ip_rule" {
   name        = var.policy_name
   type        = "PERMIT"
   entity_type = "IP"
-  value       = join(var.ip_addresses, ",")
+  value       = join(",", var.ip_addresses)
 }
 ```
 
@@ -32,7 +35,7 @@ resource "huaweicloud_apig_acl_policy" "ip_rule" {
 variable "instance_id" {}
 variable "policy_name" {}
 variable "domain_names" {
-  type = list(stirng)
+  type = list(string)
 }
 
 resource "huaweicloud_apig_acl_policy" "domain_rule" {
@@ -40,7 +43,7 @@ resource "huaweicloud_apig_acl_policy" "domain_rule" {
   name        = var.policy_name
   type        = "PERMIT"
   entity_type = "DOMAIN"
-  value       = join(var.domain_names, ",")
+  value       = join(",", var.domain_names)
 }
 ```
 
@@ -50,7 +53,7 @@ resource "huaweicloud_apig_acl_policy" "domain_rule" {
 variable "instance_id" {}
 variable "policy_name" {}
 variable "domain_ids" {
-  type = list(stirng)
+  type = list(string)
 }
 
 resource "huaweicloud_apig_acl_policy" "domain_id_rule" {
@@ -58,7 +61,7 @@ resource "huaweicloud_apig_acl_policy" "domain_id_rule" {
   name        = var.policy_name
   type        = "PERMIT"
   entity_type = "DOMAIN_ID"
-  value       = join(var.domain_ids, ",")
+  value       = join(",", var.domain_ids)
 }
 ```
 

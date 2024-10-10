@@ -1,10 +1,15 @@
 ---
 subcategory: "Workspace"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_workspace_desktop"
+description: ""
 ---
 
 # huaweicloud_workspace_desktop
 
 Manages a Workspace desktop resource within HuaweiCloud.
+
+-> **NOTE:** Before creating Workspace desktop, ensure that the Workspace service has been registered.
 
 ## Example Usage
 
@@ -35,7 +40,7 @@ resource "huaweicloud_workspace_desktop" "test" {
   security_groups   = setunion(data.huaweicloud_networking_secgroups.test.security_groups[*].id,
     [var.security_group_id])
 
-  nics {
+  nic {
     network_id = var.network_id
   }
 
@@ -66,15 +71,14 @@ The following arguments are supported:
 
 * `flavor_id` - (Required, String) Specifies the flavor ID of desktop.
 
-* `image_type` - (Required, String, ForceNew) Specifies the image type. The valid values are as follows:
+* `image_type` - (Required, String) Specifies the image type. The valid values are as follows:
   + **market**: The market image.
   + **gold**: The public image.
   + **private**: The private image.
 
-  Changing this will create a new resource.
+* `image_id` - (Required, String) Specifies the image ID to create the desktop.
 
-* `image_id` - (Required, String, ForceNew) Specifies the image ID to create the desktop.
-  Changing this will create a new resource.
+  -> Parameters `image_type` and `image_id` cannot be updated at the same time as parameters `root_volume` and `data_volume`.
 
 * `vpc_id` - (Required, String, ForceNew) Specifies the VPC ID to which the desktop belongs.
   Changing this will create a new resource.
@@ -109,8 +113,8 @@ The following arguments are supported:
 
   Changing this will create a new resource.
 
-* `nic` - (Optional, List, ForceNew) Specifies the NIC information corresponding to the desktop.
-  The [object](#desktop_nic) structure is documented below. Changing this will create a new resource.
+* `nic` - (Optional, List) Specifies the NIC information corresponding to the desktop.
+  The [object](#desktop_nic) structure is documented below.
 
 * `name` - (Optional, String, ForceNew) Specifies the desktop name.
   The name can contain `1` to `15` characters, only letters, digits and hyphens (-) are allowed.
@@ -121,10 +125,20 @@ The following arguments are supported:
   operations.  
   Defaults to **false**. Changing this will create a new resource.
 
+* `power_action` - (Optional, String) Specifies the power action to be done for the desktop.
+  The valid values are **os-start**, **os-stop**, **reboot**, **os-hibernate**.
+
+  -> The `power_action` is a one-time action.
+     Currently, only Windows supports **os-hibernate** action.
+  
+* `power_action_type` - (Optional, String) Specifies the power action mechanisms for the desktop.
+  The valid values are as follows:
+  + **SOFT**: Normal operation.
+  + **HARD**: Forced operation.
+
 * `tags` - (Optional, Map) Specifies the key/value pairs of the desktop.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID of the desktop.
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID of the desktop.
 
 * `delete_user` - (Optional, Bool) Specifies whether to delete user associated with this desktop after deleting it.
   The user can only be successfully deleted if the user has no other desktops.
@@ -147,8 +161,7 @@ The `root_volume` and `data_volume` block supports:
 <a name="desktop_nic"></a>
 The `nic` block supports:
 
-* `network_id` - (Required, String, ForceNew) Specifies the network ID of subnet resource.
-  Changing this will create a new resource.
+* `network_id` - (Required, String) Specifies the network ID of subnet resource.
 
 ## Attribute Reference
 
@@ -161,6 +174,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `data_volume` - The configuration of data volumes.
   The [object](#desktop_volume_attr) structure is documented below.
+
+* `status` - The current status of the desktop.
 
 <a name="desktop_volume_attr"></a>
 The `root_volume` and `data_volume` block supports:
@@ -185,23 +200,24 @@ This resource provides the following timeouts configuration options:
 
 Desktops can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_workspace_desktop.test 339d2539-e945-4090-a08d-c16badc0c6bb
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response. The missing attributes include: `nic` and `user_email`.
+API response. The missing attributes include: `user_email`, `delete_user`, `image_type`, `vpc_id`, `power_action`,
+`power_action_type` and `email_notification`.
 It is generally recommended running `terraform plan` after importing a desktop.
 You can then decide if changes should be applied to the desktop, or the resource definition should be updated to
 align with the desktop. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_workspace_desktop" "test" {
   ...
 
   lifecycle {
     ignore_changes = [
-      user_email, nic,
+      user_email, delete_user, image_type, vpc_id, power_action, power_action_type, email_notification,
     ]
   }
 }

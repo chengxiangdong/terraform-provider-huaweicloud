@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -23,6 +22,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API SWR POST /v2/manage/namespaces/{namespace}/repos/{repository}/retentions
+// @API SWR DELETE /v2/manage/namespaces/{namespace}/repos/{repository}/retentions/{retention_id}
+// @API SWR GET /v2/manage/namespaces/{namespace}/repos/{repository}/retentions/{retention_id}
+// @API SWR PATCH /v2/manage/namespaces/{namespace}/repos/{repository}/retentions/{retention_id}
 func ResourceSwrImageRetentionPolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSwrImageRetentionPolicyCreate,
@@ -105,7 +108,7 @@ func resourceSwrImageRetentionPolicyCreate(ctx context.Context, d *schema.Resour
 	)
 	createSwrImageRetentionPolicyClient, err := cfg.NewServiceClient(createSwrImageRetentionPolicyProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SWR Client: %s", err)
+		return diag.Errorf("error creating SWR client: %s", err)
 	}
 
 	organization := d.Get("organization").(string)
@@ -135,21 +138,21 @@ func resourceSwrImageRetentionPolicyCreate(ctx context.Context, d *schema.Resour
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("id", createSwrImageRetentionPolicyRespBody)
-	if err != nil {
+	id := utils.PathSearch("id", createSwrImageRetentionPolicyRespBody, float64(-1)).(float64)
+	if id == -1 {
 		return diag.Errorf("error creating SWR image retention policy: ID is not found in API response")
 	}
 
-	d.SetId(organization + "/" + repository + "/" + strconv.Itoa(int(id.(float64))))
+	d.SetId(organization + "/" + repository + "/" + strconv.Itoa(int(id)))
 
 	return resourceSwrImageRetentionPolicyRead(ctx, d, meta)
 }
 
 func buildSwrImageRetentionPolicyBodyParams(d *schema.ResourceData) map[string]interface{} {
-	template := utils.ValueIngoreEmpty(d.Get("type"))
-	number := utils.ValueIngoreEmpty(d.Get("number")).(int)
+	template := utils.ValueIgnoreEmpty(d.Get("type"))
+	number := utils.ValueIgnoreEmpty(d.Get("number")).(int)
 	param := map[string]interface{}{
-		"template":      utils.ValueIngoreEmpty(d.Get("type")),
+		"template":      utils.ValueIgnoreEmpty(d.Get("type")),
 		"tag_selectors": buildSwrImageRetentionPolicyTagSelectorsChildBody(d),
 	}
 	if template == "date_rule" {
@@ -178,8 +181,8 @@ func buildSwrImageRetentionPolicyTagSelectorsChildBody(d *schema.ResourceData) [
 	for _, rawParam := range rawParams {
 		raw := rawParam.(map[string]interface{})
 		param := map[string]interface{}{
-			"kind":    utils.ValueIngoreEmpty(raw["kind"]),
-			"pattern": utils.ValueIngoreEmpty(raw["pattern"]),
+			"kind":    utils.ValueIgnoreEmpty(raw["kind"]),
+			"pattern": utils.ValueIgnoreEmpty(raw["pattern"]),
 		}
 		params = append(params, param)
 	}
@@ -200,7 +203,7 @@ func resourceSwrImageRetentionPolicyRead(_ context.Context, d *schema.ResourceDa
 	)
 	getSwrImageRetentionPolicyClient, err := cfg.NewServiceClient(getSwrImageRetentionPolicyProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SWR Client: %s", err)
+		return diag.Errorf("error creating SWR client: %s", err)
 	}
 
 	parts := strings.SplitN(d.Id(), "/", 3)
@@ -295,7 +298,7 @@ func resourceSwrImageRetentionPolicyUpdate(ctx context.Context, d *schema.Resour
 		)
 		updateSwrImageRetentionPolicyClient, err := cfg.NewServiceClient(updateSwrImageRetentionPolicyProduct, region)
 		if err != nil {
-			return diag.Errorf("error creating SWR Client: %s", err)
+			return diag.Errorf("error creating SWR client: %s", err)
 		}
 
 		parts := strings.SplitN(d.Id(), "/", 3)
@@ -337,7 +340,7 @@ func resourceSwrImageRetentionPolicyDelete(_ context.Context, d *schema.Resource
 	)
 	deleteSwrImageRetentionPolicyClient, err := cfg.NewServiceClient(deleteSwrImageRetentionPolicyProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SWR Client: %s", err)
+		return diag.Errorf("error creating SWR client: %s", err)
 	}
 
 	parts := strings.SplitN(d.Id(), "/", 3)
@@ -362,7 +365,9 @@ func resourceSwrImageRetentionPolicyDelete(_ context.Context, d *schema.Resource
 	_, err = deleteSwrImageRetentionPolicyClient.Request("DELETE",
 		deleteSwrImageRetentionPolicyPath, &deleteSwrImageRetentionPolicyOpt)
 	if err != nil {
-		return diag.Errorf("error deleting SWR image retention policy: %s", err)
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected400ErrInto404Err(err, "errors|[0].errorCode", "SVCSTG.SWR.4000306"),
+			"error deleting SWR image retention policy")
 	}
 
 	return nil

@@ -8,7 +8,6 @@ package ga
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
@@ -26,6 +24,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API GA POST /v1/endpoint-groups
+// @API GA GET /v1/endpoint-groups/{endpoint_group_id}
+// @API GA PUT /v1/endpoint-groups/{endpoint_group_id}
+// @API GA DELETE /v1/endpoint-groups/{endpoint_group_id}
 func ResourceEndpointGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceEndpointGroupCreate,
@@ -46,22 +48,12 @@ func ResourceEndpointGroup() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `Specifies the endpoint group name.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z0-9-]+$`),
-						"the input is invalid"),
-					validation.StringLenBetween(1, 64),
-				),
 			},
 			"region_id": {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
 				Description: `Specifies the region where the endpoint group belongs.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z0-9-]*$`),
-						"the input is invalid"),
-					validation.StringLenBetween(1, 36),
-				),
 			},
 			"listeners": {
 				Type:        schema.TypeList,
@@ -76,18 +68,12 @@ func ResourceEndpointGroup() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: `Specifies the information about the endpoint group.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`[^<>]*`),
-						"the input is invalid"),
-					validation.StringLenBetween(0, 255),
-				),
 			},
 			"traffic_dial_percentage": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Computed:     true,
-				Description:  `Specifies the percentage of traffic distributed to the endpoint group.`,
-				ValidateFunc: validation.IntBetween(0, 100),
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: `Specifies the percentage of traffic distributed to the endpoint group.`,
 			},
 			"status": {
 				Type:        schema.TypeString,
@@ -115,11 +101,6 @@ func EndpointGroupIdSchema() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `Specifies the ID of the associated listener.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}`),
-						"the input is invalid"),
-					validation.StringLenBetween(0, 36),
-				),
 			},
 		},
 	}
@@ -175,11 +156,11 @@ func resourceEndpointGroupCreate(ctx context.Context, d *schema.ResourceData, me
 func buildCreateEndpointGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"endpoint_group": map[string]interface{}{
-			"description":             utils.ValueIngoreEmpty(d.Get("description")),
+			"description":             utils.ValueIgnoreEmpty(d.Get("description")),
 			"listeners":               buildCreateEndpointGroupRequestBodyId(d.Get("listeners")),
-			"name":                    utils.ValueIngoreEmpty(d.Get("name")),
-			"region_id":               utils.ValueIngoreEmpty(d.Get("region_id")),
-			"traffic_dial_percentage": utils.ValueIngoreEmpty(d.Get("traffic_dial_percentage")),
+			"name":                    utils.ValueIgnoreEmpty(d.Get("name")),
+			"region_id":               utils.ValueIgnoreEmpty(d.Get("region_id")),
+			"traffic_dial_percentage": utils.ValueIgnoreEmpty(d.Get("traffic_dial_percentage")),
 		},
 	}
 	return bodyParams
@@ -195,7 +176,7 @@ func buildCreateEndpointGroupRequestBodyId(rawParams interface{}) []map[string]i
 		for i, v := range rawArray {
 			raw := v.(map[string]interface{})
 			rst[i] = map[string]interface{}{
-				"id": utils.ValueIngoreEmpty(raw["id"]),
+				"id": utils.ValueIgnoreEmpty(raw["id"]),
 			}
 		}
 		return rst
@@ -212,7 +193,7 @@ func createEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 			region := config.GetRegion(d)
 			// createEndpointGroupWaiting: missing operation notes
 			var (
-				createEndpointGroupWaitingHttpUrl = "v1/endpoint-groups/{id}"
+				createEndpointGroupWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}"
 				createEndpointGroupWaitingProduct = "ga"
 			)
 			createEndpointGroupWaitingClient, err := config.NewServiceClient(createEndpointGroupWaitingProduct, region)
@@ -221,7 +202,7 @@ func createEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 			}
 
 			createEndpointGroupWaitingPath := createEndpointGroupWaitingClient.Endpoint + createEndpointGroupWaitingHttpUrl
-			createEndpointGroupWaitingPath = strings.ReplaceAll(createEndpointGroupWaitingPath, "{id}", d.Id())
+			createEndpointGroupWaitingPath = strings.ReplaceAll(createEndpointGroupWaitingPath, "{endpoint_group_id}", d.Id())
 
 			createEndpointGroupWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -278,7 +259,7 @@ func resourceEndpointGroupRead(_ context.Context, d *schema.ResourceData, meta i
 
 	// getEndpointGroup: Query the GA Endpoint Group detail
 	var (
-		getEndpointGroupHttpUrl = "v1/endpoint-groups/{id}"
+		getEndpointGroupHttpUrl = "v1/endpoint-groups/{endpoint_group_id}"
 		getEndpointGroupProduct = "ga"
 	)
 	getEndpointGroupClient, err := conf.NewServiceClient(getEndpointGroupProduct, region)
@@ -287,7 +268,7 @@ func resourceEndpointGroupRead(_ context.Context, d *schema.ResourceData, meta i
 	}
 
 	getEndpointGroupPath := getEndpointGroupClient.Endpoint + getEndpointGroupHttpUrl
-	getEndpointGroupPath = strings.ReplaceAll(getEndpointGroupPath, "{id}", d.Id())
+	getEndpointGroupPath = strings.ReplaceAll(getEndpointGroupPath, "{endpoint_group_id}", d.Id())
 
 	getEndpointGroupOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -349,7 +330,7 @@ func resourceEndpointGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 	if d.HasChanges(updateEndpointGrouphasChanges...) {
 		// updateEndpointGroup: Update the configuration of GA Endpoint Group
 		var (
-			updateEndpointGroupHttpUrl = "v1/endpoint-groups/{id}"
+			updateEndpointGroupHttpUrl = "v1/endpoint-groups/{endpoint_group_id}"
 			updateEndpointGroupProduct = "ga"
 		)
 		updateEndpointGroupClient, err := conf.NewServiceClient(updateEndpointGroupProduct, region)
@@ -358,7 +339,7 @@ func resourceEndpointGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 		}
 
 		updateEndpointGroupPath := updateEndpointGroupClient.Endpoint + updateEndpointGroupHttpUrl
-		updateEndpointGroupPath = strings.ReplaceAll(updateEndpointGroupPath, "{id}", d.Id())
+		updateEndpointGroupPath = strings.ReplaceAll(updateEndpointGroupPath, "{endpoint_group_id}", d.Id())
 
 		updateEndpointGroupOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -383,8 +364,8 @@ func buildUpdateEndpointGroupBodyParams(d *schema.ResourceData) map[string]inter
 	bodyParams := map[string]interface{}{
 		"endpoint_group": map[string]interface{}{
 			"description":             d.Get("description"),
-			"name":                    utils.ValueIngoreEmpty(d.Get("name")),
-			"traffic_dial_percentage": utils.ValueIngoreEmpty(d.Get("traffic_dial_percentage")),
+			"name":                    utils.ValueIgnoreEmpty(d.Get("name")),
+			"traffic_dial_percentage": utils.ValueIgnoreEmpty(d.Get("traffic_dial_percentage")),
 		},
 	}
 	return bodyParams
@@ -399,7 +380,7 @@ func updateEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 			region := config.GetRegion(d)
 			// updateEndpointGroupWaiting: missing operation notes
 			var (
-				updateEndpointGroupWaitingHttpUrl = "v1/endpoint-groups/{id}"
+				updateEndpointGroupWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}"
 				updateEndpointGroupWaitingProduct = "ga"
 			)
 			updateEndpointGroupWaitingClient, err := config.NewServiceClient(updateEndpointGroupWaitingProduct, region)
@@ -408,7 +389,7 @@ func updateEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 			}
 
 			updateEndpointGroupWaitingPath := updateEndpointGroupWaitingClient.Endpoint + updateEndpointGroupWaitingHttpUrl
-			updateEndpointGroupWaitingPath = strings.ReplaceAll(updateEndpointGroupWaitingPath, "{id}", d.Id())
+			updateEndpointGroupWaitingPath = strings.ReplaceAll(updateEndpointGroupWaitingPath, "{endpoint_group_id}", d.Id())
 
 			updateEndpointGroupWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -463,7 +444,7 @@ func resourceEndpointGroupDelete(ctx context.Context, d *schema.ResourceData, me
 
 	// deleteEndpointGroup: Delete an existing GA Endpoint Group
 	var (
-		deleteEndpointGroupHttpUrl = "v1/endpoint-groups/{id}"
+		deleteEndpointGroupHttpUrl = "v1/endpoint-groups/{endpoint_group_id}"
 		deleteEndpointGroupProduct = "ga"
 	)
 	deleteEndpointGroupClient, err := conf.NewServiceClient(deleteEndpointGroupProduct, region)
@@ -472,7 +453,7 @@ func resourceEndpointGroupDelete(ctx context.Context, d *schema.ResourceData, me
 	}
 
 	deleteEndpointGroupPath := deleteEndpointGroupClient.Endpoint + deleteEndpointGroupHttpUrl
-	deleteEndpointGroupPath = strings.ReplaceAll(deleteEndpointGroupPath, "{id}", d.Id())
+	deleteEndpointGroupPath = strings.ReplaceAll(deleteEndpointGroupPath, "{endpoint_group_id}", d.Id())
 
 	deleteEndpointGroupOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -501,7 +482,7 @@ func deleteEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 			region := config.GetRegion(d)
 			// deleteEndpointGroupWaiting: missing operation notes
 			var (
-				deleteEndpointGroupWaitingHttpUrl = "v1/endpoint-groups/{id}"
+				deleteEndpointGroupWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}"
 				deleteEndpointGroupWaitingProduct = "ga"
 			)
 			deleteEndpointGroupWaitingClient, err := config.NewServiceClient(deleteEndpointGroupWaitingProduct, region)
@@ -510,7 +491,7 @@ func deleteEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 			}
 
 			deleteEndpointGroupWaitingPath := deleteEndpointGroupWaitingClient.Endpoint + deleteEndpointGroupWaitingHttpUrl
-			deleteEndpointGroupWaitingPath = strings.ReplaceAll(deleteEndpointGroupWaitingPath, "{id}", d.Id())
+			deleteEndpointGroupWaitingPath = strings.ReplaceAll(deleteEndpointGroupWaitingPath, "{endpoint_group_id}", d.Id())
 
 			deleteEndpointGroupWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -522,7 +503,8 @@ func deleteEndpointGroupWaitingForStateCompleted(ctx context.Context, d *schema.
 				deleteEndpointGroupWaitingPath, &deleteEndpointGroupWaitingOpt)
 			if err != nil {
 				if _, ok := err.(golangsdk.ErrDefault404); ok {
-					return deleteEndpointGroupWaitingResp, "COMPLETED", nil
+					// When the error code is 404, the value of respBody is nil, and a non-null value is returned to avoid continuing the loop check.
+					return "Resource Not Found", "COMPLETED", nil
 				}
 
 				return nil, "ERROR", err

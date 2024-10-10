@@ -3,13 +3,11 @@ package apig
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/responses"
 
@@ -17,6 +15,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API APIG GET /v2/{project_id}/apigw/instances/{instanceId}/api-groups/{group_id}/gateway-responses/{response_id}
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instanceId}/api-groups/{group_id}/gateway-responses/{response_id}
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instanceId}/api-groups/{group_id}/gateway-responses/{response_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instanceId}/api-groups/{group_id}/gateway-responses
+// @API APIG POST /v2/{project_id}/apigw/instances/{instanceId}/api-groups/{group_id}/gateway-responses
 func ResourceApigResponseV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceResponseCreate,
@@ -50,13 +53,8 @@ func ResourceApigResponseV2() *schema.Resource {
 				Description: "The ID of the API group to which the API custom response belongs.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\w-]*$`),
-						"Only letters, digits, hyphens(-), and underscores (_) are allowed."),
-					validation.StringLenBetween(1, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The name of the API custom response.",
 			},
 			"rule": {
@@ -77,11 +75,10 @@ func ResourceApigResponseV2() *schema.Resource {
 							Description: "The body template of the API custom response rule.",
 						},
 						"status_code": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							Computed:     true,
-							ValidateFunc: validation.IntBetween(200, 599),
-							Description:  "The HTTP status code of the API custom response rule.",
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Computed:    true,
+							Description: "The HTTP status code of the API custom response rule.",
 						},
 					},
 				},
@@ -227,8 +224,8 @@ func resourceResponseDelete(_ context.Context, d *schema.ResourceData, meta inte
 	)
 	err = responses.Delete(client, instanceId, groupId, responseId).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting APIG custom response (%s) from the dedicated group (%s): %s",
-			responseId, groupId, err)
+		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error deleting APIG custom response (%s) from the dedicated group (%s)",
+			responseId, groupId))
 	}
 	return nil
 }

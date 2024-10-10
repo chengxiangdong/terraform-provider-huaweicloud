@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Dedicated APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_apig_response"
+description: ""
 ---
 
 # huaweicloud_apig_response
@@ -74,6 +77,7 @@ The `rule` block supports:
   `{\"code\":\"$context.authorizer.frontend.code\",\"message\":\"$context.authorizer.frontend.message\"}`
 
 * `status_code` - (Optional, Int) Specifies the HTTP status code of the API response rule.
+  The valid value is range from `200` to `599`.
 
 ## Attribute Reference
 

@@ -1,5 +1,8 @@
 ---
 subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_csbs_backup"
+description: ""
 ---
 
 # huaweicloud_csbs_backup
@@ -104,6 +107,6 @@ In addition to all arguments above, the following attributes are exported:
 
 Backup can be imported using  `backup_record_id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_csbs_backup.backup 7056d636-ac60-4663-8a6c-82d3c32c1c64
 ```

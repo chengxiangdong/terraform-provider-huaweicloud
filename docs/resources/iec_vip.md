@@ -1,5 +1,8 @@
 ---
 subcategory: "Intelligent EdgeCloud (IEC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_iec_vip"
+description: ""
 ---
 
 # huaweicloud_iec_vip
@@ -50,6 +53,6 @@ This resource provides the following timeouts configuration options:
 
 IEC VIP can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_iec_vip.vip_test 61fd8d31-8f92-4526-a5f5-07ec303e69e7
 ```

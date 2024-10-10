@@ -1,5 +1,9 @@
 ---
 subcategory: "Relational Database Service (RDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_rds_backups"
+description: |-
+  Use this data source to get the list of RDS backups.
 ---
 
 # huaweicloud_rds_backups
@@ -29,10 +33,10 @@ The following arguments are supported:
 
 * `backup_type` - (Optional, String) Backup type.  
   The options are as follows:
-    - **auto**: Automated full backup.
-    - **manual**: Manual full backup.
-    - **fragment**: Differential full backup.
-    - **incremental**: Automated incremental backup.
+  + **auto**: Automated full backup.
+  + **manual**: Manual full backup.
+  + **fragment**: Differential full backup.
+  + **incremental**: Automated incremental backup.
 
 * `begin_time` - (Optional, String) Start time in the "yyyy-mm-ddThh:mm:ssZ" format.
 
@@ -44,7 +48,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `backups` - Backup list. For details, see Data structure of the Backup field.
   The [backups](#Backup_Backup) structure is documented below.
@@ -60,19 +64,19 @@ The `backups` block supports:
 
 * `type` - Backup type.  
   The options are as follows:
-    - **auto**: Automated full backup.
-    - **manual**: Manual full backup.
-    - **fragment**: Differential full backup.
-    - **incremental**: Automated incremental backup.
+  + **auto**: Automated full backup.
+  + **manual**: Manual full backup.
+  + **fragment**: Differential full backup.
+  + **incremental**: Automated incremental backup.
 
 * `size` - Backup size in KB.
 
 * `status` - Backup status.  
   The options are as follows:
-    - **BUILDING**: Backup in progress.
-    - **COMPLETED**: Backup completed.
-    - **FAILED**: Backup failed.
-    - **DELETING**: Backup being deleted.
+  + **BUILDING**: Backup in progress.
+  + **COMPLETED**: Backup completed.
+  + **FAILED**: Backup failed.
+  + **DELETING**: Backup being deleted.
 
 * `begin_time` - Backup start time in the "yyyy-mm-ddThh:mm:ssZ" format.
 

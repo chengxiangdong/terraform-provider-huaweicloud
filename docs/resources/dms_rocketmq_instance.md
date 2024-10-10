@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Message Service (DMS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dms_rocketmq_instance"
+description: ""
 ---
 
 # huaweicloud_dms_rocketmq_instance
@@ -27,6 +30,7 @@ resource "huaweicloud_dms_rocketmq_instance" "test" {
   availability_zones = var.availability_zones
   flavor_id          = "c6.4u8g.cluster"
   storage_spec_code  = "dms.physical.storage.high.v2"
+  broker_num         = 1
 }
 ```
 
@@ -38,15 +42,16 @@ The following arguments are supported:
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
 * `name` - (Required, String) Specifies the name of the DMS RocketMQ instance.
-  An instance name starts with a letter, consists of 4 to 64 characters, and can contain only letters,
+  An instance name starts with a letter, consists of `4` to `64` characters, and can contain only letters,
   digits, underscores (_), and hyphens (-).
 
-* `engine_version` - (Required, String, ForceNew) Specifies the version of the RocketMQ engine. Value: 4.8.0.
+* `engine_version` - (Required, String, ForceNew) Specifies the version of the RocketMQ engine.
+  Valid values are **4.8.0** and **5.x**.
   Changing this parameter will create a new resource.
 
-* `storage_space` - (Required, Int, ForceNew) Specifies the message storage capacity, Unit: GB.
-  Value range: 300-3000.
-  Changing this parameter will create a new resource.
+* `storage_space` - (Required, Int) Specifies the message storage capacity, Unit: GB.
+  When `engine_version` is **4.8.0**, value ranges from `300` to `30,000`.
+  When `engine_version` is **5.x**, value ranges from `200` to `60,000`.
 
 * `vpc_id` - (Required, String, ForceNew) Specifies the ID of a VPC.
   Changing this parameter will create a new resource.
@@ -61,16 +66,7 @@ The following arguments are supported:
 
   Changing this parameter will create a new resource.
 
-* `flavor_id` - (Required, String, ForceNew) Specifies a product ID. The options are as follows:
-  + **c6.4u8g.cluster**: maximum number of topics on each broker: 4000; maximum number of consumer groups
-    on each broker: 4000
-  + **c6.8u16g.cluster**: maximum number of topics on each broker: 8000; maximum number of consumer groups
-    on each broker: 8000
-  + **c6.12u24g.cluster**: maximum number of topics on each broker: 12,000; maximum number of consumer groups
-    on each broker: 12,000
-  + **c6.16u32g.cluster**: maximum number of topics on each broker: 16,000; maximum number of consumer groups
-    on each broker: 16,000
-  Changing this parameter will create a new resource.
+* `flavor_id` - (Required, String) Specifies the flavor ID.
 
 * `storage_spec_code` - (Required, String, ForceNew) Specifies the storage I/O specification.
   The options are as follows:
@@ -79,28 +75,23 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `description` - (Optional, String) Specifies the description of the DMS RocketMQ instance.
-  The description can contain a maximum of 1024 characters.
+  The description can contain a maximum of `1,024` characters.
 
-* `ssl_enable` - (Optional, Bool, ForceNew) Specifies whether the RocketMQ SASL_SSL is enabled. Defaults to false.
+* `ssl_enable` - (Optional, Bool, ForceNew) Specifies whether the RocketMQ SASL_SSL is enabled. Defaults to **false**.
   Changing this parameter will create a new resource.
 
-* `ipv6_enable` - (Optional, Bool, ForceNew) Specifies whether to support IPv6. Defaults to false.
+* `ipv6_enable` - (Optional, Bool, ForceNew) Specifies whether to support IPv6. Defaults to **false**.
   Changing this parameter will create a new resource.
 
-* `enable_publicip` - (Optional, Bool, ForceNew) Specifies whether to enable public access.
-  By default, public access is disabled.
-  Changing this parameter will create a new resource.
+* `enable_publicip` - (Optional, Bool) Specifies whether to enable public access. By default, public access is disabled.
 
-* `publicip_id` - (Optional, String, ForceNew) Specifies the ID of the EIP bound to the instance.
-  Use commas (,) to separate multiple EIP IDs.
-  This parameter is mandatory if public access is enabled (that is, enable_publicip is set to true).
-  Changing this parameter will create a new resource.
+* `publicip_id` - (Optional, String) Specifies the ID of the EIP bound to the instance. Use commas (,) to separate
+  multiple EIP IDs. It is mandatory if `enable_publicip` is **true** and should be empty when `enable_publicip` is **false**.
 
-* `broker_num` - (Optional, Int, ForceNew) Specifies the broker numbers. Defaults to 1.
-  Changing this parameter will create a new resource.
+* `broker_num` - (Optional, Int) Specifies the broker numbers. It's **required** when instance architecture is
+  **cluster**. Defaults to `1` when instance architecture is **single node**.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project id of the instance.
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project id of the instance.
 
 * `enable_acl` - (Optional, Bool) Specifies whether access control is enabled.
 
@@ -112,12 +103,24 @@ The following arguments are supported:
   Changing this creates a new resource.
 
 * `period` - (Optional, Int, ForceNew) Specifies the charging period of the instance. If `period_unit` is set to *month*
-  , the value ranges from 1 to 9. If `period_unit` is set to *year*, the value ranges from 1 to 3. This parameter is
+  , the value ranges from 1 to 9. If `period_unit` is set to *year*, the value ranges from `1` to `3`. This parameter is
   mandatory if `charging_mode` is set to *prePaid*. Changing this creates a new resource.
 
 * `auto_renew` - (Optional, String) Specifies whether auto renew is enabled. Valid values are "true" and "false".
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the instance.
+
+* `configs` - (Optional, List) Specifies the instance configs.
+  The [configs](#dms_configs) structure is documented below.
+
+<a name="dms_configs"></a>
+The `configs` block supports:
+
+* `name` - (Required, String) Specifies the config name.
+
+* `value` - (Required, String) Specifies the config value.
+
+-> When `name` is **fileReservedTime**, `value` ranges from `1` to `720` and unit is **hour**. Defaults to `48`.
 
 ## Attribute Reference
 
@@ -169,6 +172,6 @@ The `cross_vpc_accesses` block supports:
 
 The rocketmq instance can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_dms_rocketmq_instance.test 8d3c7938-dc47-4937-a30f-c80de381c5e3
 ```

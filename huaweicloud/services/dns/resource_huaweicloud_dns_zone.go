@@ -21,6 +21,17 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API DNS POST /v2/zones/{zone_id}/associaterouter
+// @API DNS POST /v2/zones/{zone_id}/disassociaterouter
+// @API DNS DELETE /v2/zones/{zone_id}
+// @API DNS GET /v2/zones/{zone_id}
+// @API DNS PATCH /v2/zones/{zone_id}
+// @API DNS POST /v2/zones
+// @API DNS POST /v2/{project_id}/DNS-public_zone/{resource_id}/tags/action
+// @API DNS POST /v2/{project_id}/DNS-private_zone/{resource_id}/tags/action
+// @API DNS GET /v2/{project_id}/DNS-public_zone/{resource_id}/tags
+// @API DNS GET /v2/{project_id}/DNS-private_zone/{resource_id}/tags
+// @API DNS PUT /v2/zones/{zone_id}/statuses
 func ResourceDNSZone() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDNSZoneCreate,
@@ -62,15 +73,13 @@ func ResourceDNSZone() *schema.Resource {
 				ValidateFunc: validation.StringInSlice([]string{"public", "private"}, false),
 			},
 			"ttl": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Default:      300,
-				ValidateFunc: validation.IntBetween(1, 2147483647),
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  300,
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 255),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"router": {
 				Type:     schema.TypeSet,
@@ -93,6 +102,12 @@ func ResourceDNSZone() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
+			},
+			"status": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: `Specifies the status of the public zone.`,
 			},
 			"masters": {
 				Type:     schema.TypeSet,
@@ -124,11 +139,11 @@ func resourceDNSRouter(d *schema.ResourceData, region string) *zones.RouterOpts 
 }
 
 func resourceDNSZoneCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	conf := meta.(*config.Config)
-	region := conf.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 	var dnsClient *golangsdk.ServiceClient
 
-	dnsClient, err := conf.DnsV2Client(region)
+	dnsClient, err := cfg.DnsV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DNS client: %s", err)
 	}
@@ -142,7 +157,7 @@ func resourceDNSZoneCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.Errorf("the argument (router) is required when creating DNS private zone")
 		}
 		// update the endpoint with region when creating private zone
-		dnsClient, err = conf.DnsWithRegionClient(conf.GetRegion(d))
+		dnsClient, err = cfg.DnsWithRegionClient(cfg.GetRegion(d))
 		if err != nil {
 			return diag.Errorf("error creating DNS region client: %s", err)
 		}
@@ -154,7 +169,7 @@ func resourceDNSZoneCreate(ctx context.Context, d *schema.ResourceData, meta int
 		Email:               d.Get("email").(string),
 		Description:         d.Get("description").(string),
 		ZoneType:            zoneType,
-		EnterpriseProjectID: common.GetEnterpriseProjectID(d, conf),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 		Router:              resourceDNSRouter(d, region),
 	}
 
@@ -219,6 +234,18 @@ func resourceDNSZoneCreate(ctx context.Context, d *schema.ResourceData, meta int
 		}
 	}
 
+	// After zone is created, the status is ACTIVE (ENABLE).
+	// This action cannot be called repeatedly.
+	if v, ok := d.GetOk("status"); ok && v != "ENABLE" {
+		if zoneType == "private" {
+			return diag.Errorf("The private zone do not support updating status.")
+		}
+
+		if err := updatePublicZoneStatus(ctx, d, dnsClient, d.Timeout(schema.TimeoutCreate)); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// set tags
 	tagRaw := d.Get("tags").(map[string]interface{})
 	if len(tagRaw) > 0 {
@@ -277,6 +304,8 @@ func resourceDNSZoneRead(_ context.Context, d *schema.ResourceData, meta interfa
 		d.Set("region", region),
 		d.Set("zone_type", zoneInfo.ZoneType),
 		d.Set("enterprise_project_id", zoneInfo.EnterpriseProjectID),
+		// The private zone also returns the "status" attribute.
+		d.Set("status", parseZoneStatus(zoneInfo.Status)),
 	)
 
 	// save tags
@@ -295,6 +324,13 @@ func resourceDNSZoneRead(_ context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	return nil
+}
+
+func parseZoneStatus(status string) string {
+	if status == "ACTIVE" {
+		return "ENABLE"
+	}
+	return status
 }
 
 func resourceDNSZoneUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -334,6 +370,16 @@ func resourceDNSZoneUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		}
 	}
 
+	if d.HasChange("status") {
+		if zoneType == "private" {
+			return diag.Errorf("The private zone do not support updating status.")
+		}
+
+		if err := updatePublicZoneStatus(ctx, d, dnsClient, d.Timeout(schema.TimeoutUpdate)); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// update tags
 	resourceType, err := utils.GetDNSZoneTagType(zoneType)
 	if err != nil {
@@ -368,7 +414,7 @@ func updateDNSZone(ctx context.Context, d *schema.ResourceData, client *golangsd
 
 	log.Printf("[DEBUG] Waiting for DNS zone (%s) to update", d.Id())
 	stateConf := &resource.StateChangeConf{
-		Target:     []string{"ACTIVE"},
+		Target:     []string{"ACTIVE", "DISABLE"},
 		Pending:    []string{"PENDING"},
 		Refresh:    waitForDNSZone(client, d.Id()),
 		Timeout:    d.Timeout(schema.TimeoutUpdate),
@@ -443,6 +489,32 @@ func updateDNSZoneRouters(ctx context.Context, d *schema.ResourceData, client *g
 			}
 		}
 	}
+	return nil
+}
+
+func updatePublicZoneStatus(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, timeout time.Duration) error {
+	opts := zones.UpdateStatusOpts{
+		ZoneId: d.Id(),
+		Status: d.Get("status").(string),
+	}
+	err := zones.UpdateZoneStatus(client, opts)
+	if err != nil {
+		return fmt.Errorf("error updating public zone status: %s", err)
+	}
+
+	stateConf := &resource.StateChangeConf{
+		Target:     []string{"ACTIVE", "DISABLE", "FREEZE"},
+		Pending:    []string{"PENDING"},
+		Refresh:    waitForDNSZone(client, d.Id()),
+		Timeout:    timeout,
+		MinTimeout: 10 * time.Second,
+	}
+
+	_, err = stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for updating public zone status completed: %s", err)
+	}
+
 	return nil
 }
 

@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	iotdav5 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5/model"
@@ -19,6 +17,12 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IoTDA POST /v5/iot/{project_id}/device-group/{group_id}/action
+// @API IoTDA GET /v5/iot/{project_id}/device-group/{group_id}/devices
+// @API IoTDA DELETE /v5/iot/{project_id}/device-group/{group_id}
+// @API IoTDA GET /v5/iot/{project_id}/device-group/{group_id}
+// @API IoTDA PUT /v5/iot/{project_id}/device-group/{group_id}
+// @API IoTDA POST /v5/iot/{project_id}/device-group
 func ResourceDeviceGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDeviceGroupCreate,
@@ -40,11 +44,6 @@ func ResourceDeviceGroup() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 64),
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z-_0-9]*$`),
-						"Only letters, digits, underscores (_) and hyphens (-) are allowed."),
-				),
 			},
 
 			"space_id": {
@@ -56,10 +55,6 @@ func ResourceDeviceGroup() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 64),
-					validation.StringMatch(regexp.MustCompile(stringRegxp), stringFormatMsg),
-				),
 			},
 
 			"parent_group_id": {
@@ -82,7 +77,8 @@ func ResourceDeviceGroup() *schema.Resource {
 func resourceDeviceGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -120,7 +116,8 @@ func resourceDeviceGroupCreate(ctx context.Context, d *schema.ResourceData, meta
 func resourceDeviceGroupRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -144,7 +141,8 @@ func resourceDeviceGroupRead(_ context.Context, d *schema.ResourceData, meta int
 func resourceDeviceGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -189,7 +187,8 @@ func resourceDeviceGroupUpdate(ctx context.Context, d *schema.ResourceData, meta
 func resourceDeviceGroupDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}

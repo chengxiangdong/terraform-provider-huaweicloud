@@ -1,5 +1,8 @@
 ---
 subcategory: "NAT Gateway (NAT)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_nat_private_dnat_rule"
+description: ""
 ---
 
 # huaweicloud_nat_private_dnat_rule
@@ -153,6 +156,8 @@ In addition to all arguments above, the following attributes are exported:
 * `created_at` - The creation time of the DNAT rule.
 
 * `updated_at` - The latest update time of the DNAT rule.
+
+* `enterprise_project_id` - The ID of the enterprise project to which the private DNAT rule belongs.
 
 ## Import
 

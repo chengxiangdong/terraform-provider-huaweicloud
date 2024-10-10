@@ -21,10 +21,14 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CDM DELETE /v1.1/{project_id}/clusters/{clusterId}
+// @API CDM GET /v1.1/{project_id}/clusters/{clusterId}
+// @API CDM POST /v1.1/{project_id}/clusters
 func ResourceCdmCluster() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCdmClusterCreate,
 		ReadContext:   resourceCdmClusterRead,
+		UpdateContext: resourceCdmClusterUpdate,
 		DeleteContext: resourceCdmClusterDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -84,7 +88,7 @@ func ResourceCdmCluster() *schema.Resource {
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
+				Computed: true,
 			},
 
 			"is_auto_off": {
@@ -195,6 +199,11 @@ func ResourceCdmCluster() *schema.Resource {
 			},
 
 			"public_endpoint": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"flavor_name": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -322,6 +331,8 @@ func resourceCdmClusterRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("public_ip", detail.Instances[0].PublicIp),
 		d.Set("public_endpoint", detail.PublicEndpoint),
 		d.Set("status", detail.StatusDetail),
+		d.Set("enterprise_project_id", detail.EnterpriseProjectId),
+		d.Set("flavor_name", detail.FlavorName),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -348,6 +359,30 @@ func flattenInstancs(items []clusters.Instance) []map[string]interface{} {
 	}
 
 	return result
+}
+
+func resourceCdmClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	clusterId := d.Id()
+	client, err := cfg.CdmV11Client(region)
+	if err != nil {
+		return diag.Errorf("error creating CDM v1 client, err=%s", err)
+	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   clusterId,
+			ResourceType: "cdm-clusters",
+			RegionId:     region,
+			ProjectId:    client.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	return resourceCdmClusterRead(ctx, d, meta)
 }
 
 func resourceCdmClusterDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

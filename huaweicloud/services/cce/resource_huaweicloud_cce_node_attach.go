@@ -16,6 +16,20 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{cluster_id}
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/add
+// @API CCE GET /api/v3/projects/{project_id}/jobs/{job_id}
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/{node_id}
+// @API ECS GET /v1/{project_id}/cloudservers/{id}/tags
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/reset
+// @API CCE PUT /api/v3/projects/{project_id}/clusters/{clusterid}/nodes/{node_id}
+// @API ECS PUT /v1/{project_id}/cloudservers/{server_id}/os-reset-password
+// @API ECS POST /v1/{project_id}/cloudservers/{server_id}/tags/action
+// @API KMS POST /v3/{project_id}/keypairs/associate
+// @API KMS POST /v3/{project_id}/keypairs/disassociate
+// @API CCE PUT /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/operation/remove
+
 func ResourceNodeAttach() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceNodeAttachCreate,
@@ -153,6 +167,22 @@ func ResourceNodeAttach() *schema.Resource {
 			},
 			//(node/ecs_tags)
 			"tags": common.TagsSchema(),
+			"hostname_config": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
 
 			"flavor_id": {
 				Type:     schema.TypeString,
@@ -272,6 +302,10 @@ func ResourceNodeAttach() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"enterprise_project_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -370,6 +404,7 @@ func buildNodeAttachCreateOpts(d *schema.ResourceData) (*nodes.AddOpts, error) {
 					K8sOptions:            resourceNodeAttachK8sOptions(d),
 					Lifecycle:             resourceNodeAttachLifecycle(d),
 					InitializedConditions: utils.ExpandToStringList(d.Get("initialized_conditions").([]interface{})),
+					HostnameConfig:        buildResourceNodeHostnameConfig(d),
 				},
 			},
 		},

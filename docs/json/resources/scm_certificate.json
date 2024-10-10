@@ -27,7 +27,7 @@
               },
               "certificate_chain": {
                 "type": "string",
-                "required": true,
+                "optional": true,
                 "forcenew": true
               },
               "domain": {
@@ -37,6 +37,22 @@
               "domain_count": {
                 "type": "number",
                 "computed": true
+              },
+              "enc_certificate": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
+              },
+              "enc_private_key": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
+              },
+              "enterprise_project_id": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
               },
               "id": {
                 "type": "string",

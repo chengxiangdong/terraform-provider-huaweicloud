@@ -8,7 +8,6 @@ package dns
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
@@ -26,6 +24,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API DNS GET /v2.1/customlines
+// @API DNS POST /v2.1/customlines
+// @API DNS DELETE /v2.1/customlines/{line_id}
+// @API DNS PUT /v2.1/customlines/{line_id}
 func ResourceDNSCustomLine() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDNSCustomLineCreate,
@@ -50,14 +52,8 @@ func ResourceDNSCustomLine() *schema.Resource {
 				ForceNew: true,
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 80),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5A-Za-z]([\u4e00-\u9fa5\\w-.]*)?$"),
-						"Only chinese and english letters, digits, hyphens (-), underscores (_), and periods"+
-							" (.) are allowed"),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: `Specifies the custom line name.`,
 			},
 			"ip_segments": {
@@ -69,11 +65,10 @@ func ResourceDNSCustomLine() *schema.Resource {
 				Description: `Specifies the IP address range.`,
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validation.StringLenBetween(0, 255),
-				Description:  `Specifies the custom line description. A maximum of 255 characters are allowed.`,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: `Specifies the custom line description. A maximum of 255 characters are allowed.`,
 			},
 			"status": {
 				Type:        schema.TypeString,
@@ -156,9 +151,9 @@ func waitForDNSCustomLineCreateOrUpdate(ctx context.Context, customLineClient *g
 
 func buildCreateOrUpdateDNSCustomLineBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"name":        utils.ValueIngoreEmpty(d.Get("name")),
-		"description": utils.ValueIngoreEmpty(d.Get("description")),
-		"ip_segments": utils.ValueIngoreEmpty(d.Get("ip_segments")),
+		"name":        utils.ValueIgnoreEmpty(d.Get("name")),
+		"description": utils.ValueIgnoreEmpty(d.Get("description")),
+		"ip_segments": utils.ValueIgnoreEmpty(d.Get("ip_segments")),
 	}
 	return bodyParams
 }
@@ -369,7 +364,8 @@ func dnsCustomLineStatusRefreshFunc(d *schema.ResourceData, client *golangsdk.Se
 		customLineMap, err := flattenCustomLineResponseBody(getDNSCustomLineRespBody, d)
 		if err != nil {
 			if _, ok := err.(golangsdk.ErrDefault404); ok {
-				return customLineMap, "DELETED", nil
+				// When the error code is 404, the value of respBody is nil, and a non-null value is returned to avoid continuing the loop check.
+				return "Resource Not Found", "DELETED", nil
 			}
 			return customLineMap, "", err
 		}

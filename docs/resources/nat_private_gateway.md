@@ -1,5 +1,8 @@
 ---
 subcategory: "NAT Gateway (NAT)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_nat_private_gateway"
+description: ""
 ---
 
 # huaweicloud_nat_private_gateway
@@ -56,7 +59,7 @@ The following arguments are supported:
   NAT gateway belongs.  
   Changing this will create a new resource.
 
-* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the private NAT geteway.
+* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the private NAT gateway.
 
 ## Attribute Reference
 
@@ -69,6 +72,8 @@ In addition to all arguments above, the following attributes are exported:
 * `updated_at` - The latest update time of the private NAT gateway.
 
 * `status` - The current status of the private NAT gateway.
+
+* `vpc_id` - The ID of the VPC to which the private NAT gateway belongs.
 
 ## Import
 

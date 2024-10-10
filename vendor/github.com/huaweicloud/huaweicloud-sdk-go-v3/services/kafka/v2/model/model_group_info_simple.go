@@ -9,7 +9,7 @@ import (
 type GroupInfoSimple struct {
 
 	// 创建时间。
-	CreatedAt *int32 `json:"createdAt,omitempty"`
+	CreatedAt *int64 `json:"createdAt,omitempty"`
 
 	// 消费组ID。
 	GroupId *string `json:"group_id,omitempty"`
@@ -24,7 +24,7 @@ type GroupInfoSimple struct {
 	GroupDesc *string `json:"group_desc,omitempty"`
 
 	// 堆积数。
-	Lag *int32 `json:"lag,omitempty"`
+	Lag *int64 `json:"lag,omitempty"`
 }
 
 func (o GroupInfoSimple) String() string {

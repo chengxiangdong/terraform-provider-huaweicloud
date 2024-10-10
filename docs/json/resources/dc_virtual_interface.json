@@ -123,6 +123,12 @@
                 "optional": true,
                 "forcenew": true
               },
+              "resource_tenant_id": {
+                "type": "string",
+                "description": "The project ID of another tenant which is used to create virtual interface across tenant.",
+                "optional": true,
+                "forcenew": true
+              },
               "route_mode": {
                 "type": "string",
                 "description": "The route mode of the virtual interface.",
@@ -141,6 +147,13 @@
                 "description": "The current status of the virtual interface.",
                 "computed": true
               },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
+              },
               "type": {
                 "type": "string",
                 "description": "The type of the virtual interface.",
@@ -152,6 +165,39 @@
                 "description": "The ID of the virtual gateway to which the virtual interface is connected.",
                 "required": true,
                 "forcenew": true
+              },
+              "vif_peers": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "address_family": "string",
+                      "bgp_asn": "number",
+                      "bgp_md5": "string",
+                      "bgp_route_limit": "number",
+                      "bgp_status": "string",
+                      "description": "string",
+                      "device_id": "string",
+                      "enable_bfd": "bool",
+                      "enable_nqa": "bool",
+                      "id": "string",
+                      "local_gateway_ip": "string",
+                      "name": "string",
+                      "receive_route_num": "number",
+                      "remote_ep_group": [
+                        "list",
+                        "string"
+                      ],
+                      "remote_gateway_ip": "string",
+                      "route_mode": "string",
+                      "status": "string",
+                      "vif_id": "string"
+                    }
+                  ]
+                ],
+                "description": "The peer information of the virtual interface.",
+                "computed": true
               },
               "vlan": {
                 "type": "number",

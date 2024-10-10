@@ -1,21 +1,21 @@
 package v1
 
 import (
-	http_client "github.com/huaweicloud/huaweicloud-sdk-go-v3/core"
+	httpclient "github.com/huaweicloud/huaweicloud-sdk-go-v3/core"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/invoker"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v1/model"
 )
 
 type CdnClient struct {
-	HcClient *http_client.HcHttpClient
+	HcClient *httpclient.HcHttpClient
 }
 
-func NewCdnClient(hcClient *http_client.HcHttpClient) *CdnClient {
+func NewCdnClient(hcClient *httpclient.HcHttpClient) *CdnClient {
 	return &CdnClient{HcClient: hcClient}
 }
 
-func CdnClientBuilder() *http_client.HcHttpClientBuilder {
-	builder := http_client.NewHcHttpClientBuilder().WithCredentialsType("global.Credentials")
+func CdnClientBuilder() *httpclient.HcHttpClientBuilder {
+	builder := httpclient.NewHcHttpClientBuilder().WithCredentialsType("global.Credentials")
 	return builder
 }
 
@@ -187,6 +187,7 @@ func (c *CdnClient) EnableDomainInvoker(request *model.EnableDomainRequest) *Ena
 	return &EnableDomainInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ListDomains 查询加速域名
 //
 // 查询加速域名信息
@@ -202,6 +203,7 @@ func (c *CdnClient) ListDomains(request *model.ListDomainsRequest) (*model.ListD
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ListDomainsInvoker 查询加速域名
 func (c *CdnClient) ListDomainsInvoker(request *model.ListDomainsRequest) *ListDomainsInvoker {
 	requestDef := GenReqDefForListDomains()
@@ -292,6 +294,7 @@ func (c *CdnClient) ShowDomainDetailInvoker(request *model.ShowDomainDetailReque
 	return &ShowDomainDetailInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainFullConfig 查询域名配置接口
 //
 // 查询域名配置接口，
@@ -308,12 +311,14 @@ func (c *CdnClient) ShowDomainFullConfig(request *model.ShowDomainFullConfigRequ
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainFullConfigInvoker 查询域名配置接口
 func (c *CdnClient) ShowDomainFullConfigInvoker(request *model.ShowDomainFullConfigRequest) *ShowDomainFullConfigInvoker {
 	requestDef := GenReqDefForShowDomainFullConfig()
 	return &ShowDomainFullConfigInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainItemDetails 批量查询域名的统计明细-按域名单独返回
 //
 // - 支持查询90天内的数据。
@@ -337,12 +342,14 @@ func (c *CdnClient) ShowDomainItemDetails(request *model.ShowDomainItemDetailsRe
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainItemDetailsInvoker 批量查询域名的统计明细-按域名单独返回
 func (c *CdnClient) ShowDomainItemDetailsInvoker(request *model.ShowDomainItemDetailsRequest) *ShowDomainItemDetailsInvoker {
 	requestDef := GenReqDefForShowDomainItemDetails()
 	return &ShowDomainItemDetailsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainItemLocationDetails 批量查询域名的区域、运营商统计明细-按域名单独返回
 //
 // - 支持查询90天内的数据。
@@ -369,12 +376,14 @@ func (c *CdnClient) ShowDomainItemLocationDetails(request *model.ShowDomainItemL
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainItemLocationDetailsInvoker 批量查询域名的区域、运营商统计明细-按域名单独返回
 func (c *CdnClient) ShowDomainItemLocationDetailsInvoker(request *model.ShowDomainItemLocationDetailsRequest) *ShowDomainItemLocationDetailsInvoker {
 	requestDef := GenReqDefForShowDomainItemLocationDetails()
 	return &ShowDomainItemLocationDetailsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainLocationStats 按区域运营商查询域名统计数据
 //
 // - 支持查询90天内的数据。
@@ -402,12 +411,14 @@ func (c *CdnClient) ShowDomainLocationStats(request *model.ShowDomainLocationSta
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainLocationStatsInvoker 按区域运营商查询域名统计数据
 func (c *CdnClient) ShowDomainLocationStatsInvoker(request *model.ShowDomainLocationStatsRequest) *ShowDomainLocationStatsInvoker {
 	requestDef := GenReqDefForShowDomainLocationStats()
 	return &ShowDomainLocationStatsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainStats 查询域名统计数据
 //
 // - 支持查询90天内的数据。
@@ -435,6 +446,7 @@ func (c *CdnClient) ShowDomainStats(request *model.ShowDomainStatsRequest) (*mod
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowDomainStatsInvoker 查询域名统计数据
 func (c *CdnClient) ShowDomainStatsInvoker(request *model.ShowDomainStatsRequest) *ShowDomainStatsInvoker {
 	requestDef := GenReqDefForShowDomainStats()
@@ -651,6 +663,7 @@ func (c *CdnClient) ShowTagsInvoker(request *model.ShowTagsRequest) *ShowTagsInv
 	return &ShowTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowTopUrl 查询TOP100 URL明细
 //
 // - 查询TOP100 URL明细。
@@ -679,6 +692,7 @@ func (c *CdnClient) ShowTopUrl(request *model.ShowTopUrlRequest) (*model.ShowTop
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // ShowTopUrlInvoker 查询TOP100 URL明细
 func (c *CdnClient) ShowTopUrlInvoker(request *model.ShowTopUrlRequest) *ShowTopUrlInvoker {
 	requestDef := GenReqDefForShowTopUrl()
@@ -687,7 +701,7 @@ func (c *CdnClient) ShowTopUrlInvoker(request *model.ShowTopUrlRequest) *ShowTop
 
 // ShowUrlTaskInfo 查询刷新预热URL记录
 //
-// 查询刷新预热URL记录。如需此接口，请提交工单开通
+// 查询刷新预热URL记录。如需此接口，请提交工单开通。
 //
 // Please refer to HUAWEI cloud API Explorer for details.
 func (c *CdnClient) ShowUrlTaskInfo(request *model.ShowUrlTaskInfoRequest) (*model.ShowUrlTaskInfoResponse, error) {
@@ -748,6 +762,7 @@ func (c *CdnClient) UpdateCacheRulesInvoker(request *model.UpdateCacheRulesReque
 	return &UpdateCacheRulesInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // UpdateDomainFullConfig 修改域名全量配置接口
 //
 // 修改域名配置接口，
@@ -764,6 +779,7 @@ func (c *CdnClient) UpdateDomainFullConfig(request *model.UpdateDomainFullConfig
 	}
 }
 
+// Deprecated: This function is deprecated and will be removed in the future versions.
 // UpdateDomainFullConfigInvoker 修改域名全量配置接口
 func (c *CdnClient) UpdateDomainFullConfigInvoker(request *model.UpdateDomainFullConfigRequest) *UpdateDomainFullConfigInvoker {
 	requestDef := GenReqDefForUpdateDomainFullConfig()

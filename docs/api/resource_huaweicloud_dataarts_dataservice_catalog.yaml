@@ -1,0 +1,24 @@
+info:
+    version: ""
+    title: resource_huaweicloud_dataarts_dataservice_catalog
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: DataArtsStudio
+paths:
+    /v1/{project_id}/service/servicecatalogs:
+        POST:
+            tag: DataArtsStudio
+    /v1/{project_id}/service/servicecatalogs/{catalog_id}:
+        GET:
+            tag: DataArtsStudio
+        PUT:
+            tag: DataArtsStudio
+    /v1/{project_id}/service/servicecatalogs/{catalog_id}/move:
+        POST:
+            tag: DataArtsStudio
+    /v1/{project_id}/service/servicecatalogs/batch-delete:
+        POST:
+            tag: DataArtsStudio

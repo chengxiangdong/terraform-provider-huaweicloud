@@ -19,6 +19,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
+// @API ELB POST /v2/{project_id}/elb/certificates
+// @API ELB GET /v2/{project_id}/elb/certificates/{certificate_id}
+// @API ELB PUT /v2/{project_id}/elb/certificates/{certificate_id}
+// @API ELB DELETE /v2/{project_id}/elb/certificates/{certificate_id}
 func ResourceCertificateV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCertificateV2Create,
@@ -98,13 +102,18 @@ func ResourceCertificateV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+
+			"expire_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
 
 func resourceCertificateV2Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	elbClient, err := config.LoadBalancerClient(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	elbClient, err := cfg.LoadBalancerClient(cfg.GetRegion(d))
 	if err != nil {
 		return fmtp.DiagErrorf("Error creating HuaweiCloud elb client: %s", err)
 	}
@@ -114,7 +123,7 @@ func resourceCertificateV2Create(ctx context.Context, d *schema.ResourceData, me
 		Description:         d.Get("description").(string),
 		Type:                d.Get("type").(string),
 		Domain:              d.Get("domain").(string),
-		EnterpriseProjectID: common.GetEnterpriseProjectID(d, config),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 	}
 
 	logp.Printf("[DEBUG] Create Options: %#v", createOpts)
@@ -157,6 +166,7 @@ func resourceCertificateV2Read(_ context.Context, d *schema.ResourceData, meta i
 		d.Set("private_key", c.PrivateKey),
 		d.Set("create_time", c.CreateTime),
 		d.Set("update_time", c.UpdateTime),
+		d.Set("expire_time", c.ExpireTime),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return fmtp.DiagErrorf("Error setting certificate fields: %s", err)

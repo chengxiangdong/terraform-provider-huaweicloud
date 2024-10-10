@@ -38,6 +38,12 @@
                 "required": true,
                 "forcenew": true
               },
+              "ha_role": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
               "id": {
                 "type": "string",
                 "computed": true
@@ -53,7 +59,8 @@
                   "string"
                 ],
                 "description": "The customer subnets.",
-                "required": true
+                "optional": true,
+                "computed": true
               },
               "psk": {
                 "type": "string",
@@ -68,6 +75,13 @@
                 "type": "string",
                 "description": "The status of the VPN connection.",
                 "computed": true
+              },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
               },
               "tunnel_local_address": {
                 "type": "string",

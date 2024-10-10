@@ -3,7 +3,6 @@ package vpc
 import (
 	"context"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -18,6 +17,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPC POST /v3/{project_id}/vpc/address-groups
+// @API VPC DELETE /v3/{project_id}/vpc/address-groups/{address_group_id}/force
+// @API VPC GET /v3/{project_id}/vpc/address-groups/{address_group_id}
+// @API VPC PUT /v3/{project_id}/vpc/address-groups/{address_group_id}
+// @API VPC DELETE /v3/{project_id}/vpc/address-groups/{address_group_id}
 func ResourceVpcAddressGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceVpcAddressGroupCreate,
@@ -44,11 +48,6 @@ func ResourceVpcAddressGroup() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 64),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa50-9a-zA-Z-_\\.]*$"),
-						"only letters, digits, underscores (_), hyphens (-), and dot (.) are allowed"),
-				),
 			},
 			"addresses": {
 				// the addresses will be sorted by cloud
@@ -67,11 +66,6 @@ func ResourceVpcAddressGroup() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile("^[^<>]*$"),
-						"The angle brackets (< and >) are not allowed."),
-				),
 			},
 			"max_capacity": {
 				Type:     schema.TypeInt,
@@ -94,9 +88,9 @@ func ResourceVpcAddressGroup() *schema.Resource {
 }
 
 func resourceVpcAddressGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*config.Config)
-	region := c.GetRegion(d)
-	client, err := c.HcVpcV3Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.HcVpcV3Client(region)
 	if err != nil {
 		return diag.Errorf("error creating VPC client: %s", err)
 	}
@@ -108,7 +102,7 @@ func resourceVpcAddressGroupCreate(ctx context.Context, d *schema.ResourceData, 
 		IpSet:               &ipSet,
 		IpVersion:           int32(d.Get("ip_version").(int)),
 		Description:         utils.StringIgnoreEmpty(d.Get("description").(string)),
-		EnterpriseProjectId: utils.StringIgnoreEmpty(common.GetEnterpriseProjectID(d, c)),
+		EnterpriseProjectId: utils.StringIgnoreEmpty(cfg.GetEnterpriseProjectID(d)),
 		MaxCapacity:         utils.Int32IgnoreEmpty(int32(d.Get("max_capacity").(int))),
 	}
 

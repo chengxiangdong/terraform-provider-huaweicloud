@@ -2,9 +2,10 @@ package apig
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
@@ -12,7 +13,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
 )
 
 func getThrottlingPolicyFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
@@ -27,27 +27,78 @@ func TestAccThrottlingPolicy_basic(t *testing.T) {
 	var (
 		policy throttles.ThrottlingPolicy
 
-		rName      = "huaweicloud_apig_throttling_policy.test"
 		name       = acceptance.RandomAccResourceName()
 		updateName = acceptance.RandomAccResourceName()
-		appCode    = acctest.RandString(64)
-	)
+		baseConfig = testAccApigThrottlingPolicy_base(name)
 
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&policy,
-		getThrottlingPolicyFunc,
+		rName = "huaweicloud_apig_throttling_policy.test"
+		rc    = acceptance.InitResourceCheck(rName, &policy, getThrottlingPolicyFunc)
+
+		rNamePre = "huaweicloud_apig_throttling_policy.pre_test"
+		rcPre    = acceptance.InitResourceCheck(rNamePre, &policy, getThrottlingPolicyFunc)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckApigSubResourcesRelatedInfo(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccApigThrottlingPolicy_basic(name, appCode),
+				// Check whether illegal type values ​​can be intercepted normally (create phase).
+				Config:      testAccApigThrottlingPolicy_basic_step1(baseConfig, name),
+				ExpectError: regexp.MustCompile("invalid throttling policy type: NON-Exist-Type"),
+			},
+			{
+				// Check whether illegal application ID ​​can be intercepted normally (create phase).
+				Config:      testAccApigThrottlingPolicy_basic_step2(baseConfig, name),
+				ExpectError: regexp.MustCompile("error creating special application throttling policy"),
+			},
+			{
+				// Check whether illegal call limit ​​can be intercepted normally (create phase).
+				// The API does not check whether the value or format of the user ID is legal.
+				Config:      testAccApigThrottlingPolicy_basic_step3(baseConfig, name),
+				ExpectError: regexp.MustCompile("The parameter value is too small"),
+			},
+			{
+				Config: testAccApigThrottlingPolicy_basic_step4(baseConfig, name),
+				Check: resource.ComposeTestCheckFunc(
+					rcPre.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rNamePre, "name", name+"_pre_test"),
+					resource.TestCheckResourceAttr(rNamePre, "description", "Created by script"),
+					resource.TestCheckResourceAttr(rNamePre, "type", "API-based"),
+					resource.TestCheckResourceAttr(rNamePre, "period", "15000"),
+					resource.TestCheckResourceAttr(rNamePre, "period_unit", "SECOND"),
+					resource.TestCheckResourceAttr(rNamePre, "max_api_requests", "100"),
+					resource.TestCheckResourceAttr(rNamePre, "max_user_requests", "60"),
+					resource.TestCheckResourceAttr(rNamePre, "max_app_requests", "60"),
+					resource.TestCheckResourceAttr(rNamePre, "max_ip_requests", "60"),
+					resource.TestCheckResourceAttr(rNamePre, "app_throttles.#", "0"),
+					resource.TestCheckResourceAttr(rNamePre, "user_throttles.#", "0"),
+					resource.TestMatchResourceAttr(rNamePre, "created_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
+				),
+			},
+			{
+				// Check whether illegal type values ​​can be intercepted normally (update phase).
+				Config:      testAccApigThrottlingPolicy_basic_step5(baseConfig, name),
+				ExpectError: regexp.MustCompile("invalid throttling policy type: NON-Exist-Type"),
+			},
+			{
+				// Check whether illegal application ID ​​can be intercepted normally (update phase).
+				Config:      testAccApigThrottlingPolicy_basic_step6(baseConfig, name),
+				ExpectError: regexp.MustCompile("error updating special app throttles"),
+			},
+			{
+				// Check whether illegal call limit ​​can be intercepted normally (update phase).
+				// The API does not check whether the value or format of the user ID is legal.
+				Config:      testAccApigThrottlingPolicy_basic_step7(baseConfig, name),
+				ExpectError: regexp.MustCompile("The parameter value is too small"),
+			},
+			{
+				Config: testAccApigThrottlingPolicy_basic_step8(baseConfig, name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", name),
@@ -59,10 +110,12 @@ func TestAccThrottlingPolicy_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "max_user_requests", "60"),
 					resource.TestCheckResourceAttr(rName, "max_app_requests", "60"),
 					resource.TestCheckResourceAttr(rName, "max_ip_requests", "60"),
+					resource.TestCheckResourceAttr(rName, "app_throttles.#", "2"),
+					resource.TestCheckResourceAttr(rName, "user_throttles.#", "2"),
 				),
 			},
 			{
-				Config: testAccApigThrottlingPolicy_update(updateName, appCode),
+				Config: testAccApigThrottlingPolicy_basic_step9(baseConfig, updateName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", updateName),
@@ -74,88 +127,25 @@ func TestAccThrottlingPolicy_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "max_user_requests", "45"),
 					resource.TestCheckResourceAttr(rName, "max_app_requests", "45"),
 					resource.TestCheckResourceAttr(rName, "max_ip_requests", "45"),
+					resource.TestCheckResourceAttr(rName, "app_throttles.#", "2"),
+					resource.TestCheckResourceAttr(rName, "user_throttles.#", "2"),
 				),
 			},
 			{
 				ResourceName:      rName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testAccThrottlingPolicyImportStateFunc(),
+				ImportStateIdFunc: testAccThrottlingPolicyImportStateFunc(rName),
 			},
 		},
 	})
 }
 
-func TestAccThrottlingPolicy_spec(t *testing.T) {
-	var (
-		policy throttles.ThrottlingPolicy
-
-		rName   = "huaweicloud_apig_throttling_policy.test"
-		name    = acceptance.RandomAccResourceName()
-		appCode = acctest.RandString(64)
-	)
-
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&policy,
-		getThrottlingPolicyFunc,
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccApigThrottlingPolicy_basic(name, appCode),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "type", "API-based"),
-					resource.TestCheckResourceAttr(rName, "period", "15000"),
-					resource.TestCheckResourceAttr(rName, "period_unit", "SECOND"),
-					resource.TestCheckResourceAttr(rName, "max_api_requests", "100"),
-				),
-			},
-			{
-				Config: testAccApigThrottlingPolicy_spec(name, appCode),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "app_throttles.#", "1"),
-				),
-			},
-			{
-				Config: testAccApigThrottlingPolicy_specUpdate(name, appCode),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "app_throttles.#", "1"),
-				),
-			},
-			{
-				Config: testAccApigThrottlingPolicy_basic(name, appCode),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "app_throttles.#", "0"),
-				),
-			},
-			{
-				ResourceName:      rName,
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testAccThrottlingPolicyImportStateFunc(),
-			},
-		},
-	})
-}
-
-func testAccThrottlingPolicyImportStateFunc() resource.ImportStateIdFunc {
+func testAccThrottlingPolicyImportStateFunc(rsName string) resource.ImportStateIdFunc {
 	return func(s *terraform.State) (string, error) {
-		rName := "huaweicloud_apig_throttling_policy.test"
-		rs, ok := s.RootModule().Resources[rName]
+		rs, ok := s.RootModule().Resources[rsName]
 		if !ok {
-			return "", fmt.Errorf("resource (%s) not found: %s", rName, rs)
+			return "", fmt.Errorf("resource (%s) not found: %s", rsName, rs)
 		}
 		if rs.Primary.Attributes["instance_id"] == "" || rs.Primary.Attributes["name"] == "" {
 			return "", fmt.Errorf("missing some attributes, want '{instance_id}/{name}', but '%s/%s'",
@@ -167,41 +157,95 @@ func testAccThrottlingPolicyImportStateFunc() resource.ImportStateIdFunc {
 
 func testAccApigThrottlingPolicy_base(name string) string {
 	return fmt.Sprintf(`
-%s
+data "huaweicloud_identity_users" "test" {}
 
-data "huaweicloud_availability_zones" "test" {}
-
-resource "huaweicloud_apig_instance" "test" {
-  name                  = "%s"
-  edition               = "BASIC"
-  vpc_id                = huaweicloud_vpc.test.id
-  subnet_id             = huaweicloud_vpc_subnet.test.id
-  security_group_id     = huaweicloud_networking_secgroup.test.id
-  enterprise_project_id = "0"
-
-  availability_zones = [
-    data.huaweicloud_availability_zones.test.names[0],
-  ]
-}
-`, common.TestBaseNetwork(name), name)
+data "huaweicloud_apig_instances" "test" {
+  instance_id = "%[1]s"
 }
 
-func testAccApigThrottlingPolicy_basic(name, appCode string) string {
+locals {
+  instance_id = data.huaweicloud_apig_instances.test.instances[0].id
+}
+
+# If you want to test a resource (huaweicloud_apig_throttling_policy) that does not contain app-specific throttling
+# policy after step 2, then the application resources must be retained.
+# If you delete this script (application resources definition), the application deletion operation and the special
+# throttling policies update operation will be executed in parallel.
+# If the APP is deleted before the throttling policies update operation complete, it will cause an error during the
+# update API. The order of the two operations cannot be controlled.
+resource "huaweicloud_apig_application" "test" {
+  count = 3
+
+  instance_id = local.instance_id
+  name        = "%[2]s_${count.index}"
+}
+`, acceptance.HW_APIG_DEDICATED_INSTANCE_ID, name)
+}
+
+func testAccApigThrottlingPolicy_basic_step1(baseConfig, name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_apig_application" "test" {
-  name        = "%[3]s"
-  instance_id = huaweicloud_apig_instance.test.id
-
-  app_codes = [
-    base64encode("%[2]s"),
-  ]
+resource "huaweicloud_apig_throttling_policy" "invalid_type" {
+  instance_id      = local.instance_id
+  name             = "%[2]s_invalid_type"
+  type             = "NON-Exist-Type"
+  period           = 15000
+  period_unit      = "SECOND"
+  max_api_requests = 100
+}
+`, baseConfig, name)
 }
 
-resource "huaweicloud_apig_throttling_policy" "test" {
-  instance_id       = huaweicloud_apig_instance.test.id
-  name              = "%[3]s"
+func testAccApigThrottlingPolicy_basic_step2(baseConfig, name string) string {
+	randUUID, _ := uuid.GenerateUUID()
+
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_throttling_policy" "invalid_app_id" {
+  instance_id      = local.instance_id
+  name             = "%[2]s_invalid_app_id"
+  type             = "API-based"
+  period           = 15000
+  period_unit      = "SECOND"
+  max_api_requests = 100
+
+  app_throttles {
+    max_api_requests     = 30
+    throttling_object_id = "%[3]s"
+  }
+}
+`, baseConfig, name, randUUID)
+}
+
+func testAccApigThrottlingPolicy_basic_step3(baseConfig, name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_throttling_policy" "invalid_user_id" {
+  instance_id      = local.instance_id
+  name             = "%[2]s_invalid_user_id"
+  type             = "API-based"
+  period           = 15000
+  period_unit      = "SECOND"
+  max_api_requests = 100
+
+  user_throttles {
+    max_api_requests     = -1
+    throttling_object_id = "INVALID_OBJECT_ID_CONTENT"
+  }
+}
+`, baseConfig, name)
+}
+
+func testAccApigThrottlingPolicy_basic_step4(baseConfig, name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_throttling_policy" "pre_test" {
+  instance_id       = local.instance_id
+  name              = "%[2]s_pre_test"
   type              = "API-based"
   period            = 15000
   period_unit       = "SECOND"
@@ -211,25 +255,122 @@ resource "huaweicloud_apig_throttling_policy" "test" {
   max_ip_requests   = 60
   description       = "Created by script"
 }
-`, testAccApigThrottlingPolicy_base(name), appCode, name)
+`, baseConfig, name)
 }
 
-func testAccApigThrottlingPolicy_update(name, appCode string) string {
+func testAccApigThrottlingPolicy_basic_step5(baseConfig, name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_apig_application" "test" {
-  name        = "%[3]s"
-  instance_id = huaweicloud_apig_instance.test.id
-
-  app_codes = [
-    base64encode("%[2]s"),
-  ]
+resource "huaweicloud_apig_throttling_policy" "pre_test" {
+  instance_id       = local.instance_id
+  name              = "%[2]s_pre_test"
+  type              = "NON-Exist-Type"
+  period            = 15000
+  period_unit       = "SECOND"
+  max_api_requests  = 100
+  max_user_requests = 60
+  max_app_requests  = 60
+  max_ip_requests   = 60
+  description       = "Created by script"
+}
+`, baseConfig, name)
 }
 
+func testAccApigThrottlingPolicy_basic_step6(baseConfig, name string) string {
+	randUUID, _ := uuid.GenerateUUID()
+
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_throttling_policy" "pre_test" {
+  instance_id       = local.instance_id
+  name              = "%[2]s_pre_test"
+  type              = "API-based"
+  period            = 15000
+  period_unit       = "SECOND"
+  max_api_requests  = 100
+  max_user_requests = 60
+  max_app_requests  = 60
+  max_ip_requests   = 60
+  description       = "Created by script"
+
+  app_throttles {
+    max_api_requests     = 30
+    throttling_object_id = "%[3]s"
+  }
+}
+`, baseConfig, name, randUUID)
+}
+
+func testAccApigThrottlingPolicy_basic_step7(baseConfig, name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_throttling_policy" "pre_test" {
+  instance_id       = local.instance_id
+  name              = "%[2]s_pre_test"
+  type              = "API-based"
+  period            = 15000
+  period_unit       = "SECOND"
+  max_api_requests  = 100
+  max_user_requests = 60
+  max_app_requests  = 60
+  max_ip_requests   = 60
+  description       = "Created by script"
+
+  user_throttles {
+    max_api_requests     = -1
+    throttling_object_id = "INVALID_OBJECT_ID_CONTENT"
+  }
+}
+`, baseConfig, name)
+}
+
+func testAccApigThrottlingPolicy_basic_step8(baseConfig, name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
 resource "huaweicloud_apig_throttling_policy" "test" {
-  instance_id       = huaweicloud_apig_instance.test.id
-  name              = "%[3]s"
+  instance_id       = local.instance_id
+  name              = "%[2]s"
+  type              = "API-based"
+  period            = 15000
+  period_unit       = "SECOND"
+  max_api_requests  = 100
+  max_user_requests = 60
+  max_app_requests  = 60
+  max_ip_requests   = 60
+  description       = "Created by script"
+
+  dynamic "app_throttles" {
+    for_each = slice(huaweicloud_apig_application.test[*].id, 0, 2)
+
+    content {
+      max_api_requests     = 30
+      throttling_object_id = app_throttles.value
+    }
+  }
+
+  dynamic "user_throttles" {
+    for_each = slice(data.huaweicloud_identity_users.test.users[*].id, 0, 2)
+
+    content {
+      max_api_requests     = 30
+      throttling_object_id = user_throttles.value
+    }
+  }
+}
+`, baseConfig, name)
+}
+
+func testAccApigThrottlingPolicy_basic_step9(baseConfig, name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_throttling_policy" "test" {
+  instance_id       = local.instance_id
+  name              = "%[2]s"
   type              = "API-shared"
   period            = 10
   period_unit       = "MINUTE"
@@ -238,82 +379,24 @@ resource "huaweicloud_apig_throttling_policy" "test" {
   max_app_requests  = 45
   max_ip_requests   = 45
   description       = "Updated by script"
-}
-`, testAccApigThrottlingPolicy_base(name), appCode, name)
-}
-
-func testAccApigThrottlingPolicy_spec(name, appCode string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-locals {
-  randCodes = [
-    base64encode("%[2]s"), base64encode(strrev("%[2]s")),
-  ]
-}
-
-resource "huaweicloud_apig_application" "test" {
-  count = 2
-
-  name        = "%[3]s_${count.index}"
-  instance_id = huaweicloud_apig_instance.test.id
-  app_codes   = slice(local.randCodes, count.index, count.index+1)
-}
-
-resource "huaweicloud_apig_throttling_policy" "test" {
-  instance_id       = huaweicloud_apig_instance.test.id
-  name              = "%[3]s"
-  type              = "API-based"
-  period            = 15000
-  period_unit       = "SECOND"
-  max_api_requests  = 100
 
   dynamic "app_throttles" {
-    for_each = slice(huaweicloud_apig_application.test[*].id, 0, 1)
+    for_each = slice(huaweicloud_apig_application.test[*].id, 1, 3)
 
     content {
-      max_api_requests     = 30
+      max_api_requests     = 40
       throttling_object_id = app_throttles.value
-	}
+    }
   }
-}
-`, testAccApigThrottlingPolicy_base(name), appCode, name)
-}
 
-func testAccApigThrottlingPolicy_specUpdate(name, appCode string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-locals {
-  randCodes = [
-    "%[2]s", strrev("%[2]s"),
-  ]
-}
-
-resource "huaweicloud_apig_application" "test" {
-  count = 2
-
-  name        = "%[3]s_${count.index}"
-  instance_id = huaweicloud_apig_instance.test.id
-  app_codes   = slice(local.randCodes, count.index, count.index+1)
-}
-
-resource "huaweicloud_apig_throttling_policy" "test" {
-  instance_id       = huaweicloud_apig_instance.test.id
-  name              = "%[3]s"
-  type              = "API-based"
-  period            = 15000
-  period_unit       = "SECOND"
-  max_api_requests  = 100
-
-  dynamic "app_throttles" {
-    for_each = slice(huaweicloud_apig_application.test[*].id, 0, 1)
+  dynamic "user_throttles" {
+    for_each = slice(data.huaweicloud_identity_users.test.users[*].id, 1, 3)
 
     content {
-      max_api_requests     = 30
-      throttling_object_id = app_throttles.value
-	}
+      max_api_requests     = 40
+      throttling_object_id = user_throttles.value
+    }
   }
 }
-`, testAccApigThrottlingPolicy_base(name), appCode, name)
+`, baseConfig, name)
 }

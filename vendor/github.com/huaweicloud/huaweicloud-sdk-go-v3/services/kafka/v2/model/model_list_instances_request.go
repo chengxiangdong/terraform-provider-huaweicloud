@@ -13,7 +13,7 @@ import (
 type ListInstancesRequest struct {
 
 	// 消息引擎：kafka。
-	Engine *ListInstancesRequestEngine `json:"engine,omitempty"`
+	Engine ListInstancesRequestEngine `json:"engine"`
 
 	// 实例名称。
 	Name *string `json:"name,omitempty"`
@@ -24,7 +24,7 @@ type ListInstancesRequest struct {
 	// 实例状态。 详细状态说明请参考[实例状态说明](kafka-api-180514012.xml)。
 	Status *ListInstancesRequestStatus `json:"status,omitempty"`
 
-	// 是否返回创建失败的实例数。  当参数值为“true”时，返回创建失败的实例数。参数值为“false”或者其他值，不返回创建失败的实例数。
+	// 是否返回创建失败的实例数。  当参数值为“true”时，返回创建失败的实例数。参数值为“false”，不返回创建失败的实例数。
 	IncludeFailure *ListInstancesRequestIncludeFailure `json:"include_failure,omitempty"`
 
 	// 是否按照实例名称进行精确匹配查询。  默认为“false”，表示模糊匹配实例名称查询。若参数值为“true”表示按照实例名称进行精确匹配查询。
@@ -97,13 +97,21 @@ type ListInstancesRequestStatus struct {
 }
 
 type ListInstancesRequestStatusEnum struct {
-	CREATING        ListInstancesRequestStatus
-	RUNNING         ListInstancesRequestStatus
-	FAULTY          ListInstancesRequestStatus
-	RESTARTING      ListInstancesRequestStatus
-	RESIZING        ListInstancesRequestStatus
-	RESIZING_FAILED ListInstancesRequestStatus
-	FROZEN          ListInstancesRequestStatus
+	CREATING           ListInstancesRequestStatus
+	RUNNING            ListInstancesRequestStatus
+	RESTARTING         ListInstancesRequestStatus
+	DELETING           ListInstancesRequestStatus
+	ERROR              ListInstancesRequestStatus
+	CREATEFAILED       ListInstancesRequestStatus
+	FREEZING           ListInstancesRequestStatus
+	FROZEN             ListInstancesRequestStatus
+	EXTENDING          ListInstancesRequestStatus
+	SHRINKING          ListInstancesRequestStatus
+	EXTENDEDFAILED     ListInstancesRequestStatus
+	CONFIGURING        ListInstancesRequestStatus
+	ROLLBACK           ListInstancesRequestStatus
+	ROLLBACKFAILED     ListInstancesRequestStatus
+	VOLUMETYPECHANGING ListInstancesRequestStatus
 }
 
 func GetListInstancesRequestStatusEnum() ListInstancesRequestStatusEnum {
@@ -114,20 +122,44 @@ func GetListInstancesRequestStatusEnum() ListInstancesRequestStatusEnum {
 		RUNNING: ListInstancesRequestStatus{
 			value: "RUNNING",
 		},
-		FAULTY: ListInstancesRequestStatus{
-			value: "FAULTY",
-		},
 		RESTARTING: ListInstancesRequestStatus{
 			value: "RESTARTING",
 		},
-		RESIZING: ListInstancesRequestStatus{
-			value: "RESIZING",
+		DELETING: ListInstancesRequestStatus{
+			value: "DELETING",
 		},
-		RESIZING_FAILED: ListInstancesRequestStatus{
-			value: "RESIZING FAILED",
+		ERROR: ListInstancesRequestStatus{
+			value: "ERROR",
+		},
+		CREATEFAILED: ListInstancesRequestStatus{
+			value: "CREATEFAILED",
+		},
+		FREEZING: ListInstancesRequestStatus{
+			value: "FREEZING",
 		},
 		FROZEN: ListInstancesRequestStatus{
 			value: "FROZEN",
+		},
+		EXTENDING: ListInstancesRequestStatus{
+			value: "EXTENDING",
+		},
+		SHRINKING: ListInstancesRequestStatus{
+			value: "SHRINKING",
+		},
+		EXTENDEDFAILED: ListInstancesRequestStatus{
+			value: "EXTENDEDFAILED",
+		},
+		CONFIGURING: ListInstancesRequestStatus{
+			value: "CONFIGURING",
+		},
+		ROLLBACK: ListInstancesRequestStatus{
+			value: "ROLLBACK",
+		},
+		ROLLBACKFAILED: ListInstancesRequestStatus{
+			value: "ROLLBACKFAILED",
+		},
+		VOLUMETYPECHANGING: ListInstancesRequestStatus{
+			value: "VOLUMETYPECHANGING",
 		},
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{clusterid}/nodepools
 func DataSourceCCENodePoolV3() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceCceNodePoolsV3Read,
@@ -154,6 +155,22 @@ func DataSourceCCENodePoolV3() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
+			"hostname_config": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
+			"enterprise_project_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -208,6 +225,8 @@ func dataSourceCceNodePoolsV3Read(_ context.Context, d *schema.ResourceData, met
 		d.Set("priority", NodePool.Spec.Autoscaling.Priority),
 		d.Set("subnet_id", NodePool.Spec.NodeTemplate.NodeNicSpec.PrimaryNic.SubnetId),
 		d.Set("status", NodePool.Status.Phase),
+		d.Set("hostname_config", flattenResourceNodeHostnameConfig(NodePool.Spec.NodeTemplate.HostnameConfig)),
+		d.Set("enterprise_project_id", NodePool.Spec.NodeTemplate.ServerEnterpriseProjectID),
 	)
 
 	// set extend_param

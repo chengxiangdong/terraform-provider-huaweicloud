@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Cache Service (DCS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dcs_instances"
+description: ""
 ---
 
 # huaweicloud_dcs_instances
@@ -35,7 +38,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `instances` - Indicates the list of DCS instances.
   The [Instance](#DcsInstance_Instance) structure is documented below.
@@ -87,7 +90,7 @@ The `Instance` block supports:
 
 * `used_memory` - Indicates the size of the used memory. Unit: MB.
 
-* `max_memory` - Indicates the atotal memory size. Unit: MB.
+* `max_memory` - Indicates the total memory size. Unit: MB.
 
 * `domain_name` - Indicates the domain name of the instance.
 

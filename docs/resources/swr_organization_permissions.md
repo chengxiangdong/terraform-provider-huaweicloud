@@ -1,5 +1,8 @@
 ---
 subcategory: "Software Repository for Container (SWR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_swr_organization_permissions"
+description: ""
 ---
 
 # huaweicloud_swr_organization_permissions
@@ -60,7 +63,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `creator` - The creator user name of the organization.
 
-* `self_permission` - The permission informations of current user.
+* `self_permission` - The permission information of current user.
 
 The `self_permission` block supports:
 
@@ -81,6 +84,6 @@ This resource provides the following timeouts configuration options:
 
 Organization Permissions can be imported using the `id` (organization name), e.g.
 
-```
+```bash
 $ terraform import huaweicloud_swr_organization_permissions.test terraform-test
 ```

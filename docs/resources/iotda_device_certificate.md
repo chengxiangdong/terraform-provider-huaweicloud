@@ -1,10 +1,28 @@
 ---
 subcategory: "IoT Device Access (IoTDA)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_iotda_device_certificate"
+description: ""
 ---
 
 # huaweicloud_iotda_device_certificate
 
 Manages an IoTDA device CA certificate within HuaweiCloud.
+
+-> When accessing an IoTDA **standard** or **enterprise** edition instance, you need to specify the IoTDA service
+endpoint in `provider` block.
+You can login to the IoTDA console, choose the instance **Overview** and click **Access Details**
+to view the HTTPS application access address. An example of the access address might be
+**9bc34xxxxx.st1.iotda-app.ap-southeast-1.myhuaweicloud.com**, then you need to configure the
+`provider` block as follows:
+
+  ```hcl
+  provider "huaweicloud" {
+    endpoints = {
+      iotda = "https://9bc34xxxxx.st1.iotda-app.ap-southeast-1.myhuaweicloud.com"
+    }
+  }
+  ```
 
 ## Example Usage
 
@@ -59,7 +77,7 @@ The format is: **yyyyMMdd'T'HHmmss'Z'**, e.g., **20151212T121212Z**.
 
 Device CA certificates can be imported by `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_iotda_device_certificate.test 62b3cec5558d4b703f064534
 ```
 
@@ -69,7 +87,7 @@ It is generally recommended running `terraform plan` after importing the resourc
 be applied to the resource, or the resource definition should be updated to align with the group. Also you can ignore
 changes as below.
 
-```
+```hcl
 resource "huaweicloud_iotda_device_certificate" "test" {
     ...
 

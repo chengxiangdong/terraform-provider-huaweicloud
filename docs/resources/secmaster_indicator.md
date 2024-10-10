@@ -1,5 +1,8 @@
 ---
 subcategory: "SecMaster"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_secmaster_indicator"
+description: ""
 ---
 
 # huaweicloud_secmaster_indicator
@@ -12,6 +15,7 @@ Manages a SecMaster indicator resource within HuaweiCloud.
 
 ```hcl
 variable "workspace_id" {}
+variable "type_id" {}
 
 resource "huaweicloud_secmaster_indicator" "test" {
   workspace_id = var.workspace_id
@@ -20,6 +24,7 @@ resource "huaweicloud_secmaster_indicator" "test" {
   type {
     category       = "Domain"
     indicator_type = "Domain"
+    id             = var.type_id
   }
 
   data_source {
@@ -66,7 +71,7 @@ The following arguments are supported:
   The value can be: **Open**, **Closed** and **Revoked**.
 
 * `confidence` - (Required, Int) Specifies the confidence of the indicator.
-  The value ranges from **80** to **100**.
+  The value ranges from `80` to `100`.
 
 * `first_occurrence_time` - (Required, String) Specifies the first occurrence time of the indicator.
   For example: 2023-04-18T13:00:00.000+08:00
@@ -93,6 +98,8 @@ The `type` block supports:
 * `category` - (Required, String) Specifies the category.
 
 * `indicator_type` - (Required, String) Specifies the indicator type.
+
+* `id` - (Required, String) Specifies the indicator type ID.
 
 <a name="Indicator_DataSource"></a>
 The `data_source` block supports:

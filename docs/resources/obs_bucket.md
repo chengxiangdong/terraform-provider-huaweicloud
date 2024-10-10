@@ -1,5 +1,8 @@
 ---
 subcategory: "Object Storage Service (OBS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_obs_bucket"
+description: ""
 ---
 
 # huaweicloud_obs_bucket
@@ -35,6 +38,8 @@ resource "huaweicloud_obs_bucket" "b" {
 ### Enable Logging
 
 ```hcl
+variable "agency_name" {} # The agency must be an OBS cloud service agency and has the `PutObject` permission.
+
 resource "huaweicloud_obs_bucket" "log_bucket" {
   bucket = "my-tf-log-bucket"
   acl    = "log-delivery-write"
@@ -47,6 +52,7 @@ resource "huaweicloud_obs_bucket" "b" {
   logging {
     target_bucket = huaweicloud_obs_bucket.log_bucket.id
     target_prefix = "log/"
+    agency        = var.agency_name
   }
 }
 ```
@@ -117,11 +123,13 @@ resource "huaweicloud_obs_bucket" "bucket" {
       days          = 180
       storage_class = "COLD"
     }
+    abort_incomplete_multipart_upload {
+      days = 360
+    }
   }
 
   lifecycle_rule {
     name    = "tmp"
-    prefix  = "tmp/"
     enabled = true
 
     noncurrent_version_expiration {
@@ -135,6 +143,22 @@ resource "huaweicloud_obs_bucket" "bucket" {
       days          = 60
       storage_class = "COLD"
     }
+  }
+}
+```
+
+### using encryption
+
+```hcl
+resource "huaweicloud_obs_bucket" "bucket" {
+  bucket        = "my-tf-encryption-bucket"
+  storage_class = "STANDARD"
+  acl           = "private"
+  encryption    = true
+
+  tags = {
+    foo = "bar"
+    key = "value"
   }
 }
 ```
@@ -177,7 +201,7 @@ The following arguments are supported:
 <!-- markdownlint-disable MD033 -->
 
 * `quota` - (Optional, Int) Specifies bucket storage quota. Must be a positive integer in the unit of byte. The maximum
-  storage quota is 2<sup>63</sup> – 1 bytes. The default bucket storage quota is 0, indicating that the bucket storage
+  storage quota is 2<sup>63</sup> – 1 bytes. The default bucket storage quota is `0`, indicating that the bucket storage
   quota is not limited.
 
 <!-- markdownlint-enable MD033 -->
@@ -204,12 +228,19 @@ The following arguments are supported:
   bucket, but the name of a deleted bucket can be reused for another bucket at least 30 minutes after the deletion.
   Exercise caution when changing this field.
 
-* `encryption` - (Optional, Bool) Whether enable default server-side encryption of the bucket in SSE-KMS mode.
+* `encryption` - (Optional, Bool) Whether to enable default server-side encryption of the bucket.
 
-* `kms_key_id` - (Optional, String) Specifies the ID of a KMS key. If omitted, the default master key will be used.
+* `sse_algorithm` - (Optional, String) Specifies the mode of encryption algorithm. The valid values are:
+  + **kms**: Server-side encryption with keys hosted by KMS are used to encrypt your objects.
+  + **AES256**: Server-side encryption with keys managed by OBS are used to encrypt your objects.
 
-* `kms_key_project_id` - (Optional, String) Specifies the project ID to which the KMS key belongs. If omitted, the ID
-  of the provider-level project will be used.
+  Defaults to **kms**.
+
+* `kms_key_id` - (Optional, String) Specifies the ID of a KMS key. If omitted, the default master key will be used. This
+  field is used only when `sse_algorithm` value is **kms**.
+
+* `kms_key_project_id` - (Optional, String) Specifies the project ID to which the KMS key belongs. This field is valid
+  only when `kms_key_id` is specified.
 
 * `enterprise_project_id` - (Optional, String) Specifies the enterprise project id of the OBS bucket.
   Defaults to `0`.
@@ -229,7 +260,14 @@ The `logging` object supports the following:
 
 * `target_bucket` - (Required, String) The name of the bucket that will receive the log objects. The acl policy of the
   target bucket should be `log-delivery-write`.
+
 * `target_prefix` - (Optional, String) To specify a key prefix for log objects.
+
+* `agency` - (Required, String) Specifies the IAM agency of OBS cloud service.
+
+  -> The IAM agency requires the `PutObject` permission for the target bucket.  If default encryption is enabled for the
+  target bucket, the agency also requires the `KMS Administrator` permission in the region where the target bucket is
+  located.
 
 The `website` object supports the following:
 
@@ -279,6 +317,8 @@ The `lifecycle_rule` object supports the following:
 * `prefix` - (Optional, String) Object key prefix identifying one or more objects to which the rule applies. If omitted,
   all objects in the bucket will be managed by the lifecycle rule. The prefix cannot start or end with a slash (/),
   cannot have consecutive slashes (/), and cannot contain the following special characters: \:*?"<>|.
+  When configuring multiple `lifecycle_rule`, field `prefix` in multiple `lifecycle_rule` cannot have an inclusive
+  relationship.
 
 * `expiration` - (Optional, List) Specifies a period when objects that have been last updated are automatically
   deleted. (documented below).
@@ -288,9 +328,12 @@ The `lifecycle_rule` object supports the following:
   automatically deleted. (documented below).
 * `noncurrent_version_transition` - (Optional, List) Specifies a period when noncurrent object versions are
   automatically transitioned to `WARM` or `COLD` storage class (documented below).
+* `abort_incomplete_multipart_upload` - (Optional, List) Specifies a period when the not merged parts (fragments) in an
+  incomplete upload are automatically deleted. (documented below).
 
-At least one of `expiration`, `transition`, `noncurrent_version_expiration`, `noncurrent_version_transition` must be
-specified.
+At least one of `expiration`, `transition`, `noncurrent_version_expiration`, `noncurrent_version_transition`,
+`abort_incomplete_multipart_upload` must be specified. The parameter `versioning` must be set to **true** before using
+`noncurrent_version_expiration` or `noncurrent_version_transition`.
 
 The `expiration` object supports the following
 
@@ -315,6 +358,12 @@ The `noncurrent_version_transition` object supports the following
 * `storage_class` - (Required, String) The class of storage used to store the object. Only `WARM` and `COLD` are
   supported.
 
+The `abort_incomplete_multipart_upload` object supports the following
+
+* `days` - (Required, Int) Specifies the number of days since the initiation of an incomplete multipart upload that OBS
+  will wait before deleting the not merged parts (fragments) of the upload.
+  The valid value ranges from 1 to 2,147,483,647.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -336,13 +385,13 @@ The `storage_info` block supports:
 
 OBS bucket can be imported using the `bucket`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_obs_bucket.bucket <bucket-name>
 ```
 
-OBS bucket with S3 foramt bucket policy can be imported using the `bucket` and "s3" by a slash, e.g.
+OBS bucket with S3 format bucket policy can be imported using the `bucket` and "s3" by a slash, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_obs_bucket.bucket_with_s3_policy <bucket-name>/s3
 ```
 
@@ -350,7 +399,7 @@ Note that the imported state may not be identical to your resource definition, d
 API response. The missing attributes include `acl` and `force_destroy`. It is generally recommended
 running `terraform plan` after importing an OBS bucket. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_obs_bucket" "bucket" {
     ...
 

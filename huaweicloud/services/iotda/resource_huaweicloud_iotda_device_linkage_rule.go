@@ -19,6 +19,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IoTDA POST /v5/iot/{project_id}/rules
+// @API IoTDA PUT /v5/iot/{project_id}/rules/{rule_id}/status
+// @API IoTDA DELETE /v5/iot/{project_id}/rules/{rule_id}
+// @API IoTDA GET /v5/iot/{project_id}/rules/{rule_id}
+// @API IoTDA PUT /v5/iot/{project_id}/rules/{rule_id}
 func ResourceDeviceLinkageRule() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: ResourceDeviceLinkageRuleCreate,
@@ -38,9 +43,8 @@ func ResourceDeviceLinkageRule() *schema.Resource {
 			},
 
 			"name": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringLenBetween(1, 128),
+				Type:     schema.TypeString,
+				Required: true,
 			},
 
 			"space_id": {
@@ -241,9 +245,8 @@ func ResourceDeviceLinkageRule() *schema.Resource {
 									},
 
 									"message_content": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ValidateFunc: validation.StringLenBetween(0, 256),
+										Type:     schema.TypeString,
+										Required: true,
 									},
 
 									"project_id": {
@@ -288,9 +291,8 @@ func ResourceDeviceLinkageRule() *schema.Resource {
 									},
 
 									"description": {
-										Type:         schema.TypeString,
-										Optional:     true,
-										ValidateFunc: validation.StringLenBetween(0, 256),
+										Type:     schema.TypeString,
+										Optional: true,
 									},
 								},
 							},
@@ -307,9 +309,8 @@ func ResourceDeviceLinkageRule() *schema.Resource {
 			},
 
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 256),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			"enabled": {
@@ -353,7 +354,8 @@ func ResourceDeviceLinkageRule() *schema.Resource {
 func ResourceDeviceLinkageRuleCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -381,7 +383,8 @@ func ResourceDeviceLinkageRuleCreate(ctx context.Context, d *schema.ResourceData
 func ResourceDeviceLinkageRuleRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -409,7 +412,8 @@ func ResourceDeviceLinkageRuleRead(_ context.Context, d *schema.ResourceData, me
 func ResourceDeviceLinkageRuleUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -450,7 +454,8 @@ func ResourceDeviceLinkageRuleUpdate(ctx context.Context, d *schema.ResourceData
 func ResourceDeviceLinkageRuleDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*config.Config)
 	region := c.GetRegion(d)
-	client, err := c.HcIoTdaV5Client(region)
+	isDerived := WithDerivedAuth(c, region)
+	client, err := c.HcIoTdaV5Client(region, isDerived)
 	if err != nil {
 		return diag.Errorf("error creating IoTDA v5 client: %s", err)
 	}
@@ -641,7 +646,7 @@ func buildlinkageAction(raw map[string]interface{}, projectId string) (*model.Ru
 				ThemeName:      f["topic_name"].(string),
 				TopicUrn:       f["topic_urn"].(string),
 				MessageTitle:   f["message_title"].(string),
-				MessageContent: f["message_content"].(string),
+				MessageContent: utils.String(f["message_content"].(string)),
 			},
 		}
 		return &d, nil

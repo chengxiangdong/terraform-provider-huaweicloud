@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic IP (EIP)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpc_eip_associate"
+description: ""
 ---
 
 # huaweicloud_vpc_eip_associate
@@ -74,6 +77,7 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - The resource ID in UUID format.
 * `mac_address` - The MAC address of the private IP.
 * `status` - The status of EIP, should be **BOUND**.
+* `public_ipv6` - The IPv6 address of the private IP.
 
 ## Timeouts
 
@@ -86,6 +90,6 @@ This resource provides the following timeouts configuration options:
 
 EIP associations can be imported using the `id` of the EIP, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_vpc_eip_associate.eip 2c7f39f3-702b-48d1-940c-b50384177ee1
 ```

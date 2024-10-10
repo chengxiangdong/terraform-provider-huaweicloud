@@ -1,10 +1,14 @@
 ---
-subcategory: "Data Warehouse Service (DWS)"
+subcategory: "GaussDB(DWS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dws_cluster"
+description: |-
+  Manages a GaussDB(DWS) cluster resource within HuaweiCloud.  
 ---
 
 # huaweicloud_dws_cluster
 
-Manages a DWS cluster resource within HuaweiCloud.  
+Manages a GaussDB(DWS) cluster resource within HuaweiCloud.  
 
 ## Example Usage
 
@@ -27,12 +31,18 @@ resource "huaweicloud_dws_cluster" "cluster" {
   version           = var.dws_cluster_version
   node_type         = "dws.m3.xlarge"
   number_of_node    = 3
+  number_of_cn      = 3
   availability_zone = var.availability_zone
   user_name         = var.user_name
   user_pwd          = var.user_pwd
   vpc_id            = var.vpc_id
   network_id        = var.network_id
   security_group_id = huaweicloud_networking_secgroup.secgroup.id
+
+  volume {
+    type     = "SSD"
+    capacity = 300
+  }
 }
 ```
 
@@ -52,7 +62,7 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `number_of_node` - (Required, Int) Number of nodes in a cluster.  
- The value ranges from 3 to 32 in cluster mode. The value of stream warehouse(stand-alone mode) is 1.
+ The value ranges from 3 to 256 in cluster mode. The value of stream warehouse(stand-alone mode) is 1.
 
 * `user_name` - (Required, String, ForceNew) Administrator username for logging in to a data warehouse cluster.  
  The administrator username must: Consist of lowercase letters, digits, or underscores.
@@ -74,29 +84,30 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `availability_zone` - (Required, String, ForceNew) The availability zone in which to create the cluster instance.
-  Changing this parameter will create a new resource.
+  If there are multiple available zones, separate by commas, e.g. **cn-north-4a,cn-north-4b,cn-north-4g**.
+  Currently, multi-AZ clusters only support selecting `3` AZs. Changing this parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) The enterprise project ID.
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) The enterprise project ID.
 
 * `number_of_cn` - (Required, Int, ForceNew) The number of CN.  
-  The value ranges from 2 to **number_of_node**, the maximum value is 20. Defaults to 3.
+  The value ranges from 2 to **number_of_node**, the maximum value is 20.
+  This parameter must be used together with `version`.
   Changing this parameter will create a new resource.
 
 * `version` - (Required, String, ForceNew) The cluster version.
+  [For details](https://support.huaweicloud.com/intl/en-us/bulletin-dws/dws_12_0000.html).
   Changing this parameter will create a new resource.
 
-* `volume` - (Required, List, ForceNew) The information about the volume.
-
+* `volume` - (Optional, List, ForceNew) The information about the volume.
   Changing this parameter will create a new resource.
+  For local disks, this parameter can not be specified.
 
   The [Volume](#DwsCluster_Volume) structure is documented below.
 
 * `port` - (Optional, Int, ForceNew) Service port of a cluster (8000 to 10000). The default value is 8000.  
   Changing this parameter will create a new resource.
 
-* `tags` - (Optional, Map, ForceNew) The key/value pairs to associate with the cluster.
-  Changing this parameter will create a new resource.
+* `tags` - (Optional, Map) The key/value pairs to associate with the cluster.
 
 * `dss_pool_id` - (Optional, String, ForceNew) Dedicated storage pool ID.
   Changing this parameter will create a new resource.
@@ -113,6 +124,13 @@ The following arguments are supported:
 * `keep_last_manual_snapshot` - (Optional, Int) The number of latest manual snapshots that need to be
   retained when deleting the cluster.
 
+* `logical_cluster_enable` - (Optional, Bool) Specified whether to enable logical cluster. The switch needs to be turned
+  on before creating a logical cluster.
+
+* `elb_id` - (Optional, String) Specifies the ID of the ELB load balancer.
+
+* `lts_enable` - (Optional, Bool) Specified whether to enable LTS. The default value is **false**.
+
 <a name="DwsCluster_PublicIp"></a>
 The `PublicIp` block supports:
 
@@ -125,10 +143,9 @@ The `PublicIp` block supports:
 The `Volume` block supports:
 
 * `type` - (Optional, String) The volume type. Value options are as follows:
-  + **SATA**: Common I/O. The SATA disk is used.
-  + **SAS**: High I/O. The SAS disk is used.
   + **SSD**: Ultra-high I/O. The solid-state drive (SSD) is used.
-  The valid value are **auto_assign**, **not_use**, and **bind_existing**. Defaults to **not_use**.
+  + **SAS**: High I/O. The SAS disk is used.
+  + **SATA**: Common I/O. The SATA disk is used.
 
 * `capacity` - (Optional, String) The capacity size, in GB.
 
@@ -194,6 +211,9 @@ In addition to all arguments above, the following attributes are exported:
 * `maintain_window` - Cluster maintenance window.
   The [MaintainWindow](#DwsCluster_MaintainWindow) structure is documented below.
 
+* `elb` - The ELB information bound to the cluster.
+  The [elb](#DwsCluster_elb) structure is documented below.
+
 <a name="DwsCluster_Endpoint"></a>
 The `Endpoint` block supports:
 
@@ -215,9 +235,26 @@ The `MaintainWindow` block supports:
   The valid values are **Mon**, **Tue**, **Wed**, **Thu**, **Fri**,
   **Sat**, and **Sun**.
 
-* `start_time` - Maintenance start time in HH:mm format. The time zone is GMT+0.  
+* `start_time` - Maintenance start time in HH:mm format. The time zone is GMT+0.
 
-* `end_time` - Maintenance end time in HH:mm format. The time zone is GMT+0.  
+* `end_time` - Maintenance end time in HH:mm format. The time zone is GMT+0.
+
+<a name="DwsCluster_elb"></a>
+The `elb` block supports:
+
+* `name` - The name of the ELB load balancer.
+
+* `id` - The ID of the ELB load balancer.
+
+* `public_ip` - The public IP address of the ELB load balancer.
+
+* `private_ip` - The private IP address of the ELB load balancer.
+
+* `private_endpoint` - The private endpoint of the ELB load balancer.
+
+* `vpc_id` - The ID of VPC to which the ELB load balancer belongs.
+
+* `private_ip_v6` - The IPv6 address of the ELB load balancer.
 
 ## Timeouts
 
@@ -229,26 +266,26 @@ This resource provides the following timeouts configuration options:
 
 ## Import
 
-Cluster can be imported using the following format:
+The resource can be imported using the `id`, e.g.
 
-```
-$ terraform import huaweicloud_dws_cluster.test 47ad727e-9dcc-4833-bde0-bb298607c719
+```bash
+$ terraform import huaweicloud_dws_cluster.test <id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason. The missing attributes include: `user_pwd`, `number_of_cn`, `kms_key_id`,
-`volume`, `dss_pool_id`.
+`volume`, `dss_pool_id`, `logical_cluster_enable`, `lts_enable`.
 It is generally recommended running `terraform plan` after importing a cluster.
 You can then decide if changes should be applied to the cluster, or the resource definition
 should be updated to align with the cluster. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_dws_cluster" "test" {
-    ...
+  ...
 
   lifecycle {
     ignore_changes = [
-      user_pwd, number_of_cn, kms_key_id, volume, dss_pool_id
+      user_pwd, number_of_cn, kms_key_id, volume, dss_pool_id, logical_cluster_enable, lts_enable
     ]
   }
 }

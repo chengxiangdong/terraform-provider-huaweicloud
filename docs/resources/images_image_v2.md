@@ -1,5 +1,8 @@
 ---
 subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_images_image_v2"
+description: ""
 ---
 
 # huaweicloud_images_image_v2
@@ -35,7 +38,7 @@ The following arguments are supported:
   with `image_source_url`.
 
 * `image_cache_path` - (Optional) This is the directory where the images will be downloaded. Images will be stored with
-  a filename corresponding to the url's md5 hash. Defaults to "$HOME/.terraform/image_cache"
+  a filename corresponding to the md5 hash of URL. Defaults to "$HOME/.terraform/image_cache"
 
 * `image_source_url` - (Optional) This is the url of the raw image that will be downloaded in the `image_cache_path`
   before being uploaded to Glance. Glance is able to download image from internet but the `golangsdk` library does not
@@ -43,7 +46,7 @@ The following arguments are supported:
 
 * `min_disk_gb` - (Optional) Amount of disk space (in GB) required to boot image. Defaults to 0.
 
-* `min_ram_mb` - (Optional) Amount of ram (in MB) required to boot image. Defauts to 0.
+* `min_ram_mb` - (Optional) Amount of ram (in MB) required to boot image. Defaults to 0.
 
 * `name` - (Required) The name of the image.
 
@@ -74,7 +77,7 @@ In addition to all arguments above, the following attributes are exported:
 * `metadata` - The metadata associated with the image.
   Image metadata allow for meaningfully define the image properties and tags.
   See [metadata reference](http://docs.openstack.org/developer/glance/metadefs-concepts.html).
-* `owner` - The id of the huaweicloud user who owns the image.
+* `owner` - The id of the HuaweiCloud user who owns the image.
 * `schema` - The path to the JSON-schema that represent the image or image
 * `size_bytes` - The size in bytes of the data associated with the image.
 * `status` - The status of the image. It can be "queued", "active"
@@ -91,6 +94,6 @@ This resource provides the following timeouts configuration options:
 
 Images can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_images_image_v2.rancheros 89c60255-9bd6-460c-822a-e2b959ede9d2
 ```

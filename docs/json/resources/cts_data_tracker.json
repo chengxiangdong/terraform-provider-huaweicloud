@@ -5,7 +5,15 @@
         "huaweicloud_cts_data_tracker": {
           "block": {
             "attributes": {
+              "agency_name": {
+                "type": "string",
+                "computed": true
+              },
               "bucket_name": {
+                "type": "string",
+                "optional": true
+              },
+              "compress_type": {
                 "type": "string",
                 "optional": true
               },
@@ -35,6 +43,11 @@
                 "type": "string",
                 "computed": true
               },
+              "is_sort_by_service": {
+                "type": "bool",
+                "optional": true,
+                "default": true
+              },
               "lts_enabled": {
                 "type": "bool",
                 "optional": true
@@ -55,6 +68,13 @@
               "status": {
                 "type": "string",
                 "computed": true
+              },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
               },
               "transfer_enabled": {
                 "type": "bool",

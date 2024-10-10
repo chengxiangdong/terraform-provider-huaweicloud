@@ -39,12 +39,13 @@ func TestAccDliDatabase_basic(t *testing.T) {
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckEpsID(t)
+			acceptance.TestAccPreCheckDliUpdatedOwner(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDliDatabase_basic(rName),
+				Config: testAccDliDatabase_basic_step1(rName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
@@ -54,10 +55,21 @@ func TestAccDliDatabase_basic(t *testing.T) {
 				),
 			},
 			{
+				Config: testAccDliDatabase_basic_step2(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "owner", acceptance.HW_DLI_UPDATED_OWNER),
+				),
+			},
+			{
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateIdFunc: testAccDatabaseImportStateFunc(resourceName),
+				ImportStateVerifyIgnore: []string{
+					"tags",
+				},
 			},
 		},
 	})
@@ -77,12 +89,31 @@ func testAccDatabaseImportStateFunc(rName string) resource.ImportStateIdFunc {
 	}
 }
 
-func testAccDliDatabase_basic(rName string) string {
+func testAccDliDatabase_basic_step1(rName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_dli_database" "test" {
   name                  = "%s"
   description           = "For terraform acc test"
   enterprise_project_id = "%s"
+
+  tags = {
+    foo = "bar"
+  }
 }
 `, rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccDliDatabase_basic_step2(rName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_dli_database" "test" {
+  name                  = "%s"
+  description           = "For terraform acc test"
+  enterprise_project_id = "%s"
+  owner                 = "%s"
+
+  tags = {
+    foo = "bar"
+  }
+}
+`, rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST, acceptance.HW_DLI_UPDATED_OWNER)
 }

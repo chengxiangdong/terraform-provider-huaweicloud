@@ -1,5 +1,8 @@
 ---
 subcategory: "Web Application Firewall (WAF)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_waf_rule_data_masking"
+description: ""
 ---
 
 # huaweicloud_waf_rule_data_masking
@@ -54,7 +57,7 @@ The following arguments are supported:
   + **0**: Disabled.
   + **1**: Enabled.
 
-  The default value is **1**.
+  The default value is `1`.
 
 ## Attribute Reference
 

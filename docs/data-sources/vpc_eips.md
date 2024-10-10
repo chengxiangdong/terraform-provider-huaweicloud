@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic IP (EIP)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpc_eips"
+description: ""
 ---
 
 # huaweicloud_vpc_eips
@@ -37,6 +40,8 @@ The arguments of this data source act as filters for querying the available EIPs
 * `ids` - (Optional, List) Specifies an array of one or more IDs of the desired EIP.
 
 * `public_ips` - (Optional, List) Specifies an array of one or more public ip addresses of the desired EIP.
+
+* `private_ips` - (Optional, List) Specifies an array of one or more private ip addresses of the desired EIP.
 
 * `port_ids` - (Optional, List) Specifies an array of one or more port ids which bound to the desired EIP.
 
@@ -80,3 +85,4 @@ The `eips` block supports:
 * `bandwidth_size` - The bandwidth size of the EIP.
 * `bandwidth_share_type` - The bandwidth share type of the EIP.
 * `tags` - The key/value pairs which associated with the EIP.
+* `created_at` - The create time of the EIP.

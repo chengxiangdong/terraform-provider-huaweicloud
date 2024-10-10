@@ -1,21 +1,68 @@
 info:
-  version: 
-  title: resource_huaweicloud_gaussdb_mysql_proxy
-  description: 
+    version: ""
+    title: resource_huaweicloud_gaussdb_mysql_proxy
+    description: ""
 schemes:
-  - https
+    - https
 host: huaweicloud.com
 tags:
-  - name: GaussDBforMySQL
+    - name: GaussDBforMySQL
 paths:
-  /v3/{project_id}/instances/{instanceID}/proxy/enlarge:
-    post:
-      tag: GaussDBforMySQL
-      operationId: EnlargeProxy
-  /v3/{project_id}/instances/{instanceID}/proxy:
-    delete:
-      tag: GaussDBforMySQL
-      operationId: DeleteProxy
-    post:
-      tag: GaussDBforMySQL
-      operationId: EnableProxy
+    /v3/{project_id}/instances/{instance_id}/proxies:
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy:
+        DELETE:
+            tag: GaussDBforMySQL
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/{engine_name}/proxy-version:
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/access-control:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/access-control-switch:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/configurations:
+        GET:
+            tag: GaussDBforMySQL
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/connection-pool-type:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/flavor:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/ipgroup:
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/new-node-auto-add:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/port:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/reduce:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/rename:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/session-consistence:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/{proxy_id}/weight:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/enlarge:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/transaction-split:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/jobs:
+        GET:
+            tag: GaussDBforMySQL

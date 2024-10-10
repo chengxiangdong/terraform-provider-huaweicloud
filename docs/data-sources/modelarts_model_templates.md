@@ -1,5 +1,8 @@
 ---
 subcategory: "AI Development Platform (ModelArts)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_modelarts_model_templates"
+description: ""
 ---
 
 # huaweicloud_modelarts_model_templates
@@ -36,7 +39,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `templates` - The list of model templates.
   The [templates](#ModelTemplate_templates) structure is documented below.

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/er/v3/associations"
@@ -24,6 +22,14 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API ER POST /v3/{project_id}/enterprise-router/{er_id}/route-tables
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}
+// @API ER PUT /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}/associations
+// @API ER POST /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}/disassociate
+// @API ER GET /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}/propagations
+// @API ER POST /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}/disable-propagations
+// @API ER DELETE /v3/{project_id}/enterprise-router/{er_id}/route-tables/{route_table_id}
 func ResourceRouteTable() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRouteTableCreate,
@@ -59,23 +65,13 @@ func ResourceRouteTable() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `The name of the route table.`,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 64),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5\\w.-]*$"), "The name only english and "+
-						"chinese letters, digits, underscore (_), hyphens (-) and dots (.) are allowed."),
-				),
 			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: `The description of the ER route table.`,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile(`^[^<>]*$`),
-						"The angle brackets (< and >) are not allowed."),
-				),
 			},
-			"tags": common.TagsForceNewSchema(),
+			"tags": common.TagsSchema(),
 			// Attributes
 			"is_default_association": {
 				Type:        schema.TypeBool,
@@ -191,8 +187,9 @@ func resourceRouteTableRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("is_default_propagation", resp.IsDefaultPropagation),
 		d.Set("tags", utils.TagsToMap(resp.Tags)),
 		d.Set("status", resp.Status),
-		d.Set("created_at", resp.CreatedAt),
-		d.Set("updated_at", resp.UpdatedAt),
+		// The time results are not the time in RF3339 format without milliseconds.
+		d.Set("created_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.CreatedAt)/1000, false)),
+		d.Set("updated_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.UpdatedAt)/1000, false)),
 	)
 
 	if mErr.ErrorOrNil() != nil {
@@ -240,6 +237,13 @@ func resourceRouteTableUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	if d.HasChanges("name", "description") {
 		if err = updateRouteTableBasicInfo(ctx, client, d); err != nil {
 			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("tags") {
+		err = utils.UpdateResourceTags(client, d, "route-table", d.Id())
+		if err != nil {
+			return diag.Errorf("error updating route table tags: %s", err)
 		}
 	}
 

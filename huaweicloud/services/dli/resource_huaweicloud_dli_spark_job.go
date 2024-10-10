@@ -3,7 +3,6 @@ package dli
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -20,6 +19,16 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+const (
+	jarFile    = "jar"
+	pythonFile = "pyFile"
+	userFile   = "file"
+)
+
+// @API DLI POST /v2.0/{project_id}/batches
+// @API DLI GET /v2.0/{project_id}/batches/{batch_id}
+// @API DLI GET /v2.0/{project_id}/batches/{batch_id}/state
+// @API DLI DELETE /v2.0/{project_id}/batches/{batch_id}
 func ResourceDliSparkJobV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDliSparkJobCreate,
@@ -93,8 +102,6 @@ func ResourceDliSparkJobV2() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringMatch(regexp.MustCompile(`[\w-.]/*`), "Only digits, letters,"+
-								" dots (.), underscores (_), and hyphens (-) are allowed for group name."),
 						},
 						"packages": {
 							Type:     schema.TypeList,

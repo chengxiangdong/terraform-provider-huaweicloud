@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Cloud (VPC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpc"
+description: ""
 ---
 
 # huaweicloud_vpc
@@ -49,7 +52,8 @@ The following arguments are supported:
 * `description` - (Optional, String) Specifies supplementary information about the VPC. The value is a string of
   no more than 255 characters and cannot contain angle brackets (< or >).
 
-* `secondary_cidr` - (Optional, String) Specifies the secondary CIDR block of the VPC.
+* `secondary_cidrs` - (Optional, List) Specifies the secondary CIDR blocks of the VPC.
+  Each VPC can have 5 secondary CIDR blocks.
 
   -> The following secondary CIDR blocks cannot be added to a VPC: 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16.
   [View the complete list of unsupported CIDR blocks](https://support.huaweicloud.com/intl/en-us/usermanual-vpc/vpc_vpc_0007.html).
@@ -77,14 +81,14 @@ This resource provides the following timeouts configuration options:
 
 VPCs can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_vpc.vpc_v1 7117d38e-4c8f-4624-a505-bd96b97d024c
 ```
 
 Note that the imported state may not be identical to your resource definition when `secondary_cidr` was set.
 You you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_vpc" "vpc_v1" {
     ...
 

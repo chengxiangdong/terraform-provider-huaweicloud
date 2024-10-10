@@ -1,5 +1,8 @@
 ---
 subcategory: "Simple Message Notification (SMN)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_smn_topic"
+description: ""
 ---
 
 # huaweicloud_smn_topic
@@ -79,6 +82,6 @@ In addition to all arguments above, the following attributes are exported:
 
 SMN topic can be imported using the `id` (topic urn), e.g.
 
-```
+```bash
 $ terraform import huaweicloud_smn_topic.topic_1 urn:smn:cn-north-4:0970dd7a1300f5672ff2c003c60ae115:topic_1
 ```

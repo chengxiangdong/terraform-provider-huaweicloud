@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/rf/v1/stacks"
@@ -21,6 +19,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API RFS POST /v1/{project_id}/stacks
+// @API RFS GET /v1/{project_id}/stacks
+// @API RFS POST /v1/{project_id}/stacks/{stack_name}/deployments
+// @API RFS GET /v1/{project_id}/stacks/{stack_name}/events
+// @API RFS DELETE /v1/{project_id}/stacks/{stack_name}
 func ResourceStack() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceStackCreate,
@@ -47,24 +50,16 @@ func ResourceStack() *schema.Resource {
 				Description: "The region where the RFS resource stack is located.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z0-9-]*$`),
-						"Only letters, digits and hyphens are allowed."),
-					validation.StringMatch(regexp.MustCompile(`^[a-z](.*[a-z0-9])?$`),
-						"The name must start with a letter and end with a letter or a digit."),
-					validation.StringLenBetween(1, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
 				Description: "The name of the resource stack.",
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ValidateFunc: validation.StringLenBetween(0, 255),
-				Description:  "The description of the resource stack.",
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "The description of the resource stack.",
 			},
 			"agency": {
 				Type:     schema.TypeList,

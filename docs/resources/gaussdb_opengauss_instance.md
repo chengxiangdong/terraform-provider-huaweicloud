@@ -1,10 +1,13 @@
 ---
 subcategory: "GaussDB"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_gaussdb_opengauss_instance"
+description: ""
 ---
 
 # huaweicloud_gaussdb_opengauss_instance
 
-GaussDB OpenGauss instance management within HuaweiCoud.
+GaussDB OpenGauss instance management within HuaweiCould.
 
 ## Example Usage
 
@@ -135,18 +138,18 @@ The following arguments are supported:
 * `configuration_id` - (Optional, String, ForceNew) Specifies the parameter template ID.
   Changing this parameter will create a new resource.
 
-* `sharding_num` - (Optional, Int) Specifies the sharding number. The valid value is range form `1` to `9`.
-  The default value is 3.
+* `sharding_num` - (Optional, Int) Specifies the sharding number.  
+  The valid value is range form `1` to `9`. The default value is `3`.
 
-* `coordinator_num` - (Optional, Int) Specifies the coordinator number. Values: 1~9. The default value is 3.
+* `coordinator_num` - (Optional, Int) Specifies the coordinator number.  
+  The valid value is range form `1` to `9`. The default value is `3`.  
   The value must not be greater than twice value of `sharding_num`.
 
-* `replica_num` - (Optional, Int, ForceNew) The replica number. The valid values are **2** and **3**, defaults to **3**.
+* `replica_num` - (Optional, Int, ForceNew) The replica number. The valid values are `2` and `3`, defaults to `3`.
   Double replicas are only available for specific users and supports only instance versions are v1.3.0 or later.
   Changing this parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID.
-  Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID.
 
 * `time_zone` - (Optional, String, ForceNew) Specifies the time zone. Defaults to **UTC+08:00**.
   Changing this parameter will create a new resource.
@@ -274,6 +277,6 @@ This resource provides the following timeouts configuration options:
 
 OpenGaussDB instance can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_gaussdb_opengauss_instance.test 1f2c4f48adea4ae684c8edd8818fa349in14
 ```

@@ -17,6 +17,10 @@
                 "required": true,
                 "forcenew": true
               },
+              "binlog_retention_hours": {
+                "type": "number",
+                "optional": true
+              },
               "charging_mode": {
                 "type": "string",
                 "optional": true,
@@ -26,7 +30,7 @@
               "collation": {
                 "type": "string",
                 "optional": true,
-                "forcenew": true
+                "computed": true
               },
               "created": {
                 "type": "string",
@@ -43,8 +47,7 @@
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "fixed_ip": {
                 "type": "string",
@@ -58,8 +61,7 @@
               "ha_replication_mode": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "id": {
                 "type": "string",
@@ -69,6 +71,16 @@
                 "type": "string",
                 "optional": true,
                 "forcenew": true
+              },
+              "maintain_begin": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "maintain_end": {
+                "type": "string",
+                "optional": true,
+                "computed": true
               },
               "name": {
                 "type": "string",
@@ -92,8 +104,7 @@
               },
               "param_group_id": {
                 "type": "string",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "period": {
                 "type": "number",
@@ -104,6 +115,22 @@
                 "type": "string",
                 "optional": true,
                 "forcenew": true
+              },
+              "power_action": {
+                "type": "string",
+                "optional": true
+              },
+              "private_dns_name_prefix": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "private_dns_names": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "computed": true
               },
               "private_ips": {
                 "type": [
@@ -119,17 +146,52 @@
                 ],
                 "computed": true
               },
+              "read_write_permissions": {
+                "type": "string",
+                "optional": true
+              },
               "region": {
                 "type": "string",
                 "computed": true
+              },
+              "rotate_day": {
+                "type": "number",
+                "optional": true
+              },
+              "seconds_level_monitoring_enabled": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
+              },
+              "seconds_level_monitoring_interval": {
+                "type": "number",
+                "optional": true,
+                "computed": true
+              },
+              "secret_id": {
+                "type": "string",
+                "optional": true
+              },
+              "secret_name": {
+                "type": "string",
+                "optional": true
+              },
+              "secret_version": {
+                "type": "string",
+                "optional": true
               },
               "security_group_id": {
                 "type": "string",
                 "required": true
               },
+              "slow_log_show_original_status": {
+                "type": "string",
+                "optional": true
+              },
               "ssl_enable": {
                 "type": "bool",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "status": {
                 "type": "string",
@@ -140,12 +202,22 @@
                 "required": true,
                 "forcenew": true
               },
+              "switch_strategy": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "tags": {
                 "type": [
                   "map",
                   "string"
                 ],
                 "optional": true
+              },
+              "tde_enabled": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
               },
               "time_zone": {
                 "type": "string",
@@ -214,6 +286,25 @@
                 "forcenew": true,
                 "min_items": 1,
                 "max_items": 1
+              },
+              "msdtc_hosts": {
+                "block": {
+                  "attributes": {
+                    "host_name": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "computed": true
+                    },
+                    "ip": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "set"
               },
               "parameters": {
                 "block": {

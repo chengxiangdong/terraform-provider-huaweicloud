@@ -29,6 +29,28 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+type ctxType string
+
+// @API Kafka GET /v2/available-zones
+// @API Kafka POST /v2/{project_id}/instances/{instance_id}/crossvpc/modify
+// @API Kafka POST /v2/{project_id}/instances/{instance_id}/extend
+// @API Kafka DELETE /v2/{project_id}/instances/{instance_id}
+// @API Kafka GET /v2/{project_id}/instances/{instance_id}
+// @API Kafka PUT /v2/{project_id}/instances/{instance_id}
+// @API Kafka POST /v2/{project_id}/instances
+// @API Kafka GET /v2/{project_id}/kafka/{instance_id}/tags
+// @API Kafka POST /v2/{project_id}/kafka/{instance_id}/tags/action
+// @API Kafka POST /v2/{project_id}/instances/{instance_id}/autotopic
+// @API Kafka GET /v2/{project_id}/instances/{instance_id}/tasks
+// @API Kafka GET /v2/{project_id}/instances/{instance_id}/tasks/{task_id}
+// @API Kafka POST /v2/{project_id}/instances/{instance_id}/password
+// @API Kafka PUT /v2/{project_id}/instances/{instance_id}/configs
+// @API Kafka GET /v2/{project_id}/instances/{instance_id}/configs
+// @API Kafka POST /v2/{project_id}/instances/action
+// @API BSS GET /v2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
+// @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{instance_id}
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
 func ResourceDmsKafkaInstance() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDmsKafkaInstanceCreate,
@@ -83,14 +105,21 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"ipv6_enable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+			},
 			"manager_user": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				Computed: true,
 				ForceNew: true,
 			},
 			"manager_password": {
 				Type:      schema.TypeString,
-				Required:  true,
+				Optional:  true,
 				Sensitive: true,
 				ForceNew:  true,
 			},
@@ -103,6 +132,11 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Set:         schema.HashString,
 				Description: "schema: Required",
 			},
+			"arch_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"flavor_id": {
 				Type:         schema.TypeString,
 				Optional:     true,
@@ -113,6 +147,11 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Computed: true,
+			},
+			"new_tenant_ips": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"product_id": {
 				Type:     schema.TypeString,
@@ -135,7 +174,6 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Type:      schema.TypeString,
 				Sensitive: true,
 				Optional:  true,
-				ForceNew:  true,
 				RequiredWith: []string{
 					"access_user",
 				},
@@ -151,21 +189,18 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Computed: true,
 			},
 			"public_ip_ids": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
-				ForceNew: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"security_protocol": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Computed: true,
 				ForceNew: true,
 			},
 			"enabled_mechanisms": {
 				Type:     schema.TypeSet,
 				Optional: true,
-				Computed: true,
 				ForceNew: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -187,12 +222,40 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
-				ForceNew: true,
+			},
+			"parameters": {
+				Type: schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+				Optional: true,
+				Computed: true,
 			},
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+			},
+			"ssl_enable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+			},
+			"vpc_client_plain": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
 			},
 			"tags": common.TagsSchema(),
 			"engine": {
@@ -207,9 +270,10 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
-			"ssl_enable": {
-				Type:     schema.TypeBool,
+			"public_ip_address": {
+				Type:     schema.TypeList,
 				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"used_storage_space": {
 				Type:     schema.TypeInt,
@@ -241,6 +305,63 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 			},
 			"management_connect_address": {
 				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"extend_times": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"ipv6_connect_addresses": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"connector_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"connector_node_num": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"storage_resource_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"storage_type": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"created_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"cert_replaced": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"is_logical_volume": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"message_query_inst_enable": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"node_num": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"pod_connect_address": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"public_bandwidth": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"ssl_two_way_enable": {
+				Type:     schema.TypeBool,
 				Computed: true,
 			},
 			// Typo, it is only kept in the code, will not be shown in the docs.
@@ -352,7 +473,7 @@ func getKafkaProductDetails(cfg *config.Config, d *schema.ResourceData) (*produc
 	return nil, fmt.Errorf("can not found Kafka product details base on product_id: %s", productID)
 }
 
-func updateCrossVpcAccess(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+func updateCrossVpcAccess(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 	newVal := d.Get("cross_vpc_accesses")
 	var crossVpcAccessArr []map[string]interface{}
 
@@ -389,12 +510,26 @@ func updateCrossVpcAccess(client *golangsdk.ServiceClient, d *schema.ResourceDat
 
 	log.Printf("[DEBUG} Update Kafka cross-vpc contentMap: %#v", contentMap)
 
-	updateRst, err := instances.UpdateCrossVpc(client, d.Id(), instances.CrossVpcUpdateOpts{
-		Contents: contentMap,
+	retryFunc := func() (interface{}, bool, error) {
+		updateRst, err := instances.UpdateCrossVpc(client, d.Id(), instances.CrossVpcUpdateOpts{
+			Contents: contentMap,
+		})
+		retry, err := handleMultiOperationsError(err)
+		return updateRst, retry, err
+	}
+	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+		WaitTarget:   []string{"RUNNING"},
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		DelayTimeout: 10 * time.Second,
+		PollInterval: 10 * time.Second,
 	})
 	if err != nil {
 		return fmt.Errorf("error updating advertised IP: %v", err)
 	}
+	updateRst := r.(*instances.CrossVpc)
 
 	if !updateRst.Success {
 		failedIps := make([]string, 0, len(updateRst.Connections))
@@ -441,8 +576,14 @@ func resourceDmsKafkaInstanceCreate(ctx context.Context, d *schema.ResourceData,
 	}
 
 	if _, ok := d.GetOk("cross_vpc_accesses"); ok {
-		if err = updateCrossVpcAccess(client, d); err != nil {
+		if err = updateCrossVpcAccess(ctx, client, d); err != nil {
 			return diag.Errorf("failed to update default advertised IP: %s", err)
+		}
+	}
+
+	if parameters := d.Get("parameters").(*schema.Set); parameters.Len() > 0 {
+		if err = initializeParameters(ctx, d, client); err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -450,33 +591,39 @@ func resourceDmsKafkaInstanceCreate(ctx context.Context, d *schema.ResourceData,
 }
 
 func createKafkaInstanceWithFlavor(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	conf := meta.(*config.Config)
-	region := conf.GetRegion(d)
-	client, err := conf.DmsV2Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.DmsV2Client(region)
 	if err != nil {
 		return diag.Errorf("error initializing DMS Kafka(v2) client: %s", err)
 	}
 
 	createOpts := &instances.CreateOps{
-		Name:                d.Get("name").(string),
-		Description:         d.Get("description").(string),
-		Engine:              engineKafka,
-		EngineVersion:       d.Get("engine_version").(string),
-		AccessUser:          d.Get("access_user").(string),
-		VPCID:               d.Get("vpc_id").(string),
-		SecurityGroupID:     d.Get("security_group_id").(string),
-		SubnetID:            d.Get("network_id").(string),
-		ProductID:           d.Get("flavor_id").(string),
-		KafkaManagerUser:    d.Get("manager_user").(string),
-		MaintainBegin:       d.Get("maintain_begin").(string),
-		MaintainEnd:         d.Get("maintain_end").(string),
-		RetentionPolicy:     d.Get("retention_policy").(string),
-		ConnectorEnalbe:     d.Get("dumping").(bool),
-		EnableAutoTopic:     d.Get("enable_auto_topic").(bool),
-		StorageSpecCode:     d.Get("storage_spec_code").(string),
-		StorageSpace:        d.Get("storage_space").(int),
-		BrokerNum:           d.Get("broker_num").(int),
-		EnterpriseProjectID: common.GetEnterpriseProjectID(d, conf),
+		Name:                  d.Get("name").(string),
+		Description:           d.Get("description").(string),
+		Engine:                engineKafka,
+		EngineVersion:         d.Get("engine_version").(string),
+		AccessUser:            d.Get("access_user").(string),
+		VPCID:                 d.Get("vpc_id").(string),
+		SecurityGroupID:       d.Get("security_group_id").(string),
+		SubnetID:              d.Get("network_id").(string),
+		ProductID:             d.Get("flavor_id").(string),
+		ArchType:              d.Get("arch_type").(string),
+		KafkaManagerUser:      d.Get("manager_user").(string),
+		MaintainBegin:         d.Get("maintain_begin").(string),
+		MaintainEnd:           d.Get("maintain_end").(string),
+		RetentionPolicy:       d.Get("retention_policy").(string),
+		ConnectorEnalbe:       d.Get("dumping").(bool),
+		EnableAutoTopic:       d.Get("enable_auto_topic").(bool),
+		StorageSpecCode:       d.Get("storage_spec_code").(string),
+		StorageSpace:          d.Get("storage_space").(int),
+		BrokerNum:             d.Get("broker_num").(int),
+		EnterpriseProjectID:   cfg.GetEnterpriseProjectID(d),
+		SslEnable:             d.Get("ssl_enable").(bool),
+		KafkaSecurityProtocol: d.Get("security_protocol").(string),
+		SaslEnabledMechanisms: utils.ExpandToStringList(d.Get("enabled_mechanisms").(*schema.Set).List()),
+		Ipv6Enable:            d.Get("ipv6_enable").(bool),
+		VpcClientPlain:        d.Get("vpc_client_plain").(bool),
 	}
 
 	if chargingMode, ok := d.GetOk("charging_mode"); ok && chargingMode == "prePaid" {
@@ -496,13 +643,7 @@ func createKafkaInstanceWithFlavor(ctx context.Context, d *schema.ResourceData, 
 
 	if ids, ok := d.GetOk("public_ip_ids"); ok {
 		createOpts.EnablePublicIP = true
-		createOpts.PublicIpID = strings.Join(utils.ExpandToStringList(ids.([]interface{})), ",")
-	}
-
-	if d.Get("access_user").(string) != "" && d.Get("password").(string) != "" {
-		createOpts.SslEnable = true
-		createOpts.KafkaSecurityProtocol = d.Get("security_protocol").(string)
-		createOpts.SaslEnabledMechanisms = utils.ExpandToStringList(d.Get("enabled_mechanisms").(*schema.Set).List())
+		createOpts.PublicIpID = strings.Join(utils.ExpandToStringList(ids.(*schema.Set).List()), ",")
 	}
 
 	var availableZones []string
@@ -511,7 +652,7 @@ func createKafkaInstanceWithFlavor(ctx context.Context, d *schema.ResourceData, 
 	} else {
 		// convert the codes of the availability zone into ids
 		azCodes := d.Get("availability_zones").(*schema.Set)
-		availableZones, err = getAvailableZoneIDByCode(conf, region, azCodes.List())
+		availableZones, err = getAvailableZoneIDByCode(cfg, region, azCodes.List())
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -535,7 +676,7 @@ func createKafkaInstanceWithFlavor(ctx context.Context, d *schema.ResourceData, 
 
 	var delayTime time.Duration = 300
 	if chargingMode, ok := d.GetOk("charging_mode"); ok && chargingMode == "prePaid" {
-		err = waitForOrderComplete(ctx, d, conf, client, instanceID)
+		err = waitForOrderComplete(ctx, d, cfg, client, instanceID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -597,27 +738,33 @@ func createKafkaInstanceWithProductID(ctx context.Context, d *schema.ResourceDat
 	}
 
 	createOpts := &instances.CreateOps{
-		Name:                d.Get("name").(string),
-		Description:         d.Get("description").(string),
-		Engine:              engineKafka,
-		EngineVersion:       d.Get("engine_version").(string),
-		Specification:       bandwidth,
-		StorageSpace:        int(defaultStorageSpace),
-		PartitionNum:        int(defaultPartitionNum),
-		AccessUser:          d.Get("access_user").(string),
-		VPCID:               d.Get("vpc_id").(string),
-		SecurityGroupID:     d.Get("security_group_id").(string),
-		SubnetID:            d.Get("network_id").(string),
-		AvailableZones:      availableZones,
-		ProductID:           d.Get("product_id").(string),
-		KafkaManagerUser:    d.Get("manager_user").(string),
-		MaintainBegin:       d.Get("maintain_begin").(string),
-		MaintainEnd:         d.Get("maintain_end").(string),
-		RetentionPolicy:     d.Get("retention_policy").(string),
-		ConnectorEnalbe:     d.Get("dumping").(bool),
-		EnableAutoTopic:     d.Get("enable_auto_topic").(bool),
-		StorageSpecCode:     d.Get("storage_spec_code").(string),
-		EnterpriseProjectID: common.GetEnterpriseProjectID(d, cfg),
+		Name:                  d.Get("name").(string),
+		Description:           d.Get("description").(string),
+		Engine:                engineKafka,
+		EngineVersion:         d.Get("engine_version").(string),
+		Specification:         bandwidth,
+		StorageSpace:          int(defaultStorageSpace),
+		PartitionNum:          int(defaultPartitionNum),
+		AccessUser:            d.Get("access_user").(string),
+		VPCID:                 d.Get("vpc_id").(string),
+		SecurityGroupID:       d.Get("security_group_id").(string),
+		SubnetID:              d.Get("network_id").(string),
+		AvailableZones:        availableZones,
+		ArchType:              d.Get("arch_type").(string),
+		ProductID:             d.Get("product_id").(string),
+		KafkaManagerUser:      d.Get("manager_user").(string),
+		MaintainBegin:         d.Get("maintain_begin").(string),
+		MaintainEnd:           d.Get("maintain_end").(string),
+		RetentionPolicy:       d.Get("retention_policy").(string),
+		ConnectorEnalbe:       d.Get("dumping").(bool),
+		EnableAutoTopic:       d.Get("enable_auto_topic").(bool),
+		StorageSpecCode:       d.Get("storage_spec_code").(string),
+		EnterpriseProjectID:   cfg.GetEnterpriseProjectID(d),
+		SslEnable:             d.Get("ssl_enable").(bool),
+		KafkaSecurityProtocol: d.Get("security_protocol").(string),
+		SaslEnabledMechanisms: utils.ExpandToStringList(d.Get("enabled_mechanisms").(*schema.Set).List()),
+		Ipv6Enable:            d.Get("ipv6_enable").(bool),
+		VpcClientPlain:        d.Get("vpc_client_plain").(bool),
 	}
 
 	if chargingMode, ok := d.GetOk("charging_mode"); ok && chargingMode == "prePaid" {
@@ -642,12 +789,6 @@ func createKafkaInstanceWithProductID(ctx context.Context, d *schema.ResourceDat
 		}
 		createOpts.EnablePublicIP = true
 		createOpts.PublicIpID = publicIpIDs
-	}
-
-	if d.Get("access_user").(string) != "" && d.Get("password").(string) != "" {
-		createOpts.SslEnable = true
-		createOpts.KafkaSecurityProtocol = d.Get("security_protocol").(string)
-		createOpts.SaslEnabledMechanisms = utils.ExpandToStringList(d.Get("enabled_mechanisms").(*schema.Set).List())
 	}
 
 	// set tags
@@ -815,20 +956,24 @@ func unmarshalFlattenCrossVpcInfo(crossVpcInfoStr string) ([]map[string]interfac
 }
 
 func setKafkaFlavorId(d *schema.ResourceData, flavorId string) error {
-	re := regexp.MustCompile(`^[a-z0-9]+\.\d+u\d+g\.cluster|single$`)
+	re := regexp.MustCompile(`^\d(\d|-)*\d$`)
 	if re.MatchString(flavorId) {
-		return d.Set("flavor_id", flavorId)
+		return d.Set("product_id", flavorId)
 	}
-	return d.Set("product_id", flavorId)
+	return d.Set("flavor_id", flavorId)
 }
 
-func resourceDmsKafkaInstanceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDmsKafkaInstanceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
 	client, err := cfg.DmsV2Client(region)
 	if err != nil {
 		return diag.Errorf("error initializing DMS Kafka(v2) client: %s", err)
+	}
+	eipClient, err := cfg.NetworkingV1Client(region)
+	if err != nil {
+		return diag.Errorf("error creating networking client: %s", err)
 	}
 
 	v, err := instances.Get(client, d.Id()).Extract()
@@ -853,6 +998,23 @@ func resourceDmsKafkaInstanceRead(_ context.Context, d *schema.ResourceData, met
 		chargingMode = "prePaid"
 	}
 
+	var publicIpIds []string
+	var publicIpAddrs []string
+	if v.PublicConnectionAddress != "" {
+		addressList := getPublicIPAddresses(v.PublicConnectionAddress)
+		publicIps, err := common.GetEipsbyAddresses(eipClient, addressList, "all_granted_eps")
+		if err != nil {
+			mErr = multierror.Append(mErr, err)
+		}
+		publicIpIds = make([]string, len(publicIps))
+		publicIpAddrs = make([]string, len(publicIps))
+		for i, ip := range publicIps {
+			publicIpIds[i] = ip.ID
+			publicIpAddrs[i] = ip.PublicAddress
+		}
+	}
+	createdAt, _ := strconv.Atoi(v.CreatedAt)
+
 	mErr = multierror.Append(mErr,
 		d.Set("region", cfg.GetRegion(d)),
 		setKafkaFlavorId(d, v.ProductID), // Set flavor_id or product_id.
@@ -868,6 +1030,7 @@ func resourceDmsKafkaInstanceRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("vpc_id", v.VPCID),
 		d.Set("security_group_id", v.SecurityGroupID),
 		d.Set("network_id", v.SubnetID),
+		d.Set("ipv6_enable", v.Ipv6Enable),
 		d.Set("available_zones", availableZoneIDs),
 		d.Set("availability_zones", availableZoneCodes),
 		d.Set("broker_num", v.BrokerNum),
@@ -876,8 +1039,6 @@ func resourceDmsKafkaInstanceRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("maintain_end", v.MaintainEnd),
 		d.Set("enable_public_ip", v.EnablePublicIP),
 		d.Set("ssl_enable", v.SslEnable),
-		d.Set("security_protocol", v.KafkaSecurityProtocol),
-		d.Set("enabled_mechanisms", v.SaslEnabledMechanisms),
 		d.Set("retention_policy", v.RetentionPolicy),
 		d.Set("dumping", v.ConnectorEnalbe),
 		d.Set("enable_auto_topic", v.EnableAutoTopic),
@@ -896,6 +1057,23 @@ func resourceDmsKafkaInstanceRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("access_user", v.AccessUser),
 		d.Set("cross_vpc_accesses", crossVpcAccess),
 		d.Set("charging_mode", chargingMode),
+		d.Set("public_ip_ids", publicIpIds),
+		d.Set("public_ip_address", publicIpAddrs),
+		d.Set("vpc_client_plain", v.VpcClientPlain),
+		d.Set("extend_times", v.ExtendTimes),
+		d.Set("connector_id", v.ConnectorID),
+		d.Set("connector_node_num", v.ConnectorNodeNum),
+		d.Set("storage_resource_id", v.StorageResourceID),
+		d.Set("storage_type", v.StorageType),
+		d.Set("ipv6_connect_addresses", v.Ipv6ConnectAddresses),
+		d.Set("created_at", utils.FormatTimeStampRFC3339(int64(createdAt)/1000, false)),
+		d.Set("cert_replaced", v.CertReplaced),
+		d.Set("is_logical_volume", v.IsLogicalVolume),
+		d.Set("message_query_inst_enable", v.MessageQueryInstEnable),
+		d.Set("node_num", v.NodeNum),
+		d.Set("pod_connect_address", v.PodConnectAddress),
+		d.Set("public_bandwidth", v.PublicBandWidth),
+		d.Set("ssl_two_way_enable", v.SslTwoWayEnable),
 	)
 
 	// set tags
@@ -913,6 +1091,56 @@ func resourceDmsKafkaInstanceRead(_ context.Context, d *schema.ResourceData, met
 		return diag.Errorf("failed to set attributes for DMS kafka instance: %s", mErr)
 	}
 
+	return setKafkaInstanceParameters(ctx, d, client)
+}
+
+func getPublicIPAddresses(rawParam string) []string {
+	allAddressPortList := strings.Split(rawParam, ",")
+	rst := make([]string, 0, len(allAddressPortList))
+	for _, addressPort := range allAddressPortList {
+		address := strings.Split(addressPort, ":")[0]
+		rst = append(rst, address)
+	}
+	return rst
+}
+
+func setKafkaInstanceParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) diag.Diagnostics {
+	// set parameters
+	configs, err := instances.GetConfigurations(client, d.Id()).Extract()
+	if err != nil {
+		log.Printf("[WARN] error fetching parameters of the instance (%s): %s", d.Id(), err)
+		return nil
+	}
+
+	var params []map[string]interface{}
+	for _, parameter := range d.Get("parameters").(*schema.Set).List() {
+		name := parameter.(map[string]interface{})["name"]
+		for _, kafkaParam := range configs.KafkaConfigs {
+			if kafkaParam.Name == name {
+				p := map[string]interface{}{
+					"name":  kafkaParam.Name,
+					"value": kafkaParam.Value,
+				}
+				params = append(params, p)
+				break
+			}
+		}
+	}
+
+	if len(params) > 0 {
+		if err = d.Set("parameters", params); err != nil {
+			log.Printf("[WARN] error saving parameters to the Kafka instance (%s): %s", d.Id(), err)
+		}
+		if ctx.Value(ctxType("staticParametersChanged")) == "true" {
+			return diag.Diagnostics{
+				diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Parameters Changed",
+					Detail:   "Static parameters changed, the instance needs reboot to make parameters take effect.",
+				},
+			}
+		}
+	}
 	return nil
 }
 
@@ -940,7 +1168,20 @@ func resourceDmsKafkaInstanceUpdate(ctx context.Context, d *schema.ResourceData,
 			updateOpts.Name = d.Get("name").(string)
 		}
 
-		err = instances.Update(client, d.Id(), updateOpts).Err
+		retryFunc := func() (interface{}, bool, error) {
+			err = instances.Update(client, d.Id(), updateOpts).Err
+			retry, err := handleMultiOperationsError(err)
+			return nil, retry, err
+		}
+		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+			Ctx:          ctx,
+			RetryFunc:    retryFunc,
+			WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+			WaitTarget:   []string{"RUNNING"},
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			DelayTimeout: 1 * time.Second,
+			PollInterval: 10 * time.Second,
+		})
 		if err != nil {
 			mErr = multierror.Append(mErr, fmt.Errorf("error updating Kafka Instance: %s", err))
 		}
@@ -962,7 +1203,7 @@ func resourceDmsKafkaInstanceUpdate(ctx context.Context, d *schema.ResourceData,
 	}
 
 	if d.HasChange("cross_vpc_accesses") {
-		if err = updateCrossVpcAccess(client, d); err != nil {
+		if err = updateCrossVpcAccess(ctx, client, d); err != nil {
 			mErr = multierror.Append(mErr, err)
 		}
 	}
@@ -975,6 +1216,74 @@ func resourceDmsKafkaInstanceUpdate(ctx context.Context, d *schema.ResourceData,
 		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the Kafka instance (%s): %s", d.Id(), err)
 		}
+	}
+
+	if d.HasChange("enable_auto_topic") {
+		enableAutoTopic := d.Get("enable_auto_topic").(bool)
+		autoTopicOpts := instances.AutoTopicOpts{
+			EnableAutoTopic: &enableAutoTopic,
+		}
+		retryFunc := func() (interface{}, bool, error) {
+			err = instances.UpdateAutoTopic(client, d.Id(), autoTopicOpts).Err
+			retry, err := handleMultiOperationsError(err)
+			return nil, retry, err
+		}
+		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+			Ctx:          ctx,
+			RetryFunc:    retryFunc,
+			WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+			WaitTarget:   []string{"RUNNING"},
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			DelayTimeout: 1 * time.Second,
+			PollInterval: 10 * time.Second,
+		})
+		if err != nil {
+			mErr = multierror.Append(mErr, fmt.Errorf("error enabling or disabling automatic topic: %s", err))
+		}
+
+		// The enabling or disabling automatic topic is done if the status of its related task is SUCCESS
+		stateConf := &resource.StateChangeConf{
+			Pending:      []string{"CREATED"},
+			Target:       []string{"SUCCESS"},
+			Refresh:      autoTopicTaskRefreshFunc(client, d.Id(), "kafkaConfigModify"),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        1 * time.Second,
+			PollInterval: 5 * time.Second,
+		}
+
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			mErr = multierror.Append(mErr,
+				fmt.Errorf("error waiting for the automatic topic task of the instance (%s) to be done: %s", d.Id(), err))
+		}
+	}
+
+	if d.HasChange("password") {
+		resetPasswordOpts := instances.ResetPasswordOpts{
+			NewPassword: d.Get("password").(string),
+		}
+		retryFunc := func() (interface{}, bool, error) {
+			err = instances.ResetPassword(client, d.Id(), resetPasswordOpts).Err
+			retry, err := handleMultiOperationsError(err)
+			return nil, retry, err
+		}
+		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+			Ctx:          ctx,
+			RetryFunc:    retryFunc,
+			WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+			WaitTarget:   []string{"RUNNING"},
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			DelayTimeout: 1 * time.Second,
+			PollInterval: 10 * time.Second,
+		})
+		if err != nil {
+			e := fmt.Errorf("error resetting password: %s", err)
+			mErr = multierror.Append(mErr, e)
+		}
+	}
+
+	if ctx, err = updateKafkaParameters(ctx, d, client); err != nil {
+		return diag.FromErr(err)
 	}
 
 	if mErr.ErrorOrNil() != nil {
@@ -1029,6 +1338,29 @@ func resizeKafkaInstance(ctx context.Context, d *schema.ResourceData, meta inter
 			OperType:     &operType,
 			NewBrokerNum: &brokerNum,
 		}
+		oldNum, newNum := d.GetChange("broker_num")
+		if d.HasChange("public_ip_ids") {
+			// precheck
+			oldRaw, newRaw := d.GetChange("public_ip_ids")
+			add := newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
+			sub := oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
+			allow := (sub.Len() == 0) && (add.Len() == newNum.(int)-oldNum.(int))
+			if !allow {
+				return fmt.Errorf("error resizing instance: the old EIP ID should not be changed, and the adding nums of " +
+					"EIP ID should be same as the adding broker nums")
+			}
+
+			publicIpIds := strings.Join(utils.ExpandToStringList(add.List()), ",")
+			resizeOpts.PublicIpID = &publicIpIds
+		}
+		if v, ok := d.GetOk("new_tenant_ips"); ok {
+			// precheck
+			if len(v.([]interface{})) > newNum.(int)-oldNum.(int) {
+				return fmt.Errorf("error resizing instance: the nums of new tenant IP must be less than the adding broker nums")
+			}
+			resizeOpts.TenantIps = utils.ExpandToStringList(v.([]interface{}))
+		}
+
 		log.Printf("[DEBUG] Resize Kafka instance broker number options: %s", utils.MarshalValue(resizeOpts))
 
 		if err := doKafkaInstanceResize(ctx, d, client, resizeOpts); err != nil {
@@ -1070,12 +1402,26 @@ func resizeKafkaInstanceStorage(ctx context.Context, d *schema.ResourceData, cli
 }
 
 func doKafkaInstanceResize(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, opts instances.ResizeInstanceOpts) error {
-	if _, err := instances.Resize(client, d.Id(), opts); err != nil {
+	retryFunc := func() (interface{}, bool, error) {
+		_, err := instances.Resize(client, d.Id(), opts)
+		retry, err := handleMultiOperationsError(err)
+		return nil, retry, err
+	}
+	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+		WaitTarget:   []string{"RUNNING"},
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		DelayTimeout: 1 * time.Second,
+		PollInterval: 10 * time.Second,
+	})
+	if err != nil {
 		return fmt.Errorf("resize Kafka instance failed: %s", err)
 	}
 
 	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"PENDING"},
+		Pending:      []string{"PENDING", "EXTENDING"},
 		Target:       []string{"RUNNING"},
 		Refresh:      kafkaResizeStateRefresh(client, d, opts.OperType),
 		Timeout:      d.Timeout(schema.TimeoutUpdate),
@@ -1120,11 +1466,38 @@ func resourceDmsKafkaInstanceDelete(ctx context.Context, d *schema.ResourceData,
 	}
 
 	if d.Get("charging_mode") == "prePaid" {
-		if err = common.UnsubscribePrePaidResource(d, cfg, []string{d.Id()}); err != nil {
+		retryFunc := func() (interface{}, bool, error) {
+			err = common.UnsubscribePrePaidResource(d, cfg, []string{d.Id()})
+			retry, err := handleMultiOperationsError(err)
+			return nil, retry, err
+		}
+		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+			Ctx:          ctx,
+			RetryFunc:    retryFunc,
+			WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+			WaitTarget:   []string{"RUNNING"},
+			Timeout:      d.Timeout(schema.TimeoutDelete),
+			DelayTimeout: 1 * time.Second,
+			PollInterval: 10 * time.Second,
+		})
+		if err != nil {
 			return diag.Errorf("error unsubscribe Kafka instance: %s", err)
 		}
 	} else {
-		err = instances.Delete(client, d.Id()).ExtractErr()
+		retryFunc := func() (interface{}, bool, error) {
+			err = instances.Delete(client, d.Id()).ExtractErr()
+			retry, err := handleMultiOperationsError(err)
+			return nil, retry, err
+		}
+		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+			Ctx:          ctx,
+			RetryFunc:    retryFunc,
+			WaitFunc:     KafkaInstanceStateRefreshFunc(client, d.Id()),
+			WaitTarget:   []string{"RUNNING"},
+			Timeout:      d.Timeout(schema.TimeoutDelete),
+			DelayTimeout: 1 * time.Second,
+			PollInterval: 10 * time.Second,
+		})
 		if err != nil {
 			return common.CheckDeletedDiag(d, err, "failed to delete Kafka instance")
 		}
@@ -1262,4 +1635,219 @@ func getAvailableZones(cfg *config.Config, region string) ([]availablezones.Avai
 	}
 
 	return r.AvailableZones, nil
+}
+
+func handleMultiOperationsError(err error) (bool, error) {
+	if err == nil {
+		// The operation was executed successfully and does not need to be executed again.
+		return false, nil
+	}
+	if errCode, ok := err.(golangsdk.ErrDefault400); ok {
+		var apiError interface{}
+		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
+			return false, fmt.Errorf("unmarshal the response body failed: %s", jsonErr)
+		}
+
+		errorCode, errorCodeErr := jmespath.Search("error_code", apiError)
+		if errorCodeErr != nil {
+			return false, fmt.Errorf("error parse errorCode from response body: %s", errorCodeErr)
+		}
+
+		// CBC.99003651: unsubscribe fail, another operation is being performed
+		if errorCode.(string) == "DMS.00400026" || errorCode == "CBC.99003651" {
+			return true, err
+		}
+	}
+	return false, err
+}
+
+func autoTopicTaskRefreshFunc(client *golangsdk.ServiceClient, instanceID string, taskName string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		// getAutoTopicTask: query automatic topic task
+		getAutoTopicTaskHttpUrl := "v2/{project_id}/instances/{instance_id}/tasks"
+		getAutoTopicTaskPath := client.Endpoint + getAutoTopicTaskHttpUrl
+		getAutoTopicTaskPath = strings.ReplaceAll(getAutoTopicTaskPath, "{project_id}",
+			client.ProjectID)
+		getAutoTopicTaskPath = strings.ReplaceAll(getAutoTopicTaskPath, "{instance_id}", instanceID)
+
+		getAutoTopicTaskPathOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		getAutoTopicTaskPathResp, err := client.Request("GET", getAutoTopicTaskPath,
+			&getAutoTopicTaskPathOpt)
+
+		if err != nil {
+			return nil, "QUERY ERROR", err
+		}
+
+		getAutoTopicTaskRespBody, err := utils.FlattenResponse(getAutoTopicTaskPathResp)
+		if err != nil {
+			return nil, "PARSE ERROR", err
+		}
+
+		task := utils.PathSearch(fmt.Sprintf("tasks|[?name=='%s']|[0]", taskName), getAutoTopicTaskRespBody, nil)
+		if task == nil {
+			return nil, "NIL ERROR", fmt.Errorf("failed to find the task of the automatic topic")
+		}
+
+		status := utils.PathSearch("status", task, nil)
+		return task, fmt.Sprint(status), nil
+	}
+}
+
+func buildKafkaInstanceParameters(params *schema.Set) instances.KafkaConfigs {
+	paramList := make([]instances.ConfigParam, 0, params.Len())
+	for _, v := range params.List() {
+		paramList = append(paramList, instances.ConfigParam{
+			Name:  v.(map[string]interface{})["name"].(string),
+			Value: v.(map[string]interface{})["value"].(string),
+		})
+	}
+	configOpts := instances.KafkaConfigs{
+		KafkaConfigs: paramList,
+	}
+	return configOpts
+}
+
+func initializeParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	parametersRaw := d.Get("parameters").(*schema.Set)
+	configOpts := buildKafkaInstanceParameters(parametersRaw)
+	restartRequired, err := modifyParameters(ctx, client, d.Timeout(schema.TimeoutCreate), d.Id(), &configOpts)
+	if err != nil {
+		return err
+	}
+
+	if *restartRequired {
+		return restartKafkaInstance(ctx, d.Timeout(schema.TimeoutCreate), client, d.Id())
+	}
+	return nil
+}
+
+func modifyParameters(ctx context.Context, client *golangsdk.ServiceClient, timeout time.Duration,
+	instanceID string, configOpts *instances.KafkaConfigs) (*bool, error) {
+	// modify configs
+	retryFunc := func() (interface{}, bool, error) {
+		resp, err := instances.ModifyConfiguration(client, instanceID, *configOpts).Extract()
+		retry, err := handleMultiOperationsError(err)
+		return resp, retry, err
+	}
+	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     KafkaInstanceStateRefreshFunc(client, instanceID),
+		WaitTarget:   []string{"RUNNING"},
+		Timeout:      timeout,
+		DelayTimeout: 10 * time.Second,
+		PollInterval: 10 * time.Second,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error modifying parameters for the Kafka instance (%s): %s", instanceID, err)
+	}
+
+	modifyConfigurationResp := r.(*instances.ModifyConfigurationResp)
+
+	// wait for task complete
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"CREATED"},
+		Target:       []string{"SUCCESS"},
+		Refresh:      kafkaInstanceTaskStatusRefreshFunc(client, instanceID, modifyConfigurationResp.JobId),
+		Timeout:      timeout,
+		Delay:        2 * time.Second,
+		PollInterval: 2 * time.Second,
+	}
+	if _, err := stateConf.WaitForStateContext(ctx); err != nil {
+		return nil, fmt.Errorf("error waiting for the Kafka instance (%s) parameter to be updated: %s ", instanceID, err)
+	}
+
+	restartRequired := modifyConfigurationResp.StaticConfig > 0
+
+	return &restartRequired, nil
+}
+
+func restartKafkaInstance(ctx context.Context, timeout time.Duration, client *golangsdk.ServiceClient,
+	instanceID string) error {
+	// If static parameter is changed, reboot the instance.
+	restartInstanceOpts := instances.RestartInstanceOpts{
+		Action:    "restart",
+		Instances: []string{instanceID},
+	}
+
+	retryFunc := func() (interface{}, bool, error) {
+		_, err := instances.RebootInstance(client, restartInstanceOpts).Extract()
+		retry, err := handleMultiOperationsError(err)
+		return nil, retry, err
+	}
+	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     KafkaInstanceStateRefreshFunc(client, instanceID),
+		WaitTarget:   []string{"RUNNING"},
+		Timeout:      timeout,
+		DelayTimeout: 10 * time.Second,
+		PollInterval: 10 * time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("error rebooting the Kafka instance (%s): %s", instanceID, err)
+	}
+
+	// wait for the instance state to be 'RUNNING'.
+	stateConf := &resource.StateChangeConf{
+		Target:       []string{"RUNNING"},
+		Refresh:      KafkaInstanceStateRefreshFunc(client, instanceID),
+		Timeout:      timeout,
+		Delay:        5 * time.Second,
+		PollInterval: 5 * time.Second,
+	}
+	if _, err = stateConf.WaitForStateContext(ctx); err != nil {
+		return fmt.Errorf("error waiting for the Kafka instance (%s) become RUNNING status: %s", instanceID, err)
+	}
+	return nil
+}
+
+func updateKafkaParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) (context.Context, error) {
+	if !d.HasChange("parameters") {
+		return ctx, nil
+	}
+
+	o, n := d.GetChange("parameters")
+	os, ns := o.(*schema.Set), n.(*schema.Set)
+	change := ns.Difference(os).List()
+	paramList := make([]instances.ConfigParam, 0, len(change))
+	if len(change) > 0 {
+		for _, v := range change {
+			configOpts := instances.ConfigParam{
+				Name:  v.(map[string]interface{})["name"].(string),
+				Value: v.(map[string]interface{})["value"].(string),
+			}
+			paramList = append(paramList, configOpts)
+		}
+
+		configOpts := instances.KafkaConfigs{
+			KafkaConfigs: paramList,
+		}
+
+		restartRequired, err := modifyParameters(ctx, client, d.Timeout(schema.TimeoutCreate), d.Id(), &configOpts)
+		if err != nil {
+			return ctx, err
+		}
+		if *restartRequired {
+			// Sending staticParametersChanged to Read to warn users the instance needs a reboot.
+			ctx = context.WithValue(ctx, ctxType("staticParametersChanged"), "true")
+		}
+	}
+
+	return ctx, nil
+}
+
+func kafkaInstanceTaskStatusRefreshFunc(client *golangsdk.ServiceClient, instanceID, taskID string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		taskResp, err := instances.GetTask(client, instanceID, taskID).Extract()
+		if err != nil {
+			return nil, "QUERY ERROR", err
+		}
+		if len(taskResp.Tasks) == 0 {
+			return nil, "NIL ERROR", fmt.Errorf("failed to find updating parameters task(%s)", taskID)
+		}
+		return taskResp.Tasks[0], taskResp.Tasks[0].Status, nil
+	}
 }

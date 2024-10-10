@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_node_attach"
+description: ""
 ---
 
 # huaweicloud_cce_node_attach
@@ -82,6 +85,11 @@ The following arguments are supported:
 
 Changing this parameter will reset the node.
 
+* `hostname_config` - (Optional, List, ForceNew) Specifies the hostname config of the kubernetes node,
+  which is supported by clusters of v1.23.6-r0 to v1.25 or clusters of v1.25.2-r0 or later versions.
+  The [object](#hostname_config) structure is documented below.
+  Changing this parameter will create a new resource.
+
 * `storage` - (Optional, List) Specifies the disk initialization management parameter.
   This parameter is alternative to `lvm_config` and supported for clusters of v1.15.11 and later.
   Changing this parameter will reset the node.
@@ -130,7 +138,7 @@ The `selectors` block supports:
 * `match_label_metadata_encrypted` - (Optional, String) Specifies the disk encryption identifier.
   Values can be: **0** indicates that the disk is not encrypted and **1** indicates that the disk is encrypted.
   If omitted, whether the disk is encrypted is not limited. Changing this parameter will reset the node.
-* `match_label_metadata_cmkid` - (Optional, String) Specifies the cstomer master key ID of an encrypted
+* `match_label_metadata_cmkid` - (Optional, String) Specifies the customer master key ID of an encrypted
   disk. Changing this parameter will reset the node.
 * `match_label_count` - (Optional, String) Specifies the number of disks to be selected. If omitted,
   all disks of this type are selected. Changing this parameter will reset the node.
@@ -142,7 +150,7 @@ The `groups` block supports:
 * `cce_managed` - (Optional, Bool) Specifies the whether the storage space is for **kubernetes** and
   **runtime** components. Only one group can be set to true. The default value is **false**.
   Changing this parameter will reset the node.
-* `selector_names` - (Required, List) Specifies the list of names of seletors to match.
+* `selector_names` - (Required, List) Specifies the list of names of selectors to match.
   This parameter corresponds to name in `selectors`. A group can match multiple selectors,
   but a selector can match only one group. Changing this parameter will reset the node.
 * `virtual_spaces` - (Required, List) Specifies the detailed management of space configuration in a group.
@@ -161,6 +169,23 @@ The `groups` block supports:
   + `runtime_lv_type` - (Optional, String) Specifies the LVM write mode, values can be **linear** and **striped**.
     This parameter takes effect only in **runtime** configuration. Changing this parameter will reset the node.
 
+<a name="hostname_config"></a>
+The `hostname_config` block supports:
+
+* `type` - (Required, String, ForceNew) Specifies the hostname type of the kubernetes node.
+  The value can be:
+  + **privateIp**: The Kubernetes node is named after its IP address.
+  + **cceNodeName**: The Kubernetes node is named after the CCE node.
+  
+  If `hostname_config` not specified, the default value is **privateIp**.
+  Changing this parameter will create a new resource.
+
+  ~>For a node which is configured using cceNodeName, the name is the same as the Kubernetes node name and the ECS name.
+    The node name cannot be changed. If the ECS name is changed on the ECS console, the node name will retain unchanged
+    after ECS synchronization. To avoid a conflict between Kubernetes nodes, the system automatically adds a suffix to
+    each node name. The suffix is in the format of A hyphen (-) Five random characters. The value of the random
+    characters is a lowercase letter or a digit ranging from 0 to 9.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -174,6 +199,7 @@ In addition to all arguments above, the following attributes are exported:
 * `ecs_group_id` - The Ecs group ID.
 * `subnet_id` - The ID of the subnet to which the NIC belongs.
 * `charging_mode` - The charging mode of the CCE node. Valid values are *prePaid* and *postPaid*.
+* `enterprise_project_id` - The enterprise project ID of the CCE node.
 
 * `root_volume` - The configuration of the system disk.
   + `size` - The disk size in GB.

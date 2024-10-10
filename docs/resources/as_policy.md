@@ -1,5 +1,8 @@
 ---
 subcategory: "Auto Scaling"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_as_policy"
+description: ""
 ---
 
 # huaweicloud_as_policy
@@ -112,6 +115,11 @@ The following arguments are supported:
   + **SCHEDULED**: indicates that the scaling action is triggered as scheduled.
   + **RECURRENCE**: indicates that the scaling action is triggered periodically.
 
+* `action` - (Optional, String) Specifies the operation for the AS policy.
+  The default value is **resume**. The valid values are as follows:
+  + **resume**: Enables the AS policy.
+  + **pause**: Disables the AS policy.
+
 * `alarm_id` - (Optional, String) Specifies the alarm rule ID. This parameter is mandatory when `scaling_policy_type`
   is set to `ALARM`. You can create an alarm rule with
   [huaweicloud_ces_alarmrule](https://registry.terraform.io/providers/huaweicloud/huaweicloud/latest/docs/resources/ces_alarmrule).
@@ -153,7 +161,12 @@ The `scaling_policy_action` block supports:
 * `operation` - (Optional, String) Specifies the operation to be performed. The options include `ADD` (default), `REMOVE`,
   and `SET`.
 
-* `instance_number` - (Optional, Int) Specifies the number of instances to be operated. The default number is 1.
+* `instance_number` - (Optional, Int) Specifies the number of instances to be operated.
+
+* `instance_percentage` - (Optional, Int) Specifies the percentage of instances to be operated.
+
+-> At most one of `instance_number` and `instance_percentage` can be set. When neither `instance_number` nor
+  `instance_percentage` is specified, the number of operation instances is **1**.
 
 ## Attribute Reference
 
@@ -166,6 +179,6 @@ In addition to all arguments above, the following attributes are exported:
 
 AS policies can be imported by their `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_as_policy.test 9fcb65fe-fd79-4407-8fa0-07602044e1c3
 ```

@@ -1,5 +1,8 @@
 ---
 subcategory: "Web Application Firewall (WAF)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_waf_rule_anti_crawler"
+description: ""
 ---
 
 # huaweicloud_waf_rule_anti_crawler
@@ -59,7 +62,7 @@ The following arguments are supported:
   digits, hyphens (-), underscores (_), colons (:) and periods (.) are allowed.
 
 * `priority` - (Required, Int) Specifies the priority. A smaller value indicates a higher priority. If the value is
-  the same, the rule is created earlier and the priority is higher. Value ranges from **0** to **65535**.
+  the same, the rule is created earlier and the priority is higher. Value ranges from `0` to `65,535`.
 
 * `conditions` - (Required, List) Specifies the match condition list.
   The [conditions](#RuleAntiCrawler_conditions) structure is documented below.

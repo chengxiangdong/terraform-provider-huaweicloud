@@ -1,10 +1,13 @@
 ---
 subcategory: "Enterprise Router (ER)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_er_instances"
+description: ""
 ---
 
 # huaweicloud_er_instances
 
-Use this data source to filter ER instances within Huaweicloud.
+Use this data source to filter ER instances within HuaweiCloud.
 
 ## Example Usage
 

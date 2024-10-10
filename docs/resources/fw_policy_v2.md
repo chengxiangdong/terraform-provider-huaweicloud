@@ -1,5 +1,8 @@
 ---
 subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_fw_policy_v2"
+description: ""
 ---
 
 # huaweicloud\_fw\_policy_v2
@@ -83,6 +86,6 @@ This resource provides the following timeouts configuration options:
 
 Firewall Policies can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_fw_policy_v2.policy_1 07f422e6-c596-474b-8b94-fe2c12506ce0
 ```

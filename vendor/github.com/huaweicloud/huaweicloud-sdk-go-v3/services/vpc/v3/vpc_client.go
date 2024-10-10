@@ -1,22 +1,43 @@
 package v3
 
 import (
-	http_client "github.com/huaweicloud/huaweicloud-sdk-go-v3/core"
+	httpclient "github.com/huaweicloud/huaweicloud-sdk-go-v3/core"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/invoker"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/vpc/v3/model"
 )
 
 type VpcClient struct {
-	HcClient *http_client.HcHttpClient
+	HcClient *httpclient.HcHttpClient
 }
 
-func NewVpcClient(hcClient *http_client.HcHttpClient) *VpcClient {
+func NewVpcClient(hcClient *httpclient.HcHttpClient) *VpcClient {
 	return &VpcClient{HcClient: hcClient}
 }
 
-func VpcClientBuilder() *http_client.HcHttpClientBuilder {
-	builder := http_client.NewHcHttpClientBuilder()
+func VpcClientBuilder() *httpclient.HcHttpClientBuilder {
+	builder := httpclient.NewHcHttpClientBuilder()
 	return builder
+}
+
+// AddSecurityGroups 端口插入安全组
+//
+// 端口插入安全组
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) AddSecurityGroups(request *model.AddSecurityGroupsRequest) (*model.AddSecurityGroupsResponse, error) {
+	requestDef := GenReqDefForAddSecurityGroups()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.AddSecurityGroupsResponse), nil
+	}
+}
+
+// AddSecurityGroupsInvoker 端口插入安全组
+func (c *VpcClient) AddSecurityGroupsInvoker(request *model.AddSecurityGroupsRequest) *AddSecurityGroupsInvoker {
+	requestDef := GenReqDefForAddSecurityGroups()
+	return &AddSecurityGroupsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
 // AddSourcesToTrafficMirrorSession 流量镜像会话添加镜像源
@@ -479,6 +500,27 @@ func (c *VpcClient) MigrateSubNetworkInterface(request *model.MigrateSubNetworkI
 func (c *VpcClient) MigrateSubNetworkInterfaceInvoker(request *model.MigrateSubNetworkInterfaceRequest) *MigrateSubNetworkInterfaceInvoker {
 	requestDef := GenReqDefForMigrateSubNetworkInterface()
 	return &MigrateSubNetworkInterfaceInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// RemoveSecurityGroups 端口移除安全组
+//
+// 端口移除安全组
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) RemoveSecurityGroups(request *model.RemoveSecurityGroupsRequest) (*model.RemoveSecurityGroupsResponse, error) {
+	requestDef := GenReqDefForRemoveSecurityGroups()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.RemoveSecurityGroupsResponse), nil
+	}
+}
+
+// RemoveSecurityGroupsInvoker 端口移除安全组
+func (c *VpcClient) RemoveSecurityGroupsInvoker(request *model.RemoveSecurityGroupsRequest) *RemoveSecurityGroupsInvoker {
+	requestDef := GenReqDefForRemoveSecurityGroups()
+	return &RemoveSecurityGroupsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
 // RemoveSourcesFromTrafficMirrorSession 流量镜像会话移除镜像源
@@ -962,6 +1004,279 @@ func (c *VpcClient) UpdateFirewallRules(request *model.UpdateFirewallRulesReques
 func (c *VpcClient) UpdateFirewallRulesInvoker(request *model.UpdateFirewallRulesRequest) *UpdateFirewallRulesInvoker {
 	requestDef := GenReqDefForUpdateFirewallRules()
 	return &UpdateFirewallRulesInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// AddClouddcnSubnetsTags 添加Clouddcn子网标签
+//
+// 添加Clouddcn子网的标签
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) AddClouddcnSubnetsTags(request *model.AddClouddcnSubnetsTagsRequest) (*model.AddClouddcnSubnetsTagsResponse, error) {
+	requestDef := GenReqDefForAddClouddcnSubnetsTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.AddClouddcnSubnetsTagsResponse), nil
+	}
+}
+
+// AddClouddcnSubnetsTagsInvoker 添加Clouddcn子网标签
+func (c *VpcClient) AddClouddcnSubnetsTagsInvoker(request *model.AddClouddcnSubnetsTagsRequest) *AddClouddcnSubnetsTagsInvoker {
+	requestDef := GenReqDefForAddClouddcnSubnetsTags()
+	return &AddClouddcnSubnetsTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// BatchCreateClouddcnSubnetsTags 批量添加Clouddcn子网标签
+//
+// 批量添加Clouddcn子网的标签
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) BatchCreateClouddcnSubnetsTags(request *model.BatchCreateClouddcnSubnetsTagsRequest) (*model.BatchCreateClouddcnSubnetsTagsResponse, error) {
+	requestDef := GenReqDefForBatchCreateClouddcnSubnetsTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.BatchCreateClouddcnSubnetsTagsResponse), nil
+	}
+}
+
+// BatchCreateClouddcnSubnetsTagsInvoker 批量添加Clouddcn子网标签
+func (c *VpcClient) BatchCreateClouddcnSubnetsTagsInvoker(request *model.BatchCreateClouddcnSubnetsTagsRequest) *BatchCreateClouddcnSubnetsTagsInvoker {
+	requestDef := GenReqDefForBatchCreateClouddcnSubnetsTags()
+	return &BatchCreateClouddcnSubnetsTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// BatchDeleteClouddcnSubnetsTags 批量删除Clouddcn子网标签
+//
+// 批量删除Clouddcn子网的标签
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) BatchDeleteClouddcnSubnetsTags(request *model.BatchDeleteClouddcnSubnetsTagsRequest) (*model.BatchDeleteClouddcnSubnetsTagsResponse, error) {
+	requestDef := GenReqDefForBatchDeleteClouddcnSubnetsTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.BatchDeleteClouddcnSubnetsTagsResponse), nil
+	}
+}
+
+// BatchDeleteClouddcnSubnetsTagsInvoker 批量删除Clouddcn子网标签
+func (c *VpcClient) BatchDeleteClouddcnSubnetsTagsInvoker(request *model.BatchDeleteClouddcnSubnetsTagsRequest) *BatchDeleteClouddcnSubnetsTagsInvoker {
+	requestDef := GenReqDefForBatchDeleteClouddcnSubnetsTags()
+	return &BatchDeleteClouddcnSubnetsTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// CreateClouddcnSubnet 创建clouddcn子网
+//
+// 创建clouddcn子网。
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) CreateClouddcnSubnet(request *model.CreateClouddcnSubnetRequest) (*model.CreateClouddcnSubnetResponse, error) {
+	requestDef := GenReqDefForCreateClouddcnSubnet()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.CreateClouddcnSubnetResponse), nil
+	}
+}
+
+// CreateClouddcnSubnetInvoker 创建clouddcn子网
+func (c *VpcClient) CreateClouddcnSubnetInvoker(request *model.CreateClouddcnSubnetRequest) *CreateClouddcnSubnetInvoker {
+	requestDef := GenReqDefForCreateClouddcnSubnet()
+	return &CreateClouddcnSubnetInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// DeleteClouddcnSubnet 删除clouddcn子网
+//
+// 删除clouddcn子网
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) DeleteClouddcnSubnet(request *model.DeleteClouddcnSubnetRequest) (*model.DeleteClouddcnSubnetResponse, error) {
+	requestDef := GenReqDefForDeleteClouddcnSubnet()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.DeleteClouddcnSubnetResponse), nil
+	}
+}
+
+// DeleteClouddcnSubnetInvoker 删除clouddcn子网
+func (c *VpcClient) DeleteClouddcnSubnetInvoker(request *model.DeleteClouddcnSubnetRequest) *DeleteClouddcnSubnetInvoker {
+	requestDef := GenReqDefForDeleteClouddcnSubnet()
+	return &DeleteClouddcnSubnetInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// DeleteClouddcnSubnetsTag 删除Clouddcn子网标签
+//
+// 删除Clouddcn子网的标签
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) DeleteClouddcnSubnetsTag(request *model.DeleteClouddcnSubnetsTagRequest) (*model.DeleteClouddcnSubnetsTagResponse, error) {
+	requestDef := GenReqDefForDeleteClouddcnSubnetsTag()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.DeleteClouddcnSubnetsTagResponse), nil
+	}
+}
+
+// DeleteClouddcnSubnetsTagInvoker 删除Clouddcn子网标签
+func (c *VpcClient) DeleteClouddcnSubnetsTagInvoker(request *model.DeleteClouddcnSubnetsTagRequest) *DeleteClouddcnSubnetsTagInvoker {
+	requestDef := GenReqDefForDeleteClouddcnSubnetsTag()
+	return &DeleteClouddcnSubnetsTagInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// ListClouddcnSubnets 查询clouddcn子网列表
+//
+// 查询clouddcn子网列表
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) ListClouddcnSubnets(request *model.ListClouddcnSubnetsRequest) (*model.ListClouddcnSubnetsResponse, error) {
+	requestDef := GenReqDefForListClouddcnSubnets()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.ListClouddcnSubnetsResponse), nil
+	}
+}
+
+// ListClouddcnSubnetsInvoker 查询clouddcn子网列表
+func (c *VpcClient) ListClouddcnSubnetsInvoker(request *model.ListClouddcnSubnetsRequest) *ListClouddcnSubnetsInvoker {
+	requestDef := GenReqDefForListClouddcnSubnets()
+	return &ListClouddcnSubnetsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// ListClouddcnSubnetsCountFilterTags 查询资源实例列表数目
+//
+// 查询资源实例列表数目
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) ListClouddcnSubnetsCountFilterTags(request *model.ListClouddcnSubnetsCountFilterTagsRequest) (*model.ListClouddcnSubnetsCountFilterTagsResponse, error) {
+	requestDef := GenReqDefForListClouddcnSubnetsCountFilterTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.ListClouddcnSubnetsCountFilterTagsResponse), nil
+	}
+}
+
+// ListClouddcnSubnetsCountFilterTagsInvoker 查询资源实例列表数目
+func (c *VpcClient) ListClouddcnSubnetsCountFilterTagsInvoker(request *model.ListClouddcnSubnetsCountFilterTagsRequest) *ListClouddcnSubnetsCountFilterTagsInvoker {
+	requestDef := GenReqDefForListClouddcnSubnetsCountFilterTags()
+	return &ListClouddcnSubnetsCountFilterTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// ListClouddcnSubnetsFilterTags 查询资源实例列表
+//
+// 查询资源实例列表
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) ListClouddcnSubnetsFilterTags(request *model.ListClouddcnSubnetsFilterTagsRequest) (*model.ListClouddcnSubnetsFilterTagsResponse, error) {
+	requestDef := GenReqDefForListClouddcnSubnetsFilterTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.ListClouddcnSubnetsFilterTagsResponse), nil
+	}
+}
+
+// ListClouddcnSubnetsFilterTagsInvoker 查询资源实例列表
+func (c *VpcClient) ListClouddcnSubnetsFilterTagsInvoker(request *model.ListClouddcnSubnetsFilterTagsRequest) *ListClouddcnSubnetsFilterTagsInvoker {
+	requestDef := GenReqDefForListClouddcnSubnetsFilterTags()
+	return &ListClouddcnSubnetsFilterTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// ListClouddcnSubnetsTags 查询Clouddcn子网项目标签
+//
+// 查询Clouddcn子网的项目标签
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) ListClouddcnSubnetsTags(request *model.ListClouddcnSubnetsTagsRequest) (*model.ListClouddcnSubnetsTagsResponse, error) {
+	requestDef := GenReqDefForListClouddcnSubnetsTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.ListClouddcnSubnetsTagsResponse), nil
+	}
+}
+
+// ListClouddcnSubnetsTagsInvoker 查询Clouddcn子网项目标签
+func (c *VpcClient) ListClouddcnSubnetsTagsInvoker(request *model.ListClouddcnSubnetsTagsRequest) *ListClouddcnSubnetsTagsInvoker {
+	requestDef := GenReqDefForListClouddcnSubnetsTags()
+	return &ListClouddcnSubnetsTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// ShowClouddcnSubnet 查询clouddcn子网
+//
+// 查询clouddcn子网详情。
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) ShowClouddcnSubnet(request *model.ShowClouddcnSubnetRequest) (*model.ShowClouddcnSubnetResponse, error) {
+	requestDef := GenReqDefForShowClouddcnSubnet()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.ShowClouddcnSubnetResponse), nil
+	}
+}
+
+// ShowClouddcnSubnetInvoker 查询clouddcn子网
+func (c *VpcClient) ShowClouddcnSubnetInvoker(request *model.ShowClouddcnSubnetRequest) *ShowClouddcnSubnetInvoker {
+	requestDef := GenReqDefForShowClouddcnSubnet()
+	return &ShowClouddcnSubnetInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// ShowClouddcnSubnetsTags 查询Clouddcn子网标签
+//
+// 查询Clouddcn子网的标签
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) ShowClouddcnSubnetsTags(request *model.ShowClouddcnSubnetsTagsRequest) (*model.ShowClouddcnSubnetsTagsResponse, error) {
+	requestDef := GenReqDefForShowClouddcnSubnetsTags()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.ShowClouddcnSubnetsTagsResponse), nil
+	}
+}
+
+// ShowClouddcnSubnetsTagsInvoker 查询Clouddcn子网标签
+func (c *VpcClient) ShowClouddcnSubnetsTagsInvoker(request *model.ShowClouddcnSubnetsTagsRequest) *ShowClouddcnSubnetsTagsInvoker {
+	requestDef := GenReqDefForShowClouddcnSubnetsTags()
+	return &ShowClouddcnSubnetsTagsInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
+}
+
+// UpdateClouddcnSubnet 更新clouddcn子网
+//
+// 更新clouddcn子网。
+//
+// Please refer to HUAWEI cloud API Explorer for details.
+func (c *VpcClient) UpdateClouddcnSubnet(request *model.UpdateClouddcnSubnetRequest) (*model.UpdateClouddcnSubnetResponse, error) {
+	requestDef := GenReqDefForUpdateClouddcnSubnet()
+
+	if resp, err := c.HcClient.Sync(request, requestDef); err != nil {
+		return nil, err
+	} else {
+		return resp.(*model.UpdateClouddcnSubnetResponse), nil
+	}
+}
+
+// UpdateClouddcnSubnetInvoker 更新clouddcn子网
+func (c *VpcClient) UpdateClouddcnSubnetInvoker(request *model.UpdateClouddcnSubnetRequest) *UpdateClouddcnSubnetInvoker {
+	requestDef := GenReqDefForUpdateClouddcnSubnet()
+	return &UpdateClouddcnSubnetInvoker{invoker.NewBaseInvoker(c.HcClient, request, requestDef)}
 }
 
 // CreateAddressGroup 创建地址组

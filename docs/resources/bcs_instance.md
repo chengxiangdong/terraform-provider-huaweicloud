@@ -1,5 +1,8 @@
 ---
 subcategory: "Blockchain Service (BCS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_bcs_instance"
+description: ""
 ---
 
 # huaweicloud_bcs_instance
@@ -156,8 +159,8 @@ The following arguments are supported:
   BCS service needs to exclusively occupy the CCE cluster. Please make sure that the CCE cluster is not occupied before
   deploying the BCS service. Changing this will create a new instance.
 
-* `enterprise_project_id` - (Required, String, ForceNew) Specifies the ID of the enterprise project that the BCS
-  instance belong to. Changing this will create a new instance.
+* `enterprise_project_id` - (Required, String) Specifies the ID of the enterprise project that the BCS
+  instance belong to.
 
 * `password` - (Required, String, ForceNew) Specifies the Resource access and blockchain management password. The
   password consists of 8 to 12 characters and must consist at least three of following: uppercase letters, lowercase
@@ -195,7 +198,7 @@ The following arguments are supported:
   `delete_obs` is used to delete the OBS created by the BCS instance of the Kafka consensus strategy. Default is false.
 
 * `eip_enable` - (Optional, Bool, ForceNew) Specifies whether to use the EIP of the CCE to bind the BCS instance.
-  Changing this will create a new instance. Defalut is true.
+  Changing this will create a new instance. Default is true.
   + `true` means an EIP bound to the cluster will be used as the blockchain network access address. If the cluster is
       not bound with any EIP, bind an EIP to the cluster first. Please make sure that the cluster is bound to EIP.
   + `false` means a private address of the cluster will be used ad the blockchain network access address to ensure
@@ -214,7 +217,7 @@ The following arguments are supported:
 * `sfs_turbo` - (Optional, List, ForceNew) Specifies the information about the SFS Turbo file system. Changing this will
   create a new instance. The sfs_turbo object structure is documented below.
 
-* `security_mechanism` - (Optional, String, ForceNew) Specifies the secutity mechanism used by the BCS instance. Valid
+* `security_mechanism` - (Optional, String, ForceNew) Specifies the security mechanism used by the BCS instance. Valid
   values are `ECDSA` and `SM2`(Chinese cryptographic algorithms, The basic and professional don't support this
   algorithm). Default is `ECDSA`. Changing this will create a new instance.
 
@@ -242,10 +245,10 @@ The `channels` block supports:
 
 The `couchdb` block supports:
 
-* `user_name` - (Required, String, ForceNew) Specifies the user name of the couch datebase. Changing this creates a new
+* `user_name` - (Required, String, ForceNew) Specifies the user name of the couch database. Changing this creates a new
   instance.
 
-* `password` - (Required, String, ForceNew) Specifies the password of the couch datebase. The password consists of 8 to
+* `password` - (Required, String, ForceNew) Specifies the password of the couch database. The password consists of 8 to
   26 characters and must consist at least three of following: uppercase letters, lowercase letters, digits, special
   characters(!@$%^-_=+[{}]:,./?). Changing this creates a new instance.
 
@@ -265,12 +268,12 @@ The `sfs_turbo` block supports:
 The `block_info` block supports:
 
 * `transaction_quantity` - (Optional, Int, ForceNew) Specifies the number of transactions included in the block. The
-  defalt value is 500. Changing this creates a new instance.
+  default value is 500. Changing this creates a new instance.
 
 * `block_size` - (Optional, Int, ForceNew) Specifies the volume of the block, the unit is MB. The default value is 2.
   Changing this creates a new instance.
 
-* `generation_interval` - (Optional, Int, ForceNew) Specifies the block generation time, the unit is second. The defalt
+* `generation_interval` - (Optional, Int, ForceNew) Specifies the block generation time, the unit is second. The default
   value is 2. Changing this creates a new instance.
 
 The `kafka` block supports:
@@ -306,7 +309,7 @@ In addition to all arguments above, the following attributes are exported:
 * `rollback_support` - Whether rollback is supported when the BCS service fails to br upgraded.
 * `old_service_version` - The version of an old BCS service.
 * `agent_portal_address` - The agent addresses and port numbers on the user data plane of the BCS service.
-* `peer_orgs/pvc_name` - The name of the PersistenetVolumeClaim (PVC) used by the peer.
+* `peer_orgs/pvc_name` - The name of the PersistentVolumeClaim (PVC) used by the peer.
 * `peer_orgs/status` - The peer status. The value contains `IsCreating`, `IsUpgrading`, `Adding/IsScaling`,
   `Isdeleting`, `Normal`, `AbNormal` and `Unknown`.
 * `peer_orgs/status_detail` - The peer status in the format like `1/1`. The denominator is the total number of peers in
@@ -322,3 +325,31 @@ This resource provides the following timeouts configuration options:
 
 * `create` - Default is 90 minutes.
 * `delete` - Default is 30 minutes.
+
+## Import
+
+The BCS instance can be imported using `id`, e.g.
+
+```bash
+$ terraform import huaweicloud_bcs_instance.test <id>
+```
+
+Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
+API response, security or some other reason.
+The missing attributes include: `delete_storage`, `eip_enable`, `enterprise_project_id`, `fabric_version`,
+`orderer_node_num`, `org_disk_size`, `password` and `volume_type`.
+It is generally recommended running `terraform plan` after importing a instance.
+You can then decide if changes should be applied to the instance, or the resource definition should be updated to
+align with the instance. Also you can ignore changes as below.
+
+```hcl
+resource "huaweicloud_bcs_instance" "test" {
+    ...
+
+  lifecycle {
+    ignore_changes = [
+      delete_storage, eip_enable, enterprise_project_id, fabric_version, orderer_node_num, org_disk_size, password, volume_type,
+    ]
+  }
+}
+```

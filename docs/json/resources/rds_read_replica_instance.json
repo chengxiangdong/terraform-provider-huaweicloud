@@ -27,8 +27,7 @@
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "fixed_ip": {
                 "type": "string",
@@ -41,6 +40,16 @@
               },
               "id": {
                 "type": "string",
+                "computed": true
+              },
+              "maintain_begin": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "maintain_end": {
+                "type": "string",
+                "optional": true,
                 "computed": true
               },
               "name": {
@@ -87,7 +96,8 @@
               },
               "ssl_enable": {
                 "type": "bool",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "status": {
                 "type": "string",

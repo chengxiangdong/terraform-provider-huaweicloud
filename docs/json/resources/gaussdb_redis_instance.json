@@ -24,8 +24,7 @@
               },
               "enterprise_project_id": {
                 "type": "string",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "flavor": {
                 "type": "string",
@@ -49,7 +48,9 @@
               },
               "mode": {
                 "type": "string",
-                "computed": true
+                "optional": true,
+                "forcenew": true,
+                "default": "Cluster"
               },
               "name": {
                 "type": "string",
@@ -187,9 +188,9 @@
           },
           "product": {
             "short": "GaussDBforNoSQL",
-            "name": "GaussDB NoSQL",
+            "name": "GeminiDB",
             "catalog": "Databases",
-            "name_cn": "云数据库 GaussDB NoSQL",
+            "name_cn": "云数据库 GeminiDB",
             "catalog_cn": "数据库"
           }
         }

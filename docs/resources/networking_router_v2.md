@@ -1,5 +1,8 @@
 ---
 subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_networking_router_v2"
+description: ""
 ---
 
 # huaweicloud_networking_router_v2
@@ -72,6 +75,6 @@ This resource provides the following timeouts configuration options:
 
 Routers can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_networking_router_v2.router_1 014395cd-89fc-4c9b-96b7-13d1ee79dad2
 ```

@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Cloud (VPC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_networking_secgroup_rule"
+description: ""
 ---
 
 # huaweicloud_networking_secgroup_rule
@@ -127,11 +130,12 @@ The following arguments are supported:
   This parameter and `ports` are alternative.
 
 * `ports` - (Optional, String, ForceNew) Specifies the allowed port value range, which supports single port (80),
-  continuous port (1-30) and discontinous port (22, 3389, 80) The valid port values is range form `1` to `65,535`.
+  continuous port (1-30) and discontinuous port (22, 3389, 80) The valid port values is range form `1` to `65,535`.
   Changing this creates a new security group rule.
 
 * `remote_ip_prefix` - (Optional, String, ForceNew) Specifies the remote CIDR, the value needs to be a valid CIDR (i.e.
-  192.168.0.0/16). Changing this creates a new security group rule.
+  192.168.0.0/16). If not specified, the empty value means all IP addresses, which is same as the value `0.0.0.0/0`.
+  Changing this creates a new security group rule.
 
 * `remote_group_id` - (Optional, String, ForceNew) Specifies the remote group ID. Changing this creates a new security
   group rule.
@@ -145,7 +149,7 @@ The following arguments are supported:
   Changing this creates a new security group rule.
 
 * `priority` - (Optional, Int, ForceNew) Specifies the priority number.
-  The valid value is range from **1** to **100**. The default value is **1**.
+  The valid value is range from `1` to `100`. The default value is `1`.
   This parameter is not used with `port_range_min` and `port_range_max`.
   Changing this creates a new security group rule.
 
@@ -165,6 +169,6 @@ This resource provides the following timeouts configuration options:
 
 Security Group Rules can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_networking_secgroup_rule.secgroup_rule_1 aeb68ee3-6e9d-4256-955c-9584a6212745
 ```

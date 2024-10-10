@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Cloud (VPC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpc"
+description: ""
 ---
 
 # huaweicloud_vpc
@@ -43,3 +46,5 @@ In addition to all arguments above, the following attributes are exported:
   no more than 255 characters and cannot contain angle brackets (< or >).
 
 * `tags` - The key/value pairs to associate with the VPC.
+
+* `secondary_cidrs` - The secondary CIDR blocks of the VPC.

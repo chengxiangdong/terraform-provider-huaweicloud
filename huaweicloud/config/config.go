@@ -2,10 +2,12 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,16 +22,26 @@ import (
 	"github.com/chnsz/golangsdk/openstack/obs"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/mutexkv"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 const (
 	providerUserAgent string = "terraform-provider-iac"
+	InternationalSite string = "International"
 )
 
-// MutexKV is a global lock on all resources, it can lock the specified shared string (such as resource ID, resource
-// Name, port, etc.) to prevent other resources from using it, for concurrency control.
-// Usage: MutexKV.Lock({resource ID}) and MutexKV.Unlock({resource ID})
-var MutexKV = mutexkv.NewMutexKV()
+var (
+	// MutexKV is a global lock on all resources, it can lock the specified shared string (such as resource ID, resource
+	// Name, port, etc.) to prevent other resources from using it, for concurrency control.
+	// Usage: MutexKV.Lock({resource ID}) and MutexKV.Unlock({resource ID})
+	MutexKV = mutexkv.NewMutexKV()
+	// If an account sends a CBC request and it crosses websites, the CBC service will return a 403 error to indicate
+	// attention.
+	crossWebsiteErrs = []string{
+		"CBC.0150",
+		"CBC.0156",
+	}
+)
 
 type Config struct {
 	AccessKey           string
@@ -48,6 +60,7 @@ type Config struct {
 	SecurityToken       string
 	AssumeRoleAgency    string
 	AssumeRoleDomain    string
+	AssumeRoleDomainID  string
 	Cloud               string
 	MaxRetries          int
 	TerraformVersion    string
@@ -62,6 +75,9 @@ type Config struct {
 	HwClient     *golangsdk.ProviderClient
 	DomainClient *golangsdk.ProviderClient
 
+	// websiteType is the site type of HuaweiCloud.
+	// The value can be Chinese(default) and International.
+	websiteType string
 	// the custom endpoints used to override the default endpoint URL
 	Endpoints map[string]string
 
@@ -87,6 +103,8 @@ type Config struct {
 
 	// Metadata is used for extend
 	Metadata any
+
+	EnableForceNew bool
 }
 
 func (c *Config) LoadAndValidate() error {
@@ -105,7 +123,11 @@ func (c *Config) LoadAndValidate() error {
 
 	// Assume role
 	if c.AssumeRoleAgency != "" {
-		err = buildClientByAgency(c)
+		if c.AssumeRoleDomainID != "" {
+			err = buildClientByAgencyV5(c)
+		} else {
+			err = buildClientByAgency(c)
+		}
 		if err != nil {
 			return err
 		}
@@ -139,6 +161,68 @@ func (c *Config) LoadAndValidate() error {
 	}
 
 	return nil
+}
+
+// SetWebsiteType will update WebsiteType field by a probe API.
+// we will get status code 403 and the following response body in International website with https://bss.myhuaweicloud.com
+//
+//	{
+//	  "error_code": "CBC.0150",
+//	  "error_msg": "Access denied. The customer does not belong to the website you are now at."
+//	}
+//
+// In addition to the error code 'CBC.0150', some regions also return error code 'CBC.0156'.
+// we can call the probe API and parse the response body to decide whether the account belongs to International website or not.
+// we select https://support.huaweicloud.com/intl/zh-cn/api-oce/zh-cn_topic_0000001256679455.html as the probe API.
+func (c *Config) SetWebsiteType() error {
+	bssClient, err := c.NewServiceClient("bss", c.Region)
+	if err != nil {
+		return fmt.Errorf("error creating BSS client: %s", err)
+	}
+
+	probeUrlPath := bssClient.Endpoint + "v2/products/service-types?limit=1"
+	probeRequestOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	_, err = bssClient.Request("GET", probeUrlPath, &probeRequestOpt)
+	if err != nil {
+		if respErr, ok := err.(golangsdk.ErrDefault403); ok {
+			resp := struct {
+				ErrorCode string `json:"error_code"`
+				ErrorMsg  string `json:"error_msg"`
+			}{}
+
+			if decodeErr := json.Unmarshal(respErr.Body, &resp); decodeErr != nil {
+				log.Printf("[WARN] failed to unmarshal the response body: %s", decodeErr)
+			}
+
+			if utils.IsStrContainsSliceElement(resp.ErrorCode, crossWebsiteErrs, false, true) {
+				log.Printf("[DEBUG] the current account belongs to %s website", InternationalSite)
+				c.websiteType = InternationalSite
+				return nil
+			}
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (c *Config) GetWebsiteType() string {
+	return c.websiteType
+}
+
+func (c *Config) SetServiceEndpoint(service, endpoint string) {
+	// only update the customizing service endpoint when it isn't specified
+	if _, ok := c.Endpoints[service]; ok {
+		return
+	}
+
+	c.Endpoints[service] = endpoint
+	multiKeys := GetServiceDerivedCatalogKeys(service)
+	for _, k := range multiKeys {
+		c.Endpoints[k] = endpoint
+	}
 }
 
 func retryBackoffFunc(ctx context.Context, respErr *golangsdk.ErrUnexpectedResponseCode, e error, retries uint) error {
@@ -240,6 +324,10 @@ func (c *Config) NewServiceClient(srv, region string) (*golangsdk.ServiceClient,
 	serviceCatalog, ok := allServiceCatalog[srv]
 	if !ok {
 		return nil, fmt.Errorf("service type %s is invalid or not supportted", srv)
+	}
+	// update the service catalog name if necessary
+	if name := getServiceCatalogNameByRegion(srv, region); name != "" {
+		serviceCatalog.Name = name
 	}
 
 	if !c.SecurityKeyExpiresAt.IsZero() {
@@ -474,26 +562,52 @@ func (c *Config) GetRegion(d *schema.ResourceData) string {
 // GetEnterpriseProjectID returns the enterprise_project_id that was specified in the resource.
 // If it was not set, the provider-level value is checked. The provider-level value can
 // either be set by the `enterprise_project_id` argument or by HW_ENTERPRISE_PROJECT_ID.
-func (c *Config) GetEnterpriseProjectID(d *schema.ResourceData) string {
+// If the provider-level value
+func (c *Config) GetEnterpriseProjectID(d *schema.ResourceData, defaultEps ...string) string {
 	if v, ok := d.GetOk("enterprise_project_id"); ok {
 		return v.(string)
 	}
 
-	return c.EnterpriseProjectID
-}
-
-// DataGetEnterpriseProjectID returns the enterprise_project_id that was specified in the data source.
-// If it was not set, the provider-level value is checked. The provider-level value can
-// either be set by the `enterprise_project_id` argument or by HW_ENTERPRISE_PROJECT_ID.
-// If the provider-level value is also not set, `all_granted_eps` will be returned.
-func (c *Config) DataGetEnterpriseProjectID(d *schema.ResourceData) string {
-	if v, ok := d.GetOk("enterprise_project_id"); ok {
-		return v.(string)
-	}
 	if c.EnterpriseProjectID != "" {
 		return c.EnterpriseProjectID
 	}
-	return "all_granted_eps"
+	if len(defaultEps) > 0 {
+		return defaultEps[0]
+	}
+	return ""
+}
+
+// CheckValueInterchange checks if the new value of key1 is equal to the old value of key2,
+// and the new value of key2 is equal to the old value of key1.
+func CheckValueInterchange(d *schema.ResourceDiff, key1, key2 string) (isKey1NewEqualKey2Old bool, isKey2NewEqualKey1Old bool) {
+	oldKey1Value, newKey1Value := d.GetChange(key1)
+	oldKey2Value, newKey2Value := d.GetChange(key2)
+
+	// Check if any of the values are empty strings, in which case we return false for both checks.
+	if oldKey1Value.(string) == "" || newKey1Value.(string) == "" ||
+		oldKey2Value.(string) == "" || newKey2Value.(string) == "" {
+		return false, false
+	}
+
+	isKey1NewEqualKey2Old = newKey1Value.(string) == oldKey2Value.(string)
+	isKey2NewEqualKey1Old = newKey2Value.(string) == oldKey1Value.(string)
+
+	return isKey1NewEqualKey2Old, isKey2NewEqualKey1Old
+}
+
+// GetForceNew returns the enable_force_new that was specified in the resource.
+// If it was not set, the provider-level value is checked. The provider-level value can
+// either be set by the `enable_force_new` argument or by HW_ENABLE_FORCE_NEW.
+func (c *Config) GetForceNew(d *schema.ResourceDiff) bool {
+	if v, ok := d.GetOk("enable_force_new"); ok {
+		res, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			return false
+		}
+		return res
+	}
+
+	return c.EnableForceNew
 }
 
 // ********** client for Global Service **********
@@ -507,6 +621,10 @@ func (c *Config) IdentityV3Client(region string) (*golangsdk.ServiceClient, erro
 
 func (c *Config) IAMNoVersionClient(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("iam_no_version", region)
+}
+
+func (c *Config) IdentityV3ExtClient(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("identity_ext", region)
 }
 
 func (c *Config) CdnV1Client(region string) (*golangsdk.ServiceClient, error) {
@@ -612,6 +730,10 @@ func (c *Config) BlockStorageV21Client(region string) (*golangsdk.ServiceClient,
 	return c.NewServiceClient("evsv21", region)
 }
 
+func (c *Config) BlockStorageV5Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("evsv5", region)
+}
+
 func (c *Config) BlockStorageV2Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("evs", region)
 }
@@ -697,6 +819,10 @@ func (c *Config) DnsWithRegionClient(region string) (*golangsdk.ServiceClient, e
 	return c.NewServiceClient("dns_region", region)
 }
 
+func (c *Config) DNSV21Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("dnsv21", region)
+}
+
 func (c *Config) ErV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("er", region)
 }
@@ -737,6 +863,10 @@ func (c *Config) RmsV1Client(region string) (*golangsdk.ServiceClient, error) {
 // ********** client for Security **********
 func (c *Config) AntiDDosV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("anti-ddos", region)
+}
+
+func (c *Config) AntiDDosV2Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("anti-ddosv2", region)
 }
 
 func (c *Config) AadV1Client(region string) (*golangsdk.ServiceClient, error) {
@@ -787,6 +917,10 @@ func (c *Config) DliV1Client(region string) (*golangsdk.ServiceClient, error) {
 
 func (c *Config) DliV2Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("dliv2", region)
+}
+
+func (c *Config) DliV3Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("dliv3", region)
 }
 
 func (c *Config) DisV2Client(region string) (*golangsdk.ServiceClient, error) {
@@ -887,6 +1021,10 @@ func (c *Config) RdsV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("rds", region)
 }
 
+func (c *Config) RdsV31Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("rdsv31", region)
+}
+
 func (c *Config) DdsV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("dds", region)
 }
@@ -909,6 +1047,10 @@ func (c *Config) GaussdbV3Client(region string) (*golangsdk.ServiceClient, error
 
 func (c *Config) DrsV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("drs", region)
+}
+
+func (c *Config) DrsV5Client(region string) (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("drsv5", region)
 }
 
 // ********** client for edge / IoT **********

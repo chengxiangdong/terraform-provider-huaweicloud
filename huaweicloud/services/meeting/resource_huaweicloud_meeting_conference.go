@@ -190,6 +190,20 @@ func subconferenceSchemaResource() *schema.Resource {
 	}
 }
 
+// @API Meeting GET /v1/mmc/management/conferences/history/confDetail
+// @API Meeting GET /v1/mmc/management/conferences/history
+// @API Meeting DELETE /v1/mmc/management/conferences
+// @API Meeting GET /v1/mmc/management/conferences
+// @API Meeting POST /v1/mmc/management/conferences
+// @API Meeting PUT /v1/mmc/management/conferences
+// @API Meeting PUT /v1/mmc/management/conference/duration
+// @API Meeting GET /v1/mmc/management/conferences/confDetail
+// @API Meeting POST /v1/usg/acs/token/validate
+// @API Meeting POST /v1/usg/acs/auth/account
+// @API Meeting POST /v2/usg/acs/auth/appauth
+// @API Meeting POST /v1/mmc/management/cycleconferences
+// @API Meeting PUT /v1/mmc/management/cycleconferences
+// @API Meeting DELETE /v1/mmc/management/cycleconferences
 func ResourceConference() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceConferenceCreate,
@@ -243,18 +257,16 @@ func ResourceConference() *schema.Resource {
 
 			// Arguments
 			"topic": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringLenBetween(1, 128),
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"meeting_room_id": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 			"duration": {
-				Type:         schema.TypeInt,
-				Required:     true,
-				ValidateFunc: validation.IntBetween(15, 1440),
+				Type:     schema.TypeInt,
+				Required: true,
 			},
 			"start_time": {
 				Type:     schema.TypeString,
@@ -357,10 +369,9 @@ func ResourceConference() *schema.Resource {
 							Computed: true,
 						},
 						"name": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Computed:     true,
-							ValidateFunc: validation.StringLenBetween(0, 96),
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
 						},
 						"role": {
 							Type:     schema.TypeInt,
@@ -429,9 +440,8 @@ func ResourceConference() *schema.Resource {
 							}, false),
 						},
 						"pre_remind": {
-							Type:         schema.TypeInt,
-							Required:     true,
-							ValidateFunc: validation.IntBetween(0, 30),
+							Type:     schema.TypeInt,
+							Required: true,
 						},
 						"start_date": {
 							Type:     schema.TypeString,
@@ -515,10 +525,9 @@ func ResourceConference() *schema.Resource {
 							Sensitive: true,
 						},
 						"prolong_time": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							Computed:     true,
-							ValidateFunc: validation.IntBetween(0, 60),
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
 						},
 						"waiting_room_enabled": {
 							Type:     schema.TypeBool,

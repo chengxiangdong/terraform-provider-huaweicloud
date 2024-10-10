@@ -13,8 +13,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -23,6 +21,13 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CC POST /v3/{domain_id}/ccaas/bandwidth-packages
+// @API CC DELETE /v3/{domain_id}/ccaas/bandwidth-packages/{id}
+// @API CC GET /v3/{domain_id}/ccaas/bandwidth-packages/{id}
+// @API CC PUT /v3/{domain_id}/ccaas/bandwidth-packages/{id}
+// @API CC POST /v3/{domain_id}/ccaas/bandwidth-packages/{id}/associate
+// @API CC POST /v3/{domain_id}/ccaas/bandwidth-packages/{id}/disassociate
+// @API CC POST /v3/{domain_id}/ccaas/bandwidth-package/{id}/tags/action
 func ResourceBandwidthPackage() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceBandwidthPackageCreate,
@@ -41,10 +46,9 @@ func ResourceBandwidthPackage() *schema.Resource {
 				ForceNew: true,
 			},
 			"name": {
-				Type:         schema.TypeString,
-				Required:     true,
-				Description:  `The bandwidth package name.`,
-				ValidateFunc: validation.StringLenBetween(1, 64),
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: `The bandwidth package name.`,
 			},
 			"local_area_id": {
 				Type:        schema.TypeString,
@@ -81,6 +85,20 @@ func ResourceBandwidthPackage() *schema.Resource {
 				Computed:    true,
 				Description: `Project ID.`,
 			},
+			"interflow_mode": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				ForceNew:    true,
+				Description: `Interflow mode of the bandwidth package.`,
+			},
+			"spec_code": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				ForceNew:    true,
+				Description: `Specification code of the bandwidth package.`,
+			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -91,7 +109,6 @@ func ResourceBandwidthPackage() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Description: `ID of the enterprise project that the bandwidth package belongs to.`,
 			},
 			"resource_id": {
@@ -159,11 +176,11 @@ func resourceBandwidthPackageCreate(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("bandwidth_package.id", createBandwidthPackageRespBody)
-	if err != nil {
+	id := utils.PathSearch("bandwidth_package.id", createBandwidthPackageRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating bandwidth package: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceBandwidthPackageRead(ctx, d, meta)
 }
@@ -175,18 +192,20 @@ func buildCreateBandwidthPackageBodyParams(d *schema.ResourceData, cfg *config.C
 	}
 	bodyParams := map[string]interface{}{
 		"bandwidth_package": map[string]interface{}{
-			"name":                  utils.ValueIngoreEmpty(d.Get("name")),
-			"description":           utils.ValueIngoreEmpty(d.Get("description")),
-			"enterprise_project_id": utils.ValueIngoreEmpty(common.GetEnterpriseProjectID(d, cfg)),
-			"local_area_id":         utils.ValueIngoreEmpty(d.Get("local_area_id")),
-			"remote_area_id":        utils.ValueIngoreEmpty(d.Get("remote_area_id")),
-			"charge_mode":           utils.ValueIngoreEmpty(d.Get("charge_mode")),
-			"billing_mode":          utils.ValueIngoreEmpty(d.Get("billing_mode")),
-			"bandwidth":             utils.ValueIngoreEmpty(d.Get("bandwidth")),
+			"name":                  utils.ValueIgnoreEmpty(d.Get("name")),
+			"description":           utils.ValueIgnoreEmpty(d.Get("description")),
+			"enterprise_project_id": utils.ValueIgnoreEmpty(cfg.GetEnterpriseProjectID(d)),
+			"local_area_id":         utils.ValueIgnoreEmpty(d.Get("local_area_id")),
+			"remote_area_id":        utils.ValueIgnoreEmpty(d.Get("remote_area_id")),
+			"charge_mode":           utils.ValueIgnoreEmpty(d.Get("charge_mode")),
+			"billing_mode":          utils.ValueIgnoreEmpty(d.Get("billing_mode")),
+			"bandwidth":             utils.ValueIgnoreEmpty(d.Get("bandwidth")),
 			"project_id":            projectId,
-			"resource_id":           utils.ValueIngoreEmpty(d.Get("resource_id")),
-			"resource_type":         utils.ValueIngoreEmpty(d.Get("resource_type")),
+			"resource_id":           utils.ValueIgnoreEmpty(d.Get("resource_id")),
+			"resource_type":         utils.ValueIgnoreEmpty(d.Get("resource_type")),
 			"tags":                  utils.ExpandResourceTagsMap(d.Get("tags").(map[string]interface{})),
+			"interflow_mode":        utils.ValueIgnoreEmpty(d.Get("interflow_mode")),
+			"spec_code":             utils.ValueIgnoreEmpty(d.Get("spec_code")),
 		},
 	}
 
@@ -247,6 +266,8 @@ func resourceBandwidthPackageRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("resource_id", utils.PathSearch("bandwidth_package.resource_id", getBandwidthPackageRespBody, nil)),
 		d.Set("resource_type", utils.PathSearch("bandwidth_package.resource_type", getBandwidthPackageRespBody, nil)),
 		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("bandwidth_package.tags", getBandwidthPackageRespBody, nil))),
+		d.Set("interflow_mode", utils.PathSearch("bandwidth_package.interflow_mode", getBandwidthPackageRespBody, nil)),
+		d.Set("spec_code", utils.PathSearch("bandwidth_package.spec_code", getBandwidthPackageRespBody, nil)),
 		d.Set("status", utils.PathSearch("bandwidth_package.status", getBandwidthPackageRespBody, nil)),
 	)
 
@@ -261,6 +282,7 @@ func resourceBandwidthPackageUpdate(ctx context.Context, d *schema.ResourceData,
 		return diag.Errorf("error creating CC Client: %s", err)
 	}
 
+	bandWidthId := d.Id()
 	associateBandwidthPackageChanges := []string{
 		"resource_id",
 		"resource_type",
@@ -270,12 +292,12 @@ func resourceBandwidthPackageUpdate(ctx context.Context, d *schema.ResourceData,
 		idOld, idNew := d.GetChange("resource_id")
 		typeOld, typeNew := d.GetChange("resource_type")
 
-		err = disassociateBandwidthPackage(client, cfg.DomainID, d.Id(), idOld.(string), typeOld.(string))
+		err = disassociateBandwidthPackage(client, cfg.DomainID, bandWidthId, idOld.(string), typeOld.(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		err = associateBandwidthPackage(client, cfg.DomainID, d.Id(), idNew.(string), typeNew.(string))
+		err = associateBandwidthPackage(client, cfg.DomainID, bandWidthId, idNew.(string), typeNew.(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -288,7 +310,7 @@ func resourceBandwidthPackageUpdate(ctx context.Context, d *schema.ResourceData,
 	}
 
 	if d.HasChanges(updateBandwidthPackageChanges...) {
-		err = updateBandwidthPackage(client, cfg.DomainID, d.Id(), buildUpdateBandwidthPackageBodyParams(d))
+		err = updateBandwidthPackage(client, cfg.DomainID, bandWidthId, buildUpdateBandwidthPackageBodyParams(d))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -306,8 +328,20 @@ func resourceBandwidthPackageUpdate(ctx context.Context, d *schema.ResourceData,
 	}
 
 	if d.HasChanges(updateBandwidthPackageChanges...) {
-		err = updateBandwidthPackage(client, cfg.DomainID, d.Id(), buildUpdateBandwidthPackageBillingModeParams(d))
+		err = updateBandwidthPackage(client, cfg.DomainID, bandWidthId, buildUpdateBandwidthPackageBillingModeParams(d))
 		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   bandWidthId,
+			ResourceType: "bwp",
+			RegionId:     region,
+			ProjectId:    client.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -336,8 +370,8 @@ func associateBandwidthPackage(client *golangsdk.ServiceClient, domainId, id, re
 
 	bodyParams := map[string]interface{}{
 		"bandwidth_package": map[string]interface{}{
-			"resource_id":   utils.ValueIngoreEmpty(resourceId),
-			"resource_type": utils.ValueIngoreEmpty(resourceType),
+			"resource_id":   utils.ValueIgnoreEmpty(resourceId),
+			"resource_type": utils.ValueIgnoreEmpty(resourceType),
 		},
 	}
 
@@ -370,8 +404,8 @@ func disassociateBandwidthPackage(client *golangsdk.ServiceClient, domainId, id,
 
 	bodyParams := map[string]interface{}{
 		"bandwidth_package": map[string]interface{}{
-			"resource_id":   utils.ValueIngoreEmpty(resourceId),
-			"resource_type": utils.ValueIngoreEmpty(resourceType),
+			"resource_id":   utils.ValueIgnoreEmpty(resourceId),
+			"resource_type": utils.ValueIgnoreEmpty(resourceType),
 		},
 	}
 
@@ -453,9 +487,9 @@ func updateBandwidthPackageTags(client *golangsdk.ServiceClient, d *schema.Resou
 func buildUpdateBandwidthPackageBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"bandwidth_package": map[string]interface{}{
-			"name":        utils.ValueIngoreEmpty(d.Get("name")),
-			"description": utils.ValueIngoreEmpty(d.Get("description")),
-			"bandwidth":   utils.ValueIngoreEmpty(d.Get("bandwidth")),
+			"name":        utils.ValueIgnoreEmpty(d.Get("name")),
+			"description": utils.ValueIgnoreEmpty(d.Get("description")),
+			"bandwidth":   utils.ValueIgnoreEmpty(d.Get("bandwidth")),
 		},
 	}
 	return bodyParams
@@ -464,7 +498,7 @@ func buildUpdateBandwidthPackageBodyParams(d *schema.ResourceData) map[string]in
 func buildUpdateBandwidthPackageBillingModeParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"bandwidth_package": map[string]interface{}{
-			"billing_mode": utils.ValueIngoreEmpty(d.Get("billing_mode")),
+			"billing_mode": utils.ValueIgnoreEmpty(d.Get("billing_mode")),
 		},
 	}
 	return bodyParams
@@ -504,7 +538,7 @@ func resourceBandwidthPackageDelete(_ context.Context, d *schema.ResourceData, m
 
 	_, err = deleteBandwidthPackageClient.Request("DELETE", deleteBandwidthPackagePath, &deleteBandwidthPackageOpt)
 	if err != nil {
-		return diag.Errorf("error deleting bandwidth package: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting bandwidth package")
 	}
 
 	return nil

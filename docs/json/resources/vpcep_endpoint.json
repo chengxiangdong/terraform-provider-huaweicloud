@@ -31,13 +31,31 @@
                 "computed": true,
                 "forcenew": true
               },
+              "ip_version": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "ipv6_address": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
               "network_id": {
                 "type": "string",
-                "required": true,
+                "optional": true,
+                "computed": true,
                 "forcenew": true
               },
               "packet_id": {
                 "type": "number",
+                "computed": true
+              },
+              "policy_statement": {
+                "type": "string",
+                "optional": true,
                 "computed": true
               },
               "private_domain_name": {
@@ -46,6 +64,14 @@
               },
               "region": {
                 "type": "string",
+                "computed": true
+              },
+              "routetables": {
+                "type": [
+                  "set",
+                  "string"
+                ],
+                "optional": true,
                 "computed": true
               },
               "service_id": {

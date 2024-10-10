@@ -1,32 +1,35 @@
 info:
-  version: 
-  title: resource_huaweicloud_lb_l7policy
-  description: 
+    version: ""
+    title: resource_huaweicloud_lb_l7policy
+    description: ""
 schemes:
-  - https
+    - https
 host: huaweicloud.com
 tags:
-  - name: ELB
+    - name: ELB
 paths:
-  /v2/{project_id}/elb/l7policies/{id}:
-    delete:
-      tag: ELB
-      operationId: Delete
-    get:
-      tag: ELB
-      operationId: Get
-    put:
-      tag: ELB
-      operationId: Update
-  /v2/{project_id}/elb/l7policies:
-    post:
-      tag: ELB
-      operationId: Create
-  /v2/{project_id}/elb/listeners/{id}:
-    get:
-      tag: ELB
-      operationId: Get
-  /v2/{project_id}/elb/pools/{id}:
-    get:
-      tag: ELB
-      operationId: Get
+    /v2/{project_id}/elb/l7policies:
+        POST:
+            tag: ELB
+    /v2/{project_id}/elb/l7policies/{l7policy_id}:
+        DELETE:
+            tag: ELB
+        GET:
+            tag: ELB
+        PUT:
+            tag: ELB
+    /v2/{project_id}/elb/listeners/{listener_id}:
+        GET:
+            tag: ELB
+    /v2/{project_id}/elb/loadbalancers:
+        GET:
+            tag: ELB
+    /v2/{project_id}/elb/loadbalancers/{loadbalancer_id}:
+        GET:
+            tag: ELB
+    /v2/{project_id}/elb/loadbalancers/{loadbalancer_id}/statuses:
+        GET:
+            tag: ELB
+    /v2/{project_id}/elb/pools/{pool_id}:
+        GET:
+            tag: ELB

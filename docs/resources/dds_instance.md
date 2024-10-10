@@ -1,5 +1,8 @@
 ---
 subcategory: "Document Database Service (DDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dds_instance"
+description: ""
 ---
 
 # huaweicloud_dds_instance
@@ -9,6 +12,8 @@ Manages dds instance resource within HuaweiCloud.
 ## Example Usage: Creating a Cluster Community Edition
 
 ```hcl
+variable "dds_password" {}
+
 resource "huaweicloud_dds_instance" "instance" {
   name = "dds-instance"
   datastore {
@@ -21,8 +26,11 @@ resource "huaweicloud_dds_instance" "instance" {
   vpc_id            = "{{ vpc_id }}"
   subnet_id         = "{{ subnet_network_id }}}"
   security_group_id = "{{ security_group_id }}"
-  password          = "Test@123"
+  password          = var.dds_password
   mode              = "Sharding"
+  maintain_begin    = "02:00"
+  maintain_end      = "03:00"
+
   flavor {
     type      = "mongos"
     num       = 2
@@ -52,6 +60,8 @@ resource "huaweicloud_dds_instance" "instance" {
 ## Example Usage: Creating a Replica Set Community Edition
 
 ```hcl
+variable "dds_password" {}
+
 resource "huaweicloud_dds_instance" "instance" {
   name = "dds-instance"
   datastore {
@@ -64,41 +74,14 @@ resource "huaweicloud_dds_instance" "instance" {
   vpc_id            = "{{ vpc_id }}"
   subnet_id         = "{{ subnet_network_id }}}"
   security_group_id = "{{ security_group_id }}"
-  password          = "Test@123"
+  password          = var.dds_password
   mode              = "ReplicaSet"
   flavor {
     type      = "replica"
-    num       = 1
+    num       = 3
     storage   = "ULTRAHIGH"
     size      = 30
     spec_code = "dds.mongodb.c3.medium.4.repset"
-  }
-}
-```
-
-## Example Usage: Creating a Single Community Edition
-
-```hcl
-resource "huaweicloud_dds_instance" "instance" {
-  name = "dds-instance"
-  datastore {
-    type           = "DDS-Community"
-    version        = "3.4"
-    storage_engine = "wiredTiger"
-  }
-  availability_zone = "{{ availability_zone }}"
-  vpc_id            = "{{ vpc_id }}"
-  subnet_id         = "{{ subnet_network_id }}}"
-  security_group_id = "{{ security_group_id }}"
-  password          = "Test@123"
-  mode              = "Single"
-  
-  flavor {
-    type      = "single"
-    num       = 1
-    storage   = "ULTRAHIGH"
-    size      = 30
-    spec_code = "dds.mongodb.s6.large.2.single"
   }
 }
 ```
@@ -116,8 +99,7 @@ The following arguments are supported:
 * `datastore` - (Required, List, ForceNew) Specifies database information. The structure is described below. Changing
   this creates a new instance.
 
-* `availability_zone` - (Required, String, ForceNew) Specifies the ID of the availability zone. Changing this creates a
-  new instance.
+* `availability_zone` - (Required, String) Specifies the availability zone names separated by commas.
 
 * `vpc_id` - (Required, String, ForceNew) Specifies the VPC ID. Changing this creates a new instance.
 
@@ -125,7 +107,7 @@ The following arguments are supported:
 
 * `security_group_id` - (Required, String) Specifies the security group ID of the DDS instance.
 
-* `password` - (Required, String) Specifies the Administrator password of the database instance.
+* `password` - (Optional, String) Specifies the Administrator password of the database instance.
 
 * `disk_encryption_id` - (Optional, String, ForceNew) Specifies the disk encryption ID of the instance. Changing this
   creates a new instance.
@@ -144,12 +126,48 @@ The following arguments are supported:
 
 * `backup_strategy` - (Optional, List) Specifies the advanced backup policy. The structure is described below.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project id of the dds instance.
-  Changing this creates a new instance.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project id of the DDS instance.
+
+* `description` - (Optional, String) Specifies the description of the DDS instance.
+
+* `replica_set_name` - (Optional, String) Specifies the name of the replica set in the connection address.
+  It must be `3` to `128` characters long and start with a letter. It is case-sensitive and can contain only letters,
+  digits, and underscores (_). Default is **replica**.
+
+* `client_network_ranges` - (Optional, List) Specifies the CIDR block where the client is located. Cross-CIDR access is
+  required only when the CIDR blocks of the client and the replica set instance are different. For example, if the client
+  CIDR block is 192.168.0.0/16 and the replica set instance's CIDR block is 172.16.0.0/24, add the CIDR block
+  192.168.0.0/16 so that the client can access the replica set instance.
+  It's only for replica set instance.
 
 * `ssl` - (Optional, Bool) Specifies whether to enable or disable SSL. Defaults to true.
 
 **NOTE:** The instance will be restarted in the background when switching SSL. Please operate with caution.
+
+* `maintain_begin` - (Optional, String) Specifies begin time of the time range within which you are allowed to start a
+  task that affects the running of database instances. It must be a valid value in the format of **hh:mm** in UTC+0,
+  such as **02:00**, meanwhile, this time in console displays in the format of **hh:mm** in UTC+08:00, e.g. **10:00**.
+
+* `maintain_end` - (Optional, String) Specifies end time of the time range within which you are allowed to start a
+  task that affects the running of database instances. It must be a valid value in the format of **hh:mm** in UTC+0,
+  such as **04:00**, meanwhile, this time in console displays in the format of **hh:mm** in UTC+08:00, e.g. **12:00**.
+
+* `second_level_monitoring_enabled` - (Optional, Bool) Specifies whether to enable second level monitoring.
+
+* `slow_log_desensitization` - (Optional, String) Specifies whether to enable slow original log.
+  The value can be **on** or **off**.
+
+* `balancer_status` - (Optional, String) Specifies the status of the balancer.
+  The value can be **start** or **stop**. Defaults to **start**.
+
+* `balancer_active_begin` - (Optional, String) Specifies the start time of the balancing activity time window.
+  The format is **HH:MM**. It's required with `balancer_active_end`.
+
+* `balancer_active_end` - (Optional, String) Specifies the end time of the balancing activity time window.
+  The format is **HH:MM**. It's required with `balancer_active_begin`.
+
+-> It's only for **Sharding** mode. DDS 4.0 and later DB instances do not support to set balancer configuration.
+  The UTC time is used. Please convert the local time based on the time zone.
 
 * `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the instance.
   The valid values are as follows:
@@ -191,67 +209,94 @@ The `configuration` block supports:
 * `type` - (Required, String, ForceNew) Specifies the node type. Valid value:
   + For a Community Edition cluster instance, the value can be **mongos**, **shard** or **config**.
   + For a Community Edition replica set instance, the value is **replica**.
-  + For a Community Edition single node instance, the value is **single**.
     Changing this creates a new instance.
 
-* `id` - (Required, String, ForceNew) Specifies the ID of the template.
-  Changing this creates a new instance.
+* `id` - (Required, String) Specifies the ID of the template.
+
+  -> Atfer updating the `configuration.id`, please check whether the instance needs to be restarted.
 
 The `flavor` block supports:
 
 * `type` - (Required, String, ForceNew) Specifies the node type. Valid value:
-  + For a Community Edition cluster instance, the value can be **mongos**, **shard**, or **config**.
-  + For an Enhanced Edition cluster instance, the value is **shard**.
-  + For a Community Edition replica set instance, the value is **replica**.
-  + For a Community Edition single node instance, the value is **single**.
+  + For a cluster instance, the value can be **mongos**, **shard**, or **config**.
+  + For a replica set instance, the value is **replica**.
 
 * `num` - (Required, Int) Specifies the node quantity. Valid value:
-  + In a Community Edition cluster instance,the number of mongos ranges from 2 to 16.
-  + In a Community Edition cluster instance,the number of shards ranges from 2 to 16.
-  + In an Enhanced Edition cluster instance, the number of shards ranges from 2 to 12.
-  + config: the value is 1.
-  + replica: the value is 1.
-  + single: The value is 1. This parameter can be updated when the value of `type` is mongos or shard.
+  + If the value of type is **mongos**, num indicates the number of mongos nodes in the cluster instance. Value ranges
+    from `2` to `16`.
+  + If the value of type is **shard**, num indicates the number of shard groups in the cluster instance. Value ranges
+    from `2` to `16`.
+  + If the value of type is **config**, num indicates the number of config groups in the cluster instance. Value can
+    only be `1`.
+  + If the value of type is **replica**, num indicates the number of replica nodes in the replica set instance. Value
+    can be `3`, `5`, or `7`.
 
-* `storage` - (Optional, String, ForceNew) Specifies the disk type.
-  Valid value: **ULTRAHIGH** which indicates the type SSD.
+  This parameter can be updated when the value of `type` is **mongos**, **shard** or **replica**.
 
-* `size` - (Optional, Int) Specifies the disk size. The value must be a multiple of 10. The unit is GB. This parameter
-  is mandatory for nodes except mongos and invalid for mongos. This parameter can be updated when the value of `type` is
-  shard, replica or single.
+* `storage` - (Optional, String, ForceNew) Specifies the disk type. Valid value:
+  + **ULTRAHIGH**: SSD storage.
+  + **EXTREMEHIGH**: Extreme SSD storage.
+
+  This parameter is valid for the shard and config nodes of a cluster instance and for replica set instances.
+
+* `size` - (Optional, Int) Specifies the disk size. The value must be a multiple of `10`. The unit is GB. This parameter
+  is mandatory for nodes except mongos and invalid for mongos.For a cluster instance, the storage space of a shard node
+  can be `10` to `2,000` GB, and the config storage space is `20` GB. For a replica set instance, the value ranges
+  from `10` to `3000` GB. This parameter can be updated when the value of `type` is shard or replica.
 
 * `spec_code` - (Required, String) Specifies the resource specification code. In a cluster instance, multiple
   specifications need to be specified. All specifications must be of the same series, that is, general-purpose (s6),
   enhanced (c3), or enhanced II (c6). For example:
   + dds.mongodb.s6.large.4.mongos and dds.mongodb.s6.large.4.config have the same specifications.
-  + dds.mongodb.s6.large.4.mongos and dds.mongodb.c3.large.4.config are not of the same specifications. This parameter
-      can be updated when the value of `type` is mongos, shard, replica or single.
+  + dds.mongodb.s6.large.4.mongos and dds.mongodb.c3.large.4.config are not of the same specifications.
 
 The `backup_strategy` block supports:
 
-* `start_time` - (Required, String) Specifies the backup time window. Automated backups will be triggered during the
-  backup time window. The value cannot be empty. It must be a valid value in the
-  "hh:mm-HH:MM" format. The current time is in the UTC format.
+* `start_time` - (Required, String) Specifies the backup time window. Automated backups will be triggered during
+  the backup time window. The value cannot be empty. It must be a valid value in the "hh:mm-HH:MM" format.
+  The current time is in the UTC format.
   + The HH value must be 1 greater than the hh value.
-  + The values from mm and MM must be the same and must be set to any of the following 00, 15, 30, or 45.
+  + The values from mm and MM must be the same and must be set to **00**.
 
 * `keep_days` - (Required, Int) Specifies the number of days to retain the generated backup files. The value range is
-  from 0 to 732.
-  + If this parameter is set to 0, the automated backup policy is not set.
-  + If this parameter is not transferred, the automated backup policy is enabled by default. Backup files are stored
-      for seven days by default.
+  from 0 to 732. If this parameter is set to 0, the automated backup policy is disabled.
+
+* `period` - (Optional, String) Specifies the backup cycle. Data will be automatically backed up on the
+  selected days every week.
+  + If you set the `keep_days` to 0, this parameter is no need to set.
+  + If you set the `keep_days` within 6 days, set the parameter value to **1,2,3,4,5,6,7**, data is automatically
+    backed up on each day every week.
+  + If you set the `keep_days` between 7 and 732 days, set the parameter value to at least one day of every week.
+    For example: **1**, **3,5**.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - Indicates the the DB instance ID.
-* `db_username` - Indicates the DB Administator name.
+* `db_username` - Indicates the DB Administrator name.
 * `status` - Indicates the the DB instance status.
 * `port` - Indicates the database port number. The port range is 2100 to 9500.
-* `nodes` - Indicates the instance nodes information. Structure is documented below.
+* `groups` - Indicates the instance groups information.
+  The [groups](#DdsInstance_InstanceGroup) structure is documented below.
+* `created_at` - Indicates the create time.
+* `updated_at` - Indicates the update time.
+* `time_zone` - Indicates the time zone.
 
-The `nodes` block contains:
+<a name="DdsInstance_InstanceGroup"></a>
+The `groups` block supports:
+
+* `id` - Indicates the group ID.
+* `type` - Indicates the node type.
+* `name` - Indicates the group name.
+* `status` - Indicates the group status.
+* `size` - Indicates the disk size.
+* `used` - Indicates the disk usage.
+* `nodes` - Indicates the nodes info.
+  The [nodes](#DdsInstance_InstanceGroupNode) structure is documented below.
+
+<a name="DdsInstance_InstanceGroupNode"></a>
+The `nodes` block supports:
 
 * `id` - Indicates the node ID.
 * `name` - Indicates the node name.
@@ -286,7 +331,7 @@ It is generally recommended running `terraform plan` after importing an instance
 You can then decide if changes should be applied to the instance, or the resource definition should be updated to
 align with the instance. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_dds_instance" "instance" {
     ...
 

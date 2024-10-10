@@ -8,7 +8,6 @@ package ga
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -26,6 +25,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API GA POST /v1/endpoint-groups/{endpoint_group_id}/endpoints
+// @API GA GET /v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}
+// @API GA PUT /v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}
+// @API GA DELETE /v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}
 func ResourceEndpoint() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceEndpointCreate,
@@ -53,11 +56,6 @@ func ResourceEndpoint() *schema.Resource {
 				Required:    true,
 				ForceNew:    true,
 				Description: `Specifies the endpoint ID, for example, EIP ID.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}`),
-						"the input is invalid"),
-					validation.StringLenBetween(0, 36),
-				),
 			},
 			// According to the service team's feedback, this parameter will be update to required in the future.
 			"ip_address": {
@@ -65,11 +63,6 @@ func ResourceEndpoint() *schema.Resource {
 				Required:    true,
 				ForceNew:    true,
 				Description: `Specifies the IP address of the endpoint.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`),
-						"the input is invalid"),
-					validation.StringLenBetween(0, 15),
-				),
 			},
 			"resource_type": {
 				Type:        schema.TypeString,
@@ -82,11 +75,10 @@ func ResourceEndpoint() *schema.Resource {
 				}, false),
 			},
 			"weight": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				Computed:     true,
-				Description:  `Specifies the weight of the endpoint based on which the listener distributes traffic.`,
-				ValidateFunc: validation.IntBetween(0, 100),
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: `Specifies the weight of the endpoint based on which the listener distributes traffic.`,
 			},
 			"health_state": {
 				Type:        schema.TypeString,
@@ -162,10 +154,10 @@ func resourceEndpointCreate(ctx context.Context, d *schema.ResourceData, meta in
 func buildCreateEndpointBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"endpoint": map[string]interface{}{
-			"ip_address":    utils.ValueIngoreEmpty(d.Get("ip_address")),
-			"resource_id":   utils.ValueIngoreEmpty(d.Get("resource_id")),
-			"resource_type": utils.ValueIngoreEmpty(d.Get("resource_type")),
-			"weight":        utils.ValueIngoreEmpty(d.Get("weight")),
+			"ip_address":    utils.ValueIgnoreEmpty(d.Get("ip_address")),
+			"resource_id":   utils.ValueIgnoreEmpty(d.Get("resource_id")),
+			"resource_type": utils.ValueIgnoreEmpty(d.Get("resource_type")),
+			"weight":        utils.ValueIgnoreEmpty(d.Get("weight")),
 		},
 	}
 	return bodyParams
@@ -180,7 +172,7 @@ func createEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			region := config.GetRegion(d)
 			// createEndpointWaiting: missing operation notes
 			var (
-				createEndpointWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{id}"
+				createEndpointWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}"
 				createEndpointWaitingProduct = "ga"
 			)
 			createEndpointWaitingClient, err := config.NewServiceClient(createEndpointWaitingProduct, region)
@@ -191,7 +183,7 @@ func createEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			createEndpointWaitingPath := createEndpointWaitingClient.Endpoint + createEndpointWaitingHttpUrl
 			createEndpointWaitingPath = strings.ReplaceAll(createEndpointWaitingPath,
 				"{endpoint_group_id}", fmt.Sprintf("%v", d.Get("endpoint_group_id")))
-			createEndpointWaitingPath = strings.ReplaceAll(createEndpointWaitingPath, "{id}", d.Id())
+			createEndpointWaitingPath = strings.ReplaceAll(createEndpointWaitingPath, "{endpoint_id}", d.Id())
 
 			createEndpointWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -247,7 +239,7 @@ func resourceEndpointRead(_ context.Context, d *schema.ResourceData, meta interf
 
 	// getEndpoint: Query the GA Endpoint detail
 	var (
-		getEndpointHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{id}"
+		getEndpointHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}"
 		getEndpointProduct = "ga"
 	)
 	getEndpointClient, err := conf.NewServiceClient(getEndpointProduct, region)
@@ -257,7 +249,7 @@ func resourceEndpointRead(_ context.Context, d *schema.ResourceData, meta interf
 
 	getEndpointPath := getEndpointClient.Endpoint + getEndpointHttpUrl
 	getEndpointPath = strings.ReplaceAll(getEndpointPath, "{endpoint_group_id}", fmt.Sprintf("%v", d.Get("endpoint_group_id")))
-	getEndpointPath = strings.ReplaceAll(getEndpointPath, "{id}", d.Id())
+	getEndpointPath = strings.ReplaceAll(getEndpointPath, "{endpoint_id}", d.Id())
 
 	getEndpointOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -303,7 +295,7 @@ func resourceEndpointUpdate(ctx context.Context, d *schema.ResourceData, meta in
 	if d.HasChanges(updateEndpointhasChanges...) {
 		// updateEndpoint: Update the configuration of GA Endpoint
 		var (
-			updateEndpointHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{id}"
+			updateEndpointHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}"
 			updateEndpointProduct = "ga"
 		)
 		updateEndpointClient, err := conf.NewServiceClient(updateEndpointProduct, region)
@@ -313,7 +305,7 @@ func resourceEndpointUpdate(ctx context.Context, d *schema.ResourceData, meta in
 
 		updateEndpointPath := updateEndpointClient.Endpoint + updateEndpointHttpUrl
 		updateEndpointPath = strings.ReplaceAll(updateEndpointPath, "{endpoint_group_id}", fmt.Sprintf("%v", d.Get("endpoint_group_id")))
-		updateEndpointPath = strings.ReplaceAll(updateEndpointPath, "{id}", d.Id())
+		updateEndpointPath = strings.ReplaceAll(updateEndpointPath, "{endpoint_id}", d.Id())
 
 		updateEndpointOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -337,7 +329,7 @@ func resourceEndpointUpdate(ctx context.Context, d *schema.ResourceData, meta in
 func buildUpdateEndpointBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"endpoint": map[string]interface{}{
-			"weight": utils.ValueIngoreEmpty(d.Get("weight")),
+			"weight": utils.ValueIgnoreEmpty(d.Get("weight")),
 		},
 	}
 	return bodyParams
@@ -352,7 +344,7 @@ func updateEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			region := config.GetRegion(d)
 			// updateEndpointWaiting: missing operation notes
 			var (
-				updateEndpointWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{id}"
+				updateEndpointWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}"
 				updateEndpointWaitingProduct = "ga"
 			)
 			updateEndpointWaitingClient, err := config.NewServiceClient(updateEndpointWaitingProduct, region)
@@ -363,7 +355,7 @@ func updateEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			updateEndpointWaitingPath := updateEndpointWaitingClient.Endpoint + updateEndpointWaitingHttpUrl
 			updateEndpointWaitingPath = strings.ReplaceAll(updateEndpointWaitingPath,
 				"{endpoint_group_id}", fmt.Sprintf("%v", d.Get("endpoint_group_id")))
-			updateEndpointWaitingPath = strings.ReplaceAll(updateEndpointWaitingPath, "{id}", d.Id())
+			updateEndpointWaitingPath = strings.ReplaceAll(updateEndpointWaitingPath, "{endpoint_id}", d.Id())
 
 			updateEndpointWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -417,7 +409,7 @@ func resourceEndpointDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	// deleteEndpoint: Delete an existing GA Endpoint
 	var (
-		deleteEndpointHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{id}"
+		deleteEndpointHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}"
 		deleteEndpointProduct = "ga"
 	)
 	deleteEndpointClient, err := conf.NewServiceClient(deleteEndpointProduct, region)
@@ -427,7 +419,7 @@ func resourceEndpointDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	deleteEndpointPath := deleteEndpointClient.Endpoint + deleteEndpointHttpUrl
 	deleteEndpointPath = strings.ReplaceAll(deleteEndpointPath, "{endpoint_group_id}", fmt.Sprintf("%v", d.Get("endpoint_group_id")))
-	deleteEndpointPath = strings.ReplaceAll(deleteEndpointPath, "{id}", d.Id())
+	deleteEndpointPath = strings.ReplaceAll(deleteEndpointPath, "{endpoint_id}", d.Id())
 
 	deleteEndpointOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -456,7 +448,7 @@ func deleteEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			region := config.GetRegion(d)
 			// deleteEndpointWaiting: missing operation notes
 			var (
-				deleteEndpointWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{id}"
+				deleteEndpointWaitingHttpUrl = "v1/endpoint-groups/{endpoint_group_id}/endpoints/{endpoint_id}"
 				deleteEndpointWaitingProduct = "ga"
 			)
 			deleteEndpointWaitingClient, err := config.NewServiceClient(deleteEndpointWaitingProduct, region)
@@ -467,7 +459,7 @@ func deleteEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			deleteEndpointWaitingPath := deleteEndpointWaitingClient.Endpoint + deleteEndpointWaitingHttpUrl
 			deleteEndpointWaitingPath = strings.ReplaceAll(deleteEndpointWaitingPath,
 				"{endpoint_group_id}", fmt.Sprintf("%v", d.Get("endpoint_group_id")))
-			deleteEndpointWaitingPath = strings.ReplaceAll(deleteEndpointWaitingPath, "{id}", d.Id())
+			deleteEndpointWaitingPath = strings.ReplaceAll(deleteEndpointWaitingPath, "{endpoint_id}", d.Id())
 
 			deleteEndpointWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -478,7 +470,8 @@ func deleteEndpointWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			deleteEndpointWaitingResp, err := deleteEndpointWaitingClient.Request("GET", deleteEndpointWaitingPath, &deleteEndpointWaitingOpt)
 			if err != nil {
 				if _, ok := err.(golangsdk.ErrDefault404); ok {
-					return deleteEndpointWaitingResp, "COMPLETED", nil
+					// When the error code is 404, the value of respBody is nil, and a non-null value is returned to avoid continuing the loop check.
+					return "Resource Not Found", "COMPLETED", nil
 				}
 
 				return nil, "ERROR", err

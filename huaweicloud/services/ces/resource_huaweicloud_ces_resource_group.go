@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -21,6 +20,12 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CES POST /v2/{project_id}/resource-groups
+// @API CES GET /v2/{project_id}/resource-groups/{id}
+// @API CES PUT /v2/{project_id}/resource-groups/{id}
+// @API CES POST /v2/{project_id}/resource-groups/{id}/resources/batch-create
+// @API CES POST /v2/{project_id}/resource-groups/{id}/resources/batch-delete
+// @API CES POST /v2/{project_id}/resource-groups/batch-delete
 func ResourceResourceGroup() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceResourceGroupCreate,
@@ -55,7 +60,6 @@ func ResourceResourceGroup() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Description: `Specifies the enterprise project ID of the resource group.`,
 			},
 			"tags": {
@@ -137,7 +141,7 @@ func resourceResourceGroupCreate(ctx context.Context, d *schema.ResourceData, me
 	)
 	createResourceGroupClient, err := cfg.NewServiceClient(createResourceGroupProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	createResourceGroupPath := createResourceGroupClient.Endpoint + createResourceGroupHttpUrl
@@ -152,7 +156,7 @@ func resourceResourceGroupCreate(ctx context.Context, d *schema.ResourceData, me
 	createResourceGroupOpt.JSONBody = utils.RemoveNil(buildCreateResourceGroupBodyParams(d, cfg))
 	createResourceGroupResp, err := createResourceGroupClient.Request("POST", createResourceGroupPath, &createResourceGroupOpt)
 	if err != nil {
-		return diag.Errorf("error creating resource group: %s", err)
+		return diag.Errorf("error creating CES resource group: %s", err)
 	}
 
 	createResourceGroupRespBody, err := utils.FlattenResponse(createResourceGroupResp)
@@ -160,11 +164,11 @@ func resourceResourceGroupCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("group_id", createResourceGroupRespBody)
-	if err != nil {
-		return diag.Errorf("error creating ResourceGroup: ID is not found in API response")
+	id := utils.PathSearch("group_id", createResourceGroupRespBody, "").(string)
+	if id == "" {
+		return diag.Errorf("error creating CES resource group: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	// add resources to CES resource group if resources is specified.
 	if _, ok := d.GetOk("resources"); ok {
@@ -194,11 +198,11 @@ func resourceResourceGroupCreate(ctx context.Context, d *schema.ResourceData, me
 
 func buildCreateResourceGroupBodyParams(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"group_name":            utils.ValueIngoreEmpty(d.Get("name")),
-		"type":                  utils.ValueIngoreEmpty(d.Get("type")),
-		"enterprise_project_id": utils.ValueIngoreEmpty(common.GetEnterpriseProjectID(d, cfg)),
-		"tags":                  utils.ValueIngoreEmpty(utils.ExpandResourceTags(d.Get("tags").(map[string]interface{}))),
-		"association_ep_ids":    utils.ValueIngoreEmpty(d.Get("associated_eps_ids")),
+		"group_name":            utils.ValueIgnoreEmpty(d.Get("name")),
+		"type":                  utils.ValueIgnoreEmpty(d.Get("type")),
+		"enterprise_project_id": utils.ValueIgnoreEmpty(cfg.GetEnterpriseProjectID(d)),
+		"tags":                  utils.ValueIgnoreEmpty(utils.ExpandResourceTags(d.Get("tags").(map[string]interface{}))),
+		"association_ep_ids":    utils.ValueIgnoreEmpty(d.Get("associated_eps_ids")),
 	}
 	return bodyParams
 }
@@ -220,7 +224,7 @@ func buildBatchCreateResourcesRequestBodyResourcesOpts(rawParams interface{}) []
 		for i, v := range rawArray {
 			raw := v.(map[string]interface{})
 			rst[i] = map[string]interface{}{
-				"namespace":  utils.ValueIngoreEmpty(raw["namespace"]),
+				"namespace":  utils.ValueIgnoreEmpty(raw["namespace"]),
 				"dimensions": buildResourcesOptsDimensionOpts(raw["dimensions"]),
 			}
 		}
@@ -239,8 +243,8 @@ func buildResourcesOptsDimensionOpts(rawParams interface{}) []map[string]interfa
 		for i, v := range rawArray {
 			raw := v.(map[string]interface{})
 			rst[i] = map[string]interface{}{
-				"name":  utils.ValueIngoreEmpty(raw["name"]),
-				"value": utils.ValueIngoreEmpty(raw["value"]),
+				"name":  utils.ValueIgnoreEmpty(raw["name"]),
+				"value": utils.ValueIgnoreEmpty(raw["value"]),
 			}
 		}
 		return rst
@@ -261,7 +265,7 @@ func resourceResourceGroupRead(_ context.Context, d *schema.ResourceData, meta i
 	)
 	getResourceGroupClient, err := cfg.NewServiceClient(getResourceGroupProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	getResourceGroupPath := getResourceGroupClient.Endpoint + getResourceGroupHttpUrl
@@ -304,6 +308,7 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
+	resourceGroupId := d.Id()
 	var (
 		updateResourceGroupHttpUrl  = "v2/{project_id}/resource-groups/{id}"
 		batchCreateResourcesHttpUrl = "v2/{project_id}/resource-groups/{id}/resources/batch-create"
@@ -312,7 +317,7 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 	)
 	updateResourceGroupClient, err := cfg.NewServiceClient(updateResourceGroupProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	updateResourceGroupChanges := []string{
@@ -325,7 +330,7 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 
 		updateResourceGroupPath := updateResourceGroupClient.Endpoint + updateResourceGroupHttpUrl
 		updateResourceGroupPath = strings.ReplaceAll(updateResourceGroupPath, "{project_id}", updateResourceGroupClient.ProjectID)
-		updateResourceGroupPath = strings.ReplaceAll(updateResourceGroupPath, "{id}", d.Id())
+		updateResourceGroupPath = strings.ReplaceAll(updateResourceGroupPath, "{id}", resourceGroupId)
 
 		updateResourceGroupOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -336,7 +341,7 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 		updateResourceGroupOpt.JSONBody = utils.RemoveNil(buildUpdateResourceGroupBodyParams(d))
 		_, err = updateResourceGroupClient.Request("PUT", updateResourceGroupPath, &updateResourceGroupOpt)
 		if err != nil {
-			return diag.Errorf("error updating resource group: %s", err)
+			return diag.Errorf("error updating CES resource group: %s", err)
 		}
 	}
 
@@ -347,7 +352,7 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 		if len(oldResources.([]interface{})) > 0 {
 			batchDeleteResourcesHttpPath := updateResourceGroupClient.Endpoint + batchDeleteResourcesHttpUrl
 			batchDeleteResourcesHttpPath = strings.ReplaceAll(batchDeleteResourcesHttpPath, "{project_id}", updateResourceGroupClient.ProjectID)
-			batchDeleteResourcesHttpPath = strings.ReplaceAll(batchDeleteResourcesHttpPath, "{id}", d.Id())
+			batchDeleteResourcesHttpPath = strings.ReplaceAll(batchDeleteResourcesHttpPath, "{id}", resourceGroupId)
 
 			batchDeleteResourcesOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -365,7 +370,7 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 		if len(newResources.([]interface{})) > 0 {
 			batchCreateResourcesPath := updateResourceGroupClient.Endpoint + batchCreateResourcesHttpUrl
 			batchCreateResourcesPath = strings.ReplaceAll(batchCreateResourcesPath, "{project_id}", updateResourceGroupClient.ProjectID)
-			batchCreateResourcesPath = strings.ReplaceAll(batchCreateResourcesPath, "{id}", d.Id())
+			batchCreateResourcesPath = strings.ReplaceAll(batchCreateResourcesPath, "{id}", resourceGroupId)
 
 			batchCreateResourcesOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -380,13 +385,26 @@ func resourceResourceGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 			}
 		}
 	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   resourceGroupId,
+			ResourceType: "CES-resourceGroup",
+			RegionId:     region,
+			ProjectId:    updateResourceGroupClient.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceResourceGroupRead(ctx, d, meta)
 }
 
 func buildUpdateResourceGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"group_name": utils.ValueIngoreEmpty(d.Get("name")),
-		"tags":       utils.ValueIngoreEmpty(utils.ExpandResourceTags(d.Get("tags").(map[string]interface{}))),
+		"group_name": utils.ValueIgnoreEmpty(d.Get("name")),
+		"tags":       utils.ValueIgnoreEmpty(utils.ExpandResourceTags(d.Get("tags").(map[string]interface{}))),
 	}
 	return bodyParams
 }
@@ -402,7 +420,7 @@ func resourceResourceGroupDelete(_ context.Context, d *schema.ResourceData, meta
 	)
 	deleteResourceGroupClient, err := cfg.NewServiceClient(deleteResourceGroupProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating CES Client: %s", err)
+		return diag.Errorf("error creating CES client: %s", err)
 	}
 
 	deleteResourceGroupPath := deleteResourceGroupClient.Endpoint + deleteResourceGroupHttpUrl
@@ -417,7 +435,7 @@ func resourceResourceGroupDelete(_ context.Context, d *schema.ResourceData, meta
 	deleteResourceGroupOpt.JSONBody = utils.RemoveNil(buildDeleteResourceGroupBodyParams(d))
 	_, err = deleteResourceGroupClient.Request("POST", deleteResourceGroupPath, &deleteResourceGroupOpt)
 	if err != nil {
-		return diag.Errorf("error deleting resource group: %s", err)
+		return diag.Errorf("error deleting CES resource group: %s", err)
 	}
 
 	return nil

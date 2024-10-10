@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -21,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API Config PUT /v1/resource-manager/domains/{domain_id}/aggregators
+// @API Config PUT /v1/resource-manager/domains/{domain_id}/aggregators/{id}
+// @API Config GET /v1/resource-manager/domains/{domain_id}/aggregators/{id}
+// @API Config DELETE /v1/resource-manager/domains/{domain_id}/aggregators/{id}
 func ResourceAggregator() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAggregatorCreate,
@@ -65,7 +68,7 @@ func buildAggregatorBodyParams(d *schema.ResourceData) map[string]interface{} {
 		"aggregator_name": d.Get("name"),
 		"aggregator_type": d.Get("type"),
 		"account_aggregation_sources": map[string]interface{}{
-			"domain_ids": utils.ValueIngoreEmpty(d.Get("account_ids").(*schema.Set).List()),
+			"domain_ids": utils.ValueIgnoreEmpty(d.Get("account_ids").(*schema.Set).List()),
 		},
 	}
 	return bodyParams
@@ -104,12 +107,12 @@ func resourceAggregatorCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("aggregator_id", createAggregatorRespBody)
-	if err != nil {
+	id := utils.PathSearch("aggregator_id", createAggregatorRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating aggregator: ID is not found in API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(id)
 	return resourceAggregatorRead(ctx, d, meta)
 }
 

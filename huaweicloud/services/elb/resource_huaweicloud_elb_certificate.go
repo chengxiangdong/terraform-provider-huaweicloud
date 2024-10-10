@@ -16,6 +16,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API ELB POST /v3/{project_id}/elb/certificates
+// @API ELB GET /v3/{project_id}/elb/certificates/{certificate_id}
+// @API ELB PUT /v3/{project_id}/elb/certificates/{certificate_id}
+// @API ELB DELETE /v3/{project_id}/elb/certificates/{certificate_id}
 func ResourceCertificateV3() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCertificateV3Create,
@@ -144,7 +148,6 @@ func resourceCertificateV3Read(_ context.Context, d *schema.ResourceData, meta i
 		d.Set("type", certificate.Type),
 		d.Set("domain", certificate.Domain),
 		d.Set("certificate", certificate.Certificate),
-		d.Set("private_key", certificate.PrivateKey),
 		d.Set("create_time", certificate.CreateTime),
 		d.Set("update_time", certificate.UpdateTime),
 		d.Set("expire_time", certificate.ExpireTime),

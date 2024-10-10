@@ -1,5 +1,8 @@
 ---
 subcategory: "API Gateway (Dedicated APIG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_apig_custom_authorizer"
+description: ""
 ---
 
 # huaweicloud_apig_custom_authorizer
@@ -14,11 +17,12 @@ variable "authorizer_name" {}
 variable "function_urn" {}
 
 resource "huaweicloud_apig_custom_authorizer" "test" {
-  instance_id  = var.instance_id
-  name         = var.authorizer_name
-  function_urn = var.function_urn
-  type         = "FRONTEND"
-  cache_age    = 60
+  instance_id      = var.instance_id
+  name             = var.authorizer_name
+  function_urn     = var.function_urn
+  function_version = "latest"
+  type             = "FRONTEND"
+  cache_age        = 60
 
   identity {
     name     = "user_name"
@@ -45,13 +49,24 @@ The following arguments are supported:
 
 * `function_urn` - (Required, String) Specifies the uniform function URN of the function graph resource.
 
-* `type` - (Optional, String, ForceNew) Specifies the custom authoriz type.
+* `function_version` - (Required, String) Specifies the version of the FGS function.
+
+* `network_type` - (Optional, String) Specifies the framework type of the function.
+  + **V1**: Non-VPC network architecture.
+  + **V2**: VPC network architecture.
+
+  Defaults to **V1**.
+
+* `function_alias_uri` - (Optional, String) Specifies the version alias URI of the FGS function.
+
+* `type` - (Optional, String, ForceNew) Specifies the custom authorize type.
   The valid values are **FRONTEND** and **BACKEND**. Defaults to **FRONTEND**.
   Changing this will create a new custom authorizer resource.
 
 * `is_body_send` - (Optional, Bool) Specifies whether to send the body.
 
-* `cache_age` - (Optional, Int) Specifies the maximum cache age.
+* `cache_age` - (Optional, Int) Specifies the maximum cache age.  
+  The valid value is range from `1` to `3,600`.
 
 * `user_data` - (Optional, String) Specifies the user data, which can contain a maximum of `2,048` characters.
   The user data is used by APIG to invoke the specified authentication function when accessing the backend service.

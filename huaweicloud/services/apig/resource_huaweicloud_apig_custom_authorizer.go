@@ -25,6 +25,11 @@ const (
 	AuthTypeBackend  AuthType = "BACKEND"
 )
 
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/authorizers/{authorizer_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/authorizers/{authorizer_id}
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}/authorizers/{authorizer_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/authorizers
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/authorizers
 func ResourceApigCustomAuthorizerV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCustomAuthorizerCreate,
@@ -51,19 +56,41 @@ func ResourceApigCustomAuthorizerV2() *schema.Resource {
 				Description: "The ID of the dedicated instance to which the custom authorizer belongs.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z][\w]*$`),
-						"Only letters, digits and underscores (_) are allowed, and must start with a letter."),
-					validation.StringLenBetween(3, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The name of the custom authorizer.",
 			},
 			"function_urn": {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "The URN of the FGS function.",
+				DiffSuppressFunc: func(_, o, n string, _ *schema.ResourceData) bool {
+					return o != "" && o != n && strings.Contains(n, o)
+				},
+			},
+			"function_version": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				Description: utils.SchemaDesc(
+					`The version of the FGS function.`,
+					utils.SchemaDescInput{
+						Required: true,
+					},
+				),
+				// To ensure compatibility with older versions, RequiredWith is not used.
+			},
+			"network_type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: `The framework type of the function.`,
+			},
+			"function_alias_uri": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The version alias URI of the FGS function.",
 			},
 			"type": {
 				Type:     schema.TypeString,
@@ -81,16 +108,14 @@ func ResourceApigCustomAuthorizerV2() *schema.Resource {
 				Description: "Whether to send the body.",
 			},
 			"cache_age": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(0, 3600),
-				Description:  "The maximum cache age.",
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "The maximum cache age.",
 			},
 			"user_data": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 2048),
-				Description:  "The user data for custom authorizer function.",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The user data for custom authorizer function.",
 			},
 			// The parameter identity only required if type is 'FRONTEND'.
 			"identity": {
@@ -112,10 +137,9 @@ func ResourceApigCustomAuthorizerV2() *schema.Resource {
 							Description: "The parameter location.",
 						},
 						"validation": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: validation.StringLenBetween(1, 2048),
-							Description:  "The parameter verification expression.",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The parameter verification expression.",
 						},
 					},
 				},
@@ -157,15 +181,26 @@ func buildCustomAuthorizerOpts(d *schema.ResourceData) (authorizers.CustomAuthOp
 		return authorizers.CustomAuthOpts{}, fmt.Errorf("the identities can only be set when the type is 'FRONTEND'")
 	}
 
+	functionUrn := d.Get("function_urn").(string)
+	functionVersion := d.Get("function_version").(string)
+	regex := regexp.MustCompile(`^.*:function:\w+:\w+:(\w+)$`)
+	result := regex.FindStringSubmatch(functionUrn)
+	if len(result) > 1 && functionVersion == "" {
+		functionVersion = result[1]
+	}
+
 	return authorizers.CustomAuthOpts{
-		Name:           d.Get("name").(string),
-		Type:           t,
-		AuthorizerType: "FUNC", // The custom authorizer only support 'FUNC'.
-		AuthorizerURI:  d.Get("function_urn").(string),
-		IsBodySend:     utils.Bool(d.Get("is_body_send").(bool)),
-		TTL:            utils.Int(d.Get("cache_age").(int)),
-		UserData:       utils.String(d.Get("user_data").(string)),
-		Identities:     buildIdentities(identities),
+		Name:               d.Get("name").(string),
+		Type:               t,
+		AuthorizerType:     "FUNC", // The custom authorizer only support 'FUNC'.
+		AuthorizerURI:      functionUrn,
+		AuthorizerVersion:  functionVersion,
+		NetworkType:        d.Get("network_type").(string),
+		AuthorizerAliasUri: d.Get("function_alias_uri").(string),
+		IsBodySend:         utils.Bool(d.Get("is_body_send").(bool)),
+		TTL:                utils.Int(d.Get("cache_age").(int)),
+		UserData:           utils.String(d.Get("user_data").(string)),
+		Identities:         buildIdentities(identities),
 	}, nil
 }
 
@@ -224,6 +259,9 @@ func resourceCustomAuthorizerRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("region", region),
 		d.Set("name", resp.Name),
 		d.Set("function_urn", resp.AuthorizerURI),
+		d.Set("function_version", resp.AuthorizerVersion),
+		d.Set("network_type", resp.NetworkType),
+		d.Set("function_alias_uri", resp.AuthorizerAliasUri),
 		d.Set("type", resp.Type),
 		d.Set("is_body_send", resp.IsBodySend),
 		d.Set("cache_age", resp.TTL),
@@ -274,8 +312,8 @@ func resourceCustomAuthorizerDelete(_ context.Context, d *schema.ResourceData, m
 
 	err = authorizers.Delete(client, instanceId, authorizerId).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting custom authorizer (%s) from the instance (%s): %s",
-			authorizerId, instanceId, err)
+		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error deleting custom authorizer (%s) from the instance (%s)",
+			authorizerId, instanceId))
 	}
 	return nil
 }

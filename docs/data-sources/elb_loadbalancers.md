@@ -1,10 +1,13 @@
 ---
 subcategory: Dedicated Load Balance (Dedicated ELB)
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_elb_loadbalancers"
+description: ""
 ---
 
 # huaweicloud_elb_loadbalancers
 
-Use this data source to get the list of ELB load blancers.
+Use this data source to get the list of ELB load balancers.
 
 ## Example Usage
 
@@ -50,7 +53,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `loadbalancers` - Lists the loadalancers.
+* `loadbalancers` - The List of load balancers.
   The [loadbalancers](#Elb_loadbalancer_loadbalancers) structure is documented below.
 
 <a name="Elb_loadbalancer_loadbalancers"></a>
@@ -59,6 +62,8 @@ The `loadbalancers` block supports:
 * `id` - The load balancer ID.
 
 * `name` - The load balancer name.
+
+* `loadbalancer_type` - The type of the load balancer.
 
 * `description` - The description of load balancer.
 
@@ -80,7 +85,9 @@ The `loadbalancers` block supports:
 
 * `l4_flavor_id` - The ID of a flavor at Layer 4.
 
-* `l7_flavor_id` - The ID of a flavor at Layer 7
+* `l7_flavor_id` - The ID of a flavor at Layer 7.
+
+* `gw_flavor_id` - The flavor ID of the gateway load balancer.
 
 * `min_l7_flavor_id` - The minimum seven-layer specification ID (specification type L7_elastic) for elastic expansion
   and contraction

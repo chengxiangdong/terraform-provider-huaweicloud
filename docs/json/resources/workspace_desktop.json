@@ -23,8 +23,7 @@
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "flavor_id": {
                 "type": "string",
@@ -36,19 +35,26 @@
               },
               "image_id": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "image_type": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "name": {
                 "type": "string",
                 "optional": true,
                 "computed": true,
                 "forcenew": true
+              },
+              "power_action": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "power_action_type": {
+                "type": "string",
+                "optional": true
               },
               "region": {
                 "type": "string",
@@ -62,6 +68,10 @@
                 "optional": true,
                 "computed": true,
                 "forcenew": true
+              },
+              "status": {
+                "type": "string",
+                "computed": true
               },
               "tags": {
                 "type": [
@@ -128,13 +138,11 @@
                   "attributes": {
                     "network_id": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     }
                   }
                 },
-                "nesting_mode": "list",
-                "forcenew": true
+                "nesting_mode": "list"
               },
               "root_volume": {
                 "block": {

@@ -2,7 +2,9 @@ package cce
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -16,6 +18,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{clusterid}/nodes
+// @API ECS GET /v1/{project_id}/cloudservers/{id}/tags
 func DataSourceNodes() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceNodesRead,
@@ -41,6 +45,18 @@ func DataSourceNodes() *schema.Resource {
 			"status": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"ignore_details": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: func(v interface{}, _ string) ([]string, []error) {
+					validValues := []string{"tags"}
+					params := strings.Split(v.(string), ",")
+					if !utils.StrSliceContainsAnother(validValues, params) {
+						return nil, []error{fmt.Errorf("the value must within %s", validValues)}
+					}
+					return nil, nil
+				},
 			},
 			"ids": {
 				Type:     schema.TypeList,
@@ -149,6 +165,22 @@ func DataSourceNodes() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
+						"hostname_config": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"type": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+								},
+							},
+						},
+						"enterprise_project_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -182,19 +214,21 @@ func dataSourceNodesRead(_ context.Context, d *schema.ResourceData, meta interfa
 		log.Printf("[DEBUG] Retrieved Nodes using given filter %s: %+v", v.Metadata.Id, v)
 		ids = append(ids, v.Metadata.Id)
 		node := map[string]interface{}{
-			"id":                v.Metadata.Id,
-			"name":              v.Metadata.Name,
-			"flavor_id":         v.Spec.Flavor,
-			"availability_zone": v.Spec.Az,
-			"os":                v.Spec.Os,
-			"billing_mode":      v.Spec.BillingMode,
-			"key_pair":          v.Spec.Login.SshKey,
-			"subnet_id":         v.Spec.NodeNicSpec.PrimaryNic.SubnetId,
-			"ecs_group_id":      v.Spec.EcsGroupID,
-			"server_id":         v.Status.ServerID,
-			"public_ip":         v.Status.PublicIP,
-			"private_ip":        v.Status.PrivateIP,
-			"status":            v.Status.Phase,
+			"id":                    v.Metadata.Id,
+			"name":                  v.Metadata.Name,
+			"flavor_id":             v.Spec.Flavor,
+			"availability_zone":     v.Spec.Az,
+			"os":                    v.Spec.Os,
+			"billing_mode":          v.Spec.BillingMode,
+			"key_pair":              v.Spec.Login.SshKey,
+			"subnet_id":             v.Spec.NodeNicSpec.PrimaryNic.SubnetId,
+			"ecs_group_id":          v.Spec.EcsGroupID,
+			"server_id":             v.Status.ServerID,
+			"public_ip":             v.Status.PublicIP,
+			"private_ip":            v.Status.PrivateIP,
+			"status":                v.Status.Phase,
+			"hostname_config":       flattenResourceNodeHostnameConfig(v.Spec.HostnameConfig),
+			"enterprise_project_id": v.Spec.ServerEnterpriseProjectID,
 		}
 
 		var volumes []map[string]interface{}
@@ -217,18 +251,20 @@ func dataSourceNodesRead(_ context.Context, d *schema.ResourceData, meta interfa
 		node["root_volume"] = rootVolume
 
 		// fetch tags from ECS instance
-		computeClient, err := config.ComputeV1Client(config.GetRegion(d))
-		if err != nil {
-			return diag.Errorf("error creating compute client: %s", err)
-		}
+		if !strings.Contains(d.Get("ignore_details").(string), "tags") {
+			computeClient, err := config.ComputeV1Client(config.GetRegion(d))
+			if err != nil {
+				return diag.Errorf("error creating compute client: %s", err)
+			}
 
-		serverId := v.Status.ServerID
+			serverId := v.Status.ServerID
 
-		if resourceTags, err := tags.Get(computeClient, "cloudservers", serverId).Extract(); err == nil {
-			tagmap := utils.TagsToMap(resourceTags.Tags)
-			node["tags"] = tagmap
-		} else {
-			log.Printf("[WARN] Error fetching tags of CCE Node (%s): %s", serverId, err)
+			if resourceTags, err := tags.Get(computeClient, "cloudservers", serverId).Extract(); err == nil {
+				tagmap := utils.TagsToMap(resourceTags.Tags)
+				node["tags"] = tagmap
+			} else {
+				log.Printf("[WARN] Error fetching tags of CCE Node (%s): %s", serverId, err)
+			}
 		}
 
 		nodesToSet = append(nodesToSet, node)

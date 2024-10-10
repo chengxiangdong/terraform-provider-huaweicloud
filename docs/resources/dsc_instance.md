@@ -1,5 +1,8 @@
 ---
 subcategory: "Data Security Center (DSC)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dsc_instance"
+description: ""
 ---
 
 # huaweicloud_dsc_instance
@@ -39,8 +42,8 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `period` - (Required, Int, ForceNew) The charging period.  
-  If `period_unit` is set to **month**, the value ranges from 1 to 9.
-  If `period_unit` is set to **year**, the value ranges from 1 to 3.
+  If `period_unit` is set to **month**, the value ranges from `1` to `9`.
+  If `period_unit` is set to **year**, the value ranges from `1` to `3`.
   This parameter is mandatory if `charging_mode` is set to **prePaid**.
 
   Changing this parameter will create a new resource.
@@ -81,6 +84,6 @@ In addition to all arguments above, the following attributes are exported:
 
 The dsc instance can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_dsc_instance.test 0ce123456a00f2591fabc00385ff1234
 ```

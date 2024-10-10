@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Cache Service (DCS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dcs_templates"
+description: ""
 ---
 
 # huaweicloud_dcs_templates
@@ -24,7 +27,7 @@ The following arguments are supported:
 
 * `type` - (Required, String) Specifies the type of the template. Value options:
   + **sys**: system template.
-  + **user**: custome template.
+  + **user**: custom template.
 
 * `template_id` - (Optional, String) Specifies the ID of the template.
 
@@ -32,7 +35,7 @@ The following arguments are supported:
 
 * `engine` - (Optional, String) Specifies the cache engine. Value options: **Redis**.
 
-* `engine_version` - (Optional, String) Specifies the cache engine version. Value options: **4.0**, **5.0.**, **6.0.**.
+* `engine_version` - (Optional, String) Specifies the cache engine version. Value options: **4.0**, **5.0**, **6.0**.
 
 * `cache_mode` - (Optional, String) Specifies the DCS instance type. Value options:
   + **single**: single-node.
@@ -51,7 +54,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `templates` - Indicates the list of DCS templates.
   The [templates](#Templates_Template) structure is documented below.

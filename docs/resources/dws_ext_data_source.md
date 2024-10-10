@@ -1,10 +1,14 @@
 ---
-subcategory: "Data Warehouse Service (DWS)"
+subcategory: "GaussDB(DWS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dws_ext_data_source"
+description: |-
+  Manages a GaussDB(DWS) external data source resource within HuaweiCloud.
 ---
 
 # huaweicloud_dws_ext_data_source
 
-Manages a DWS external data source resource within HuaweiCloud.  
+Manages a GaussDB(DWS) external data source resource within HuaweiCloud.
 
 ## Example Usage
 
@@ -116,7 +120,7 @@ This resource provides the following timeouts configuration options:
 
 ## Import
 
-The dws external data source can be imported using `cluster_id`, `id`, separated by slashes, e.g.
+The dws external data source can be imported using `cluster_id` and `id`, separated by a slash, e.g.
 
 ```bash
 $ terraform import huaweicloud_dws_ext_data_source.test <cluster_id>/<id>

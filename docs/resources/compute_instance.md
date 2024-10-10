@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Cloud Server (ECS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_compute_instance"
+description: ""
 ---
 
 # huaweicloud_compute_instance
@@ -289,8 +292,8 @@ The following arguments are supported:
 * `eip_id` - (Optional, String, ForceNew) Specifies the ID of an *existing* EIP assigned to the instance.
   This parameter and `eip_type`, `bandwidth` are alternative. Changing this creates a new instance.
 
-* `user_data` - (Optional, String, ForceNew) Specifies the user data to be injected during the instance creation. Text
-  and text files can be injected. Changing this creates a new instance.
+* `user_data` - (Optional, String) Specifies the user data to be injected to the instance during the creation. Text
+  and text files can be injected. The content of `user_data` can be plaint text or encoded with base64.
 
   -> **NOTE:** If the `user_data` field is specified for a Linux ECS that is created using an image with Cloud-Init
   installed, the `admin_pass` field becomes invalid.
@@ -344,7 +347,8 @@ The following arguments are supported:
   This parameter takes effect only when `charging_mode` is set to *spot*. If the price is not specified,
   the pay-per-use price is used by default. Changing this creates a new instance.
 
-* `spot_duration` - (Optional, Int, ForceNew) Specifies the service duration of the spot ECS in hours.
+* `spot_duration` - (Optional, Int, ForceNew) Specifies the service duration of the spot ECS in hours.  
+  The valid value is range from `1` to `6`.  
   This parameter takes effect only when `charging_mode` is set to *spot*.
   Changing this creates a new instance.
 
@@ -360,14 +364,23 @@ The following arguments are supported:
 
 * `agent_list` - (Optional, String) Specifies the agent list in comma-separated string.
   Available agents are:
-  + `ces`: enable cloud eye monitoring(free).
-  + `hss`: enable host security basic(free).
+  + `ces`: enable cloud eye monitoring.
+  + `hss`: enable host security basic.
   + `hss,hss-ent`: enable host security enterprise edition.
 
 * `power_action` - (Optional, String) Specifies the power action to be done for the instance.
   The valid values are *ON*, *OFF*, *REBOOT*, *FORCE-OFF* and *FORCE-REBOOT*.
 
   -> **NOTE:** The `power_action` is a one-time action.
+
+* `auto_terminate_time` - (Optional, String) Specifies the auto terminate time.
+  The value is in the format of "yyyy-MM-ddTHH:mm:ssZ" in UTC+0 and complies with ISO8601.
+  If the value of second (ss) is not "00", the system automatically sets to the current value of minute (mm).
+  The auto terminate time must be at least half an hour later than the current time.
+  The auto terminate time cannot be three years later than the current time.
+  For example, set the value to "2024-09-25T12:05:00Z".
+
+  -> **NOTE:** The `auto_terminate_time` is only support in **postpaid** charging mode.
 
 The `network` block supports:
 
@@ -451,6 +464,36 @@ The `bandwidth` block supports:
 * `charge_mode` - (Optional, String, ForceNew) Specifies the bandwidth billing mode. The value can be *traffic* or *bandwidth*.
   Changing this creates a new instance.
 
+* `extend_param` - (Optional, Map, ForceNew) Specifies the additional EIP information.
+  Changing this creates a new instance.
+
+  -> Currently, only the `charging_mode` key is supported and the value can be **prePaid** or **postPaid**.  
+    The value combinations of the `charging_mode` of instance, this `charging_mode` and `charge_mode` are shown in this table.
+
+  <!-- markdownlint-disable MD033 -->
+  <table class="tg"><thead>
+    <tr>
+      <th class="tg-0pky"><span style="font-weight:bold">charging_mode</span> of instance</th>
+      <th class="tg-0pky">this <span style="font-weight:bold">charging_mode</span></th>
+      <th class="tg-0pky"><span style="font-weight:bold">charge_mode</span></th>
+    </tr></thead>
+  <tbody>
+    <tr>
+      <td class="tg-0pky" rowspan="2"><span style="font-weight:bold">prePaid</span></td>
+      <td class="tg-0pky"><span style="font-weight:bold">prePaid</span> (default value)</td>
+      <td class="tg-0pky"><span style="font-weight:bold">bandwidth</span></td>
+    </tr>
+    <tr>
+      <td class="tg-fymr"><span style="font-weight:bold">postPaid</span></td>
+      <td class="tg-0pky"><span style="font-weight:bold">traffic</span> or <span style="font-weight:bold">bandwidth</span></td>
+    </tr>
+    <tr>
+      <td class="tg-0pky"><span style="font-weight:bold">postPaid</span></td>
+      <td class="tg-0pky"><span style="font-weight:bold">postPaid</span> (default value)</td>
+      <td class="tg-0pky"><span style="font-weight:bold">traffic</span> or <span style="font-weight:bold">bandwidth</span></td>
+    </tr>
+  </tbody></table>
+
 The `scheduler_hints` block supports:
 
 * `group` - (Optional, String, ForceNew) Specifies a UUID of a Server Group.
@@ -469,14 +512,15 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - A resource ID in UUID format.
 * `status` - The status of the instance.
-* `system_disk_id` - The system disk voume ID.
+* `system_disk_id` - The system disk volume ID.
 * `flavor_name` - The flavor name of the instance.
 * `security_groups` - An array of one or more security groups to associate with the instance.
-* `public_ip` - The EIP address that is associted to the instance.
+* `public_ip` - The EIP address that is associated to the instance.
 * `access_ip_v4` - The first detected Fixed IPv4 address or the Floating IP.
 * `access_ip_v6` - The first detected Fixed IPv6 address.
 * `created_at` - The creation time, in UTC format.
 * `updated_at` - The last update time, in UTC format.
+* `expired_time` - The expired time of prePaid instance, in UTC format.
 
 * `network` - An array of one or more networks to attach to the instance.
   The [network object](#compute_instance_network_object) structure is documented below.
@@ -527,7 +571,7 @@ It is generally recommended running `terraform plan` after importing an instance
 You can then decide if changes should be applied to the instance, or the resource definition should be updated to
 align with the instance. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_compute_instance" "myinstance" {
     ...
 

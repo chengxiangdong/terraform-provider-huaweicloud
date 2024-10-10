@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -16,6 +15,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
+// @API ServiceStage POST /v1/{project_id}/git/auths/{repo_type}/password
+// @API ServiceStage GET /v1/{project_id}/git/auths
+// @API ServiceStage DELETE /v1/{project_id}/git/auths/{name}
 func ResourceRepoPwdAuth() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRepoPwdAuthCreate,
@@ -37,11 +39,6 @@ func ResourceRepoPwdAuth() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\w.-]*$`),
-						"The name can only contain letters, digits, underscores (_), hyphens (-) and dots (.)."),
-					validation.StringLenBetween(4, 63),
-				),
 			},
 			"type": {
 				Type:     schema.TypeString,

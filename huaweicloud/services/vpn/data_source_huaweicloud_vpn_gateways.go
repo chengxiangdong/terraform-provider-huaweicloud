@@ -17,11 +17,11 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPN GET /v5/{project_id}/vpn-gateways
 func DataSourceGateways() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceGatewaysRead,
@@ -103,6 +103,11 @@ func gatewayGatewaysSchema() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: `The ID of the ER to which the VPN gateway is connected.`,
+			},
+			"er_attachment_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: `The ER attachment ID.`,
 			},
 			"local_subnets": {
 				Type:        schema.TypeList,
@@ -274,16 +279,13 @@ func dataSourceGatewaysRead(_ context.Context, d *schema.ResourceData, meta inte
 
 	getGatewaysOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
-		MoreHeaders: map[string]string{"Content-Type": "application/json"},
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
 	}
 
 	getGatewaysResp, err := getGatewaysClient.Request("GET", getGatewaysPath, &getGatewaysOpt)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving Gateway")
+		return diag.Errorf("error retrieving VPN gateway: %s", err)
 	}
 
 	getGatewaysRespBody, err := utils.FlattenResponse(getGatewaysResp)
@@ -323,6 +325,7 @@ func flattenGetGatewaysResponseBodyGateways(resp interface{}) []interface{} {
 			"attachment_type":        utils.PathSearch("attachment_type", v, nil),
 			"vpc_id":                 utils.PathSearch("vpc_id", v, nil),
 			"er_id":                  utils.PathSearch("er_id", v, nil),
+			"er_attachment_id":       utils.PathSearch("er_attachment_id", v, nil),
 			"local_subnets":          utils.PathSearch("local_subnets", v, nil),
 			"connect_subnet":         utils.PathSearch("connect_subnet", v, nil),
 			"bgp_asn":                utils.PathSearch("bgp_asn", v, nil),

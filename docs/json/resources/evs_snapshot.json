@@ -18,6 +18,14 @@
                 "type": "string",
                 "computed": true
               },
+              "metadata": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true,
+                "forcenew": true
+              },
               "name": {
                 "type": "string",
                 "required": true

@@ -24,9 +24,12 @@ func getResourceObj(conf *config.Config, state *terraform.ResourceState) (interf
 }
 
 func TestAccFgsV2Function_basic(t *testing.T) {
-	var f function.Function
-	randName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_fgs_function.test"
+	var (
+		f              function.Function
+		randName       = acceptance.RandomAccResourceName()
+		obsOjectConfig = zipFileUploadResourcesConfig()
+		resourceName   = "huaweicloud_fgs_function.test"
+	)
 
 	rc := acceptance.InitResourceCheck(
 		resourceName,
@@ -40,28 +43,39 @@ func TestAccFgsV2Function_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFgsV2Function_basic(randName),
+				Config: testAccFgsV2Function_basic_step1(randName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					// Default value is v2. Some regions support only v1, the default value is v1
 					resource.TestMatchResourceAttr(resourceName, "functiongraph_version", regexp.MustCompile(`v1|v2`)),
+					resource.TestCheckResourceAttr(resourceName, "description", "function test"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
 					resource.TestCheckResourceAttrSet(resourceName, "version"),
+					resource.TestCheckResourceAttr(resourceName, "code_type", "inline"),
 				),
 			},
 			{
-				Config: testAccFgsV2Function_update(randName),
+				Config: testAccFgsV2Function_basic_step2(randName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "description", "fuction test update"),
+					resource.TestCheckResourceAttr(resourceName, "description", "function test update"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "baar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.newkey", "value"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
 					resource.TestCheckResourceAttrSet(resourceName, "version"),
 					resource.TestCheckResourceAttrPair(resourceName, "vpc_id", "huaweicloud_vpc.test", "id"),
 					resource.TestCheckResourceAttrPair(resourceName, "network_id", "huaweicloud_vpc_subnet.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "depend_list.#", "1"),
+				),
+			},
+			{
+				Config: testAccFgsV2Function_basic_step3(randName, obsOjectConfig),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "depend_list.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "code_type", "obs"),
 				),
 			},
 			{
@@ -196,6 +210,9 @@ func TestAccFgsV2Function_createByImage(t *testing.T) {
 					resource.TestCheckResourceAttr(rName1, "custom_image.0.url", acceptance.HW_BUILD_IMAGE_URL),
 					resource.TestCheckResourceAttrPair(rName1, "vpc_id", "huaweicloud_vpc.test", "id"),
 					resource.TestCheckResourceAttrPair(rName1, "network_id", "huaweicloud_vpc_subnet.test", "id"),
+					resource.TestCheckResourceAttr(rName1, "custom_image.0.command", "/bin/sh"),
+					resource.TestCheckResourceAttr(rName1, "custom_image.0.args", "-args,value"),
+					resource.TestCheckResourceAttr(rName1, "custom_image.0.working_dir", "/"),
 					rc2.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName2, "name", randName+"_2"),
 					resource.TestCheckResourceAttr(rName2, "agency", "functiongraph_swr_trust"),
@@ -214,6 +231,9 @@ func TestAccFgsV2Function_createByImage(t *testing.T) {
 					resource.TestCheckResourceAttr(rName1, "vpc_id", ""),
 					resource.TestCheckResourceAttr(rName1, "network_id", ""),
 					resource.TestCheckResourceAttr(rName1, "custom_image.0.url", acceptance.HW_BUILD_IMAGE_URL_UPDATED),
+					resource.TestCheckResourceAttr(rName1, "custom_image.0.command", ""),
+					resource.TestCheckResourceAttr(rName1, "custom_image.0.args", ""),
+					resource.TestCheckResourceAttr(rName1, "custom_image.0.working_dir", "/"),
 					rc2.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName2, "handler", "-"),
 					resource.TestCheckResourceAttrPair(rName2, "vpc_id", "huaweicloud_vpc.test", "id"),
@@ -285,13 +305,48 @@ func TestAccFgsV2Function_logConfig(t *testing.T) {
 	})
 }
 
-func testAccFgsV2Function_basic(rName string) string {
+func zipFileUploadResourcesConfig() string {
+	randName := acceptance.RandomAccResourceNameWithDash()
+
+	return fmt.Sprintf(`
+variable "script_content" {
+  type    = string
+  default = <<EOT
+def main():  
+    print("Hello, World!")  
+
+if __name__ == "__main__":  
+    main()
+EOT
+}
+
+resource "huaweicloud_obs_bucket" "test" {
+  bucket = "%[1]s"
+  acl    = "private"
+
+  provisioner "local-exec" {
+    command = "echo '${var.script_content}' >> test.py\nzip -r test.zip test.py"
+  }
+  provisioner "local-exec" {
+    command = "rm test.zip test.py"
+    when    = destroy
+  }
+}
+
+resource "huaweicloud_obs_bucket_object" "test" {
+  bucket = huaweicloud_obs_bucket.test.bucket
+  key    = "test.zip"
+  source = abspath("./test.zip")
+}`, randName)
+}
+
+func testAccFgsV2Function_basic_step1(rName string) string {
 	//nolint:revive
 	return fmt.Sprintf(`
 resource "huaweicloud_fgs_function" "test" {
   name        = "%s"
   app         = "default"
-  description = "fuction test"
+  description = "function test"
   handler     = "index.handler"
   memory_size = 128
   timeout     = 3
@@ -307,15 +362,20 @@ resource "huaweicloud_fgs_function" "test" {
 `, rName)
 }
 
-func testAccFgsV2Function_update(rName string) string {
+func testAccFgsV2Function_basic_step2(rName string) string {
 	//nolint:revive
 	return fmt.Sprintf(`
 %[1]s
 
+data "huaweicloud_fgs_dependencies" "test" {
+  type    = "public"
+  runtime = "Python2.7"
+}
+
 resource "huaweicloud_fgs_function" "test" {
   name        = "%[2]s"
   app         = "default"
-  description = "fuction test update"
+  description = "function test update"
   handler     = "index.handler"
   memory_size = 128
   timeout     = 3
@@ -325,6 +385,7 @@ resource "huaweicloud_fgs_function" "test" {
   agency      = "function_vpc_trust"
   vpc_id      = huaweicloud_vpc.test.id
   network_id  = huaweicloud_vpc_subnet.test.id
+  depend_list = try(slice(data.huaweicloud_fgs_dependencies.test.packages[*].id, 0, 1), [])
 
   tags = {
     foo    = "baar"
@@ -332,6 +393,41 @@ resource "huaweicloud_fgs_function" "test" {
   }
 }
 `, common.TestBaseNetwork(rName), rName)
+}
+
+func testAccFgsV2Function_basic_step3(rName, obsConfig string) string {
+	//nolint:revive
+	return fmt.Sprintf(`
+%[1]s
+
+%[2]s
+
+data "huaweicloud_fgs_dependencies" "test" {
+  type    = "public"
+  runtime = "Python2.7"
+}
+
+resource "huaweicloud_fgs_function" "test" {
+  name        = "%[3]s"
+  app         = "default"
+  description = "fuction test update"
+  handler     = "index.handler"
+  memory_size = 128
+  timeout     = 3
+  runtime     = "Python2.7"
+  code_type   = "obs"
+  code_url    = format("https://%%s/%%s", huaweicloud_obs_bucket.test.bucket_domain_name, huaweicloud_obs_bucket_object.test.key)
+  agency      = "function_vpc_trust"
+  vpc_id      = huaweicloud_vpc.test.id
+  network_id  = huaweicloud_vpc_subnet.test.id
+  depend_list = try(slice(data.huaweicloud_fgs_dependencies.test.packages[*].id, 0, 2), [])
+
+  tags = {
+    foo    = "baar"
+    newkey = "value"
+  }
+}
+`, common.TestBaseNetwork(rName), obsConfig, rName)
 }
 
 func testAccFgsV2Function_text(rName string) string {
@@ -395,7 +491,10 @@ resource "huaweicloud_fgs_function" "create_with_vpc_access" {
   agency      = "functiongraph_swr_trust"
 
   custom_image {
-    url = "%[3]s"
+    url         = "%[3]s"
+    command     = "/bin/sh"
+    args        = "-args,value"
+    working_dir = "/"
   }
 
   vpc_id     = huaweicloud_vpc.test.id
@@ -581,26 +680,21 @@ func TestAccFgsV2Function_versions(t *testing.T) {
 				Config: testAccFunction_versions_step1(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.name", "latest"),
+					resource.TestCheckResourceAttr(resourceName, "versions.#", "0"),
 				),
 			},
 			{
 				Config: testAccFunction_versions_step2(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.name", "latest"),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.aliases.0.name", "demo"),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.aliases.0.description",
-						"This is a description of the demo alias"),
+					resource.TestCheckResourceAttr(resourceName, "versions.#", "1"),
 				),
 			},
 			{
 				Config: testAccFunction_versions_step3(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.name", "latest"),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.aliases.0.name", "demo_update"),
-					resource.TestCheckResourceAttr(resourceName, "versions.0.aliases.0.description", ""),
+					resource.TestCheckResourceAttr(resourceName, "versions.#", "2"),
 				),
 			},
 			{
@@ -629,11 +723,6 @@ resource "huaweicloud_fgs_function" "test" {
   runtime               = "Python2.7"
   code_type             = "inline"
   func_code             = "dCA9ICdIZWxsbyBtZXNzYWdlOiAnICsganN="
-
-  // Test whether 'plan' and 'apply' commands will report an error when only the version number is filled in.
-  versions {
-    name = "latest"
-  }
 }
 `, name)
 }
@@ -652,11 +741,11 @@ resource "huaweicloud_fgs_function" "test" {
   func_code             = "dCA9ICdIZWxsbyBtZXNzYWdlOiAnICsganN="
 
   versions {
-    name = "latest"
+    name = "%[1]s"
 
     aliases {
-      name        = "demo"
-      description = "This is a description of the demo alias"
+      name        = "custom_alias"
+      description = "This is a description of the custom alias"
     }
   }
 }
@@ -680,7 +769,14 @@ resource "huaweicloud_fgs_function" "test" {
     name = "latest"
 
     aliases {
-      name = "demo_update"
+      name = "demo"
+    }
+  }
+  versions {
+    name = "%[1]s"
+
+    aliases {
+      name = "custom_alias_update"
     }
   }
 }
@@ -871,4 +967,351 @@ resource "huaweicloud_fgs_function" "test" {
   log_stream_name = huaweicloud_lts_stream.test1.stream_name
 }
 `, rName)
+}
+
+func TestAccFgsV2Function_reservedInstance_version(t *testing.T) {
+	var (
+		f            function.Function
+		name         = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_fgs_function.test"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&f,
+		getResourceObj,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFgsV2Function_reservedInstance_step1(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.qualifier_name", "latest"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.qualifier_type", "version"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.count", "1"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.idle_mode", "true"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.tactics_config.0.cron_configs.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.tactics_config.0.cron_configs.0.count", "2"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.tactics_config.0.cron_configs.0.cron", "0 */10 * * * ?"),
+					resource.TestCheckResourceAttrSet(resourceName, "reserved_instances.0.tactics_config.0.cron_configs.0.start_time"),
+					resource.TestCheckResourceAttrSet(resourceName, "reserved_instances.0.tactics_config.0.cron_configs.0.expired_time"),
+					resource.TestCheckResourceAttrSet(resourceName, "reserved_instances.0.tactics_config.0.cron_configs.0.name"),
+				),
+			},
+			{
+				Config: testAccFgsV2Function_reservedInstance_step2(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.count", "2"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.idle_mode", "false"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.tactics_config.#", "0"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"app",
+					"package",
+					"func_code",
+					"tags",
+				},
+			},
+		},
+	})
+}
+
+func TestAccFgsV2Function_reservedInstance_alias(t *testing.T) {
+	var (
+		f               function.Function
+		name            = acceptance.RandomAccResourceName()
+		updateAliasName = acceptance.RandomAccResourceName()
+		resourceName    = "huaweicloud_fgs_function.test"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&f,
+		getResourceObj,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFgsV2Function_reservedInstance_alias(name, name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.qualifier_name", name),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.qualifier_type", "alias"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.count", "1"),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.idle_mode", "false"),
+				),
+			},
+			{
+				Config: testAccFgsV2Function_reservedInstance_alias(name, updateAliasName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.qualifier_name", updateAliasName),
+					resource.TestCheckResourceAttr(resourceName, "reserved_instances.0.qualifier_type", "alias"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"app",
+					"package",
+					"func_code",
+					"tags",
+				},
+			},
+		},
+	})
+}
+
+func testAccFgsV2Function_reservedInstance_step1(rName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_fgs_function" "test" {
+  name        = "%[1]s"
+  app         = "default"
+  handler     = "index.handler"
+  memory_size = 128
+  timeout     = 3
+  runtime     = "Node.js16.17"
+  code_type   = "inline"
+
+  reserved_instances {
+    qualifier_type = "version"
+    qualifier_name = "latest"
+    count          = 1
+    idle_mode      = true
+
+    tactics_config {
+      cron_configs {
+        name         = "scheme-waekcy"
+        cron         = "0 */10 * * * ?"
+        start_time   = "1708342889"
+        expired_time = "1739878889"
+        count        = 2
+      }
+    }
+  }
+}
+`, rName)
+}
+
+func testAccFgsV2Function_reservedInstance_step2(rName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_fgs_function" "test" {
+  name        = "%s"
+  app         = "default"
+  handler     = "index.handler"
+  memory_size = 128
+  timeout     = 3
+  runtime     = "Node.js16.17"
+  code_type   = "inline"
+	  
+  reserved_instances {
+    qualifier_type = "version"
+    qualifier_name = "latest"
+    count          = 2
+    idle_mode      = false
+  }
+}
+`, rName)
+}
+
+func testAccFgsV2Function_reservedInstance_alias(rName string, aliasName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_fgs_function" "test" {
+  name        = "%[1]s"
+  app         = "default"
+  handler     = "index.handler"
+  memory_size = 128
+  timeout     = 3
+  runtime     = "Node.js16.17"
+  code_type   = "inline"
+
+  versions {
+    name = "latest"
+	
+    aliases {
+      name = "%[2]s"
+    }
+  }
+
+  reserved_instances {
+    qualifier_type = "alias"
+    qualifier_name = "%[2]s"
+    count          = 1
+    idle_mode      = false
+  }
+}
+`, rName, aliasName)
+}
+
+func TestAccFgsV2Function_concurrencyNum(t *testing.T) {
+	var (
+		f function.Function
+
+		name         = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_fgs_function.test"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&f,
+		getResourceObj,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFunction_strategy_default(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "concurrency_num", "1"),
+				),
+			},
+			{
+				Config: testAccFunction_concurrencyNum(name, 1000),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "concurrency_num", "1000"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"app",
+					"package",
+					"func_code",
+				},
+			},
+		},
+	})
+}
+
+func testAccFunction_concurrencyNum(name string, concurrencyNum int) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_fgs_function" "test" {
+  functiongraph_version = "v2"
+  name                  = "%[1]s"
+  app                   = "default"
+  handler               = "index.handler"
+  memory_size           = 128
+  timeout               = 3
+  runtime               = "Python2.7"
+  code_type             = "inline"
+  func_code             = "dCA9ICdIZWxsbyBtZXNzYWdlOiAnICsganN="
+  concurrency_num       = %[2]d
+}
+`, name, concurrencyNum)
+}
+
+func TestAccFgsV2Function_gpuMemory(t *testing.T) {
+	var (
+		f function.Function
+
+		name         = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_fgs_function.test"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&f,
+		getResourceObj,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			// Only the cn-east-3 region supports this function, and you need to submit a service ticket to enable the function.
+			acceptance.TestAccPreCheckFgsGpuType(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFunction_gpuMemory(name, 1024),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "gpu_memory", "1024"),
+					resource.TestCheckResourceAttr(resourceName, "gpu_type", acceptance.HW_FGS_GPU_TYPE),
+				),
+			},
+			{
+				Config: testAccFunction_gpuMemory(name, 2048),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "gpu_memory", "2048"),
+					resource.TestCheckResourceAttr(resourceName, "gpu_type", acceptance.HW_FGS_GPU_TYPE),
+				),
+			},
+			{
+				Config: testAccFunction_default(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "gpu_memory", "0"),
+					resource.TestCheckResourceAttr(resourceName, "gpu_type", ""),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"app",
+					"package",
+					"func_code",
+				},
+			},
+		},
+	})
+}
+
+func testAccFunction_gpuMemory(name string, memory int) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_fgs_function" "test" {
+  name        = "%[1]s"
+  app         = "default"
+  handler     = "bootstrap"
+  memory_size = 128
+  timeout     = 3
+  runtime     = "Custom"
+  code_type   = "inline"
+  gpu_memory  = %[2]d
+  gpu_type    = "%[3]s"
+}
+`, name, memory, acceptance.HW_FGS_GPU_TYPE)
+}
+
+func testAccFunction_default(name string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_fgs_function" "test" {
+  name        = "%[1]s"
+  app         = "default"
+  handler     = "bootstrap"
+  memory_size = 128
+  timeout     = 3
+  runtime     = "Custom"
+  code_type   = "inline"
+}
+`, name)
 }

@@ -1,14 +1,17 @@
 ---
-subcategory: "GaussDB NoSQL"
+subcategory: "GeminiDB"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_gaussdb_influx_instance"
+description: ""
 ---
 
 # huaweicloud_gaussdb_influx_instance
 
-GaussDB for influx instance management within HuaweiCoud.
+GeminiDB Influx instance management within HuaweiCould.
 
 ## Example Usage
 
-### create a gaussdb for influx instance with tags
+### create a geminidb influx instance with tags
 
 ```hcl
 resource "huaweicloud_gaussdb_influx_instance" "instance_1" {
@@ -28,7 +31,7 @@ resource "huaweicloud_gaussdb_influx_instance" "instance_1" {
 }
 ```
 
-### create a gaussdb influx instance with backup strategy
+### create a geminidb influx instance with backup strategy
 
 ```hcl
 resource "huaweicloud_gaussdb_influx_instance" "instance_1" {
@@ -60,21 +63,21 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `name` - (Required, String) Specifies the instance name, which can be the same as an existing instance name. The
-  value must be **4** to **64** characters in length and start with a letter. It is case-sensitive and can contain only
+  value must be `4` to `64` characters in length and start with a letter. It is case-sensitive and can contain only
   letters, digits, hyphens (-), and underscores (_).
 
 * `flavor` - (Required, String, ForceNew) Specifies the instance specifications. For details,
   see [DB Instance Specifications](https://support.huaweicloud.com/intl/en-us/influxug-nosql/nosql_05_0045.html)
   Changing this parameter will create a new resource.
 
-* `node_num` - (Optional, Int) Specifies the number of nodes, ranges from **3** to **16**. Defaults to **3**.
+* `node_num` - (Optional, Int) Specifies the number of nodes, ranges from `3` to `16`. Defaults to `3`.
 
-* `volume_size` - (Required, Int) Specifies the storage space in GB. The value must be a multiple of **10**. For a
-  GaussDB influx instance, the minimum storage space is **100** GB, and the maximum storage space is related to the
+* `volume_size` - (Required, Int) Specifies the storage space in GB. The value must be a multiple of `10`. For a
+  GaussDB influx instance, the minimum storage space is `100` GB, and the maximum storage space is related to the
   instance performance specifications. For details,
   see [DB Instance Specifications](https://support.huaweicloud.com/intl/en-us/influxug-nosql/nosql_05_0045.html)
 
-* `password` - (Required, String) Specifies the database password. The value must be **8** to **32** characters in
+* `password` - (Required, String) Specifies the database password. The value must be `8` to `32` characters in
   length, including uppercase and lowercase letters, digits, and special characters, such as ~!@#%^*-_=+? You are
   advised to enter a strong password to improve security, preventing security risks such as brute force cracking.
 
@@ -94,8 +97,8 @@ The following arguments are supported:
 * `dedicated_resource_name` - (Optional, String, ForceNew) Specifies the dedicated resource name. Changing this
   parameter will create a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project id, Only valid for users who
-  have enabled the enterprise multi-project service. Changing this parameter will create a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project id, Only valid for users who
+  have enabled the enterprise multi-project service.
 
 * `ssl` - (Optional, Bool, ForceNew) Specifies whether to enable or disable SSL. Defaults to **false**. Changing this
   parameter will create a new resource.
@@ -110,10 +113,11 @@ The following arguments are supported:
   Valid values are **month** and **year**. This parameter is mandatory if `charging_mode` is set to **prePaid**.
   Changing this will do nothing.
 
-* `period` - (Optional, Int) Specifies the charging period of the instance.
-  If `period_unit` is set to **month** , the value ranges from **1** to **9**. If `period_unit` is set to *year*, the
-  value ranges from **1** to **3**. This parameter is mandatory if `charging_mode` is set to **prePaid**. Changing this
-  will do nothing.
+* `period` - (Optional, Int) Specifies the charging period of the instance.  
+  If `period_unit` is set to **month** , the value ranges from `1` to `9`.  
+  If `period_unit` is set to *year*, the value ranges from `1` to `3`.  
+  This parameter is mandatory if `charging_mode` is set to **prePaid**.  
+  Changing this will do nothing.
 
 * `auto_renew` - (Optional, String) Specifies whether auto renew is enabled.
   Valid values are **true** and **false**.
@@ -144,7 +148,7 @@ The `backup_strategy` block supports:
   value: 08:00-09:00, 03:00-04:00.
 
 * `keep_days` - (Optional, Int) Specifies the number of days to retain the generated backup files. The value ranges from
-  **0** to **35**. If this parameter is set to **0**, the automated backup policy is not set. If this parameter is not
+  `0` to `35`. If this parameter is set to `0`, the automated backup policy is not set. If this parameter is not
   transferred, the automated backup policy is enabled by default. Backup files are stored for seven days by default.
 
 ## Attribute Reference
@@ -181,6 +185,6 @@ This resource provides the following timeouts configuration options:
 
 GaussDB influx instance can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_gaussdb_influx_instance.instance_1 e6f6b1fde738489793ce09320d732037in13
 ```

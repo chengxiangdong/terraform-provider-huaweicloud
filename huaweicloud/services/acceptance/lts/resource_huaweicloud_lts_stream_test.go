@@ -2,48 +2,58 @@ package lts
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk/openstack/lts/huawei/logstreams"
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 func getLtsStreamResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := cfg.LtsV2Client(acceptance.HW_REGION_NAME)
+	httpUrl := "v2/{project_id}/groups/{log_group_id}/streams"
+	client, err := cfg.NewServiceClient("lts", acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating LTS client: %s", err)
 	}
+	getPath := client.Endpoint + httpUrl
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{log_group_id}", state.Primary.Attributes["group_id"])
 
-	resourceID := state.Primary.ID
-	groupID := state.Primary.Attributes["group_id"]
-	streams, err := logstreams.List(client, groupID).Extract()
+	getOpts := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+
+	requestResp, err := client.Request("GET", getPath, &getOpts)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, item := range streams.LogStreams {
-		if item.ID == resourceID {
-			return &item, nil
-		}
+	respBody, err := utils.FlattenResponse(requestResp)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing the log stream: %s", err)
 	}
 
-	return nil, fmt.Errorf("the log stream %s does not exist", resourceID)
+	streamId := state.Primary.ID
+	streamResult := utils.PathSearch(fmt.Sprintf("log_streams|[?log_stream_id=='%s']|[0]", streamId), respBody, nil)
+	if streamResult == nil {
+		return nil, golangsdk.ErrDefault404{}
+	}
+
+	return streamResult, nil
 }
 
 func TestAccLtsStream_basic(t *testing.T) {
-	var stream logstreams.LogStream
-	rName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_lts_stream.test"
-
-	rc := acceptance.InitResourceCheck(
-		resourceName,
-		&stream,
-		getLtsStreamResourceFunc,
+	var (
+		stream       interface{}
+		rName        = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_lts_stream.test"
+		rc           = acceptance.InitResourceCheck(resourceName, &stream, getLtsStreamResourceFunc)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -59,49 +69,20 @@ func TestAccLtsStream_basic(t *testing.T) {
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "stream_name", rName),
 					resource.TestCheckResourceAttr(resourceName, "filter_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "enterprise_project_id"),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", "0"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
 					resource.TestCheckResourceAttrPair(resourceName, "group_id", "huaweicloud_lts_group.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttr(resourceName, "tags.terraform", ""),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testLtsStreamImportState(resourceName),
-			},
-		},
-	})
-}
-
-func TestAccLtsStream_ttl(t *testing.T) {
-	var stream logstreams.LogStream
-	rName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_lts_stream.test"
-
-	rc := acceptance.InitResourceCheck(
-		resourceName,
-		&stream,
-		getLtsStreamResourceFunc,
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccLtsStream_ttl(rName),
+				Config: testAccLtsStream_update(rName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "stream_name", rName),
-					resource.TestCheckResourceAttr(resourceName, "ttl_in_days", "60"),
-					resource.TestCheckResourceAttr(resourceName, "filter_count", "0"),
-					resource.TestCheckResourceAttrSet(resourceName, "enterprise_project_id"),
-					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
-					resource.TestCheckResourceAttrPair(resourceName, "group_id", "huaweicloud_lts_group.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform"),
 				),
 			},
 			{
@@ -134,16 +115,83 @@ func testAccLtsStream_basic(rName string) string {
 resource "huaweicloud_lts_group" "test" {
   group_name  = "%[1]s"
   ttl_in_days = 30
+
+  tags = {
+    owner = "terraform"
+  }
 }
 
 resource "huaweicloud_lts_stream" "test" {
   group_id    = huaweicloud_lts_group.test.id
   stream_name = "%[1]s"
+  ttl_in_days = 60
+
+  tags = {
+    foo       = "bar"
+    terraform = ""
+  }
 }
 `, rName)
 }
 
-func testAccLtsStream_ttl(rName string) string {
+func testAccLtsStream_update(rName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_lts_group" "test" {
+  group_name  = "%[1]s"
+  ttl_in_days = 30
+
+  tags = {
+    owner = "terraform"
+  }
+}
+
+resource "huaweicloud_lts_stream" "test" {
+  group_id    = huaweicloud_lts_group.test.id
+  stream_name = "%[1]s"
+  ttl_in_days = 60
+
+  tags = {
+    owner = "terraform"
+  }
+}
+`, rName)
+}
+
+func TestAccLtsStream_epsId(t *testing.T) {
+	var (
+		stream       interface{}
+		rName        = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_lts_stream.test"
+		rc           = acceptance.InitResourceCheck(resourceName, &stream, getLtsStreamResourceFunc)
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLtsStream_epsId(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "stream_name", rName),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testLtsStreamImportState(resourceName),
+			},
+		},
+	})
+}
+
+func testAccLtsStream_epsId(rName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_lts_group" "test" {
   group_name  = "%[1]s"
@@ -151,9 +199,9 @@ resource "huaweicloud_lts_group" "test" {
 }
 
 resource "huaweicloud_lts_stream" "test" {
-  group_id    = huaweicloud_lts_group.test.id
-  stream_name = "%[1]s"
-  ttl_in_days = 60
+  group_id              = huaweicloud_lts_group.test.id
+  stream_name           = "%[1]s"
+  enterprise_project_id = "%[2]s"
 }
-`, rName)
+`, rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
 }

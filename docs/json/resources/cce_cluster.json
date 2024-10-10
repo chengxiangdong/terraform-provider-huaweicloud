@@ -82,8 +82,7 @@
               "cluster_version": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "container_network_cidr": {
                 "type": "string",
@@ -145,13 +144,11 @@
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "flavor_id": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "hibernate": {
                 "type": "bool",
@@ -176,6 +173,10 @@
                 "optional": true,
                 "computed": true,
                 "forcenew": true
+              },
+              "lts_reclaim_policy": {
+                "type": "string",
+                "optional": true
               },
               "multi_az": {
                 "type": "bool",
@@ -246,18 +247,15 @@
                   "attributes": {
                     "configurations": {
                       "type": "string",
-                      "optional": true,
-                      "forcenew": true
+                      "optional": true
                     },
                     "name": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     }
                   }
                 },
-                "nesting_mode": "list",
-                "forcenew": true
+                "nesting_mode": "list"
               },
               "extend_params": {
                 "block": {

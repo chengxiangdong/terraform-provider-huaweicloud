@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Eye (CES)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_ces_alarmrule"
+description: ""
 ---
 
 # huaweicloud_ces_alarmrule
@@ -72,7 +75,52 @@ resource "huaweicloud_ces_alarmrule" "test" {
 }
 ```
 
-## Alarm rule for event monitoring
+### Alarm rule for All instance
+
+```hcl
+variable "topic_urn" {}
+
+resource "huaweicloud_ces_alarmrule" "test" {
+  alarm_name           = "rule-test"
+  alarm_action_enabled = true
+  alarm_enabled        = true
+  alarm_type           = "ALL_INSTANCE"
+
+  metric {
+    namespace = "AGT.ECS"
+  }
+
+  resources {
+    dimensions {
+      name = "instance_id"
+    }
+
+    dimensions {
+      name = "mount_point"
+    }
+  }
+
+  condition  {
+    alarm_level         = 2
+    suppress_duration   = 0
+    period              = 1
+    filter              = "average"
+    comparison_operator = ">"
+    value               = 80
+    count               = 1
+    metric_name         = "disk_usedPercent"
+  }
+
+  alarm_actions {
+    type              = "notification"
+    notification_list = [
+      var.topic_urn
+    ]
+  }
+}
+```
+
+### Alarm rule for event monitoring
 
 ```hcl
 variable "topic_urn" {}
@@ -114,8 +162,8 @@ The following arguments are supported:
 * `region` - (Optional, String, ForceNew) The region in which to create the alarm rule resource. If omitted, the
   provider-level region will be used. Changing this creates a new resource.
 
-* `alarm_name` - (Required, String) Specifies the name of an alarm rule. The value can be a string of 1 to 128
-  characters that can consist of letters, digits, underscores (_), hyphens (-) and chinese characters.
+* `alarm_name` - (Required, String) Specifies the name of an alarm rule. The value can be a string of `1` to `128`
+  characters that can consist of English letters, Chinese characters, digits, underscores (_), hyphens (-).
 
 * `metric` - (Required, List, ForceNew) Specifies the alarm metrics. The structure is described below. Changing this
   creates a new resource.
@@ -147,8 +195,7 @@ The following arguments are supported:
 * `notification_end_time` - (Optional, String, ForceNew) Specifies the alarm notification stop time, for
   example: **22:10**. Changing this creates a new resource.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project id of the alarm rule. Changing
-  this creates a new resource.
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID of the alarm rule.
 
 -> **Note** If alarm_action_enabled is set to true, either alarm_actions or ok_actions cannot be empty. If alarm_actions
 and ok_actions coexist, their corresponding notification_list must be of the **same value**.
@@ -180,7 +227,7 @@ The `condition` block supports:
   Note: If period is set to 1, the raw metric data is used to determine whether to generate an alarm. When the value of
   `alarm_type` is **EVENT.SYS** or **EVENT.CUSTOM**, period can be set to 0.
 
-* `filter` - (Required, String) Specifies the data rollup methods. The value can be max, min, average, sum, and vaiance.
+* `filter` - (Required, String) Specifies the data rollup methods. The value can be max, min, average, sum, and variance.
 
 * `comparison_operator` - (Required, String) Specifies the comparison condition of alarm thresholds. The value can be >,
   =, <, >=, or <=.
@@ -206,7 +253,7 @@ The `condition` block supports:
   + **43200**: Cloud Eye triggers the alarm every 12 hour;
   + **86400**: Cloud Eye triggers the alarm every day.
 
-  The default value is **0**.
+  The default value is `0`.
 
 * `metric_name` - (Required, String) Specifies the metric name of the condition. The value can be a string of
   1 to 64 characters that must start with a letter and contain only letters, digits, and underscores (_).
@@ -263,6 +310,6 @@ This resource provides the following timeouts configuration options:
 
 CES alarm rules can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_ces_alarmrule.alarm_rule al1619578509719Ga0X1RGWv
 ```

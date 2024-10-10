@@ -1,10 +1,28 @@
 ---
 subcategory: "IoT Device Access (IoTDA)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_iotda_dataforwarding_rule"
+description: ""
 ---
 
 # huaweicloud_iotda_dataforwarding_rule
 
 Manages an IoTDA data forwarding rule within HuaweiCloud.
+
+-> When accessing an IoTDA **standard** or **enterprise** edition instance, you need to specify the IoTDA service
+endpoint in `provider` block.
+You can login to the IoTDA console, choose the instance **Overview** and click **Access Details**
+to view the HTTPS application access address. An example of the access address might be
+**9bc34xxxxx.st1.iotda-app.ap-southeast-1.myhuaweicloud.com**, then you need to configure the
+`provider` block as follows:
+
+  ```hcl
+  provider "huaweicloud" {
+    endpoints = {
+      iotda = "https://9bc34xxxxx.st1.iotda-app.ap-southeast-1.myhuaweicloud.com"
+    }
+  }
+  ```
 
 ## Example Usage
 
@@ -51,7 +69,7 @@ The following arguments are supported:
 * `region` - (Optional, String, ForceNew) Specifies the region in which to create the IoTDA data forwarding rule
   resource. If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
-* `name` - (Required, String) Specifies the name of data forwarding rule. The name contains a maximum of 256 characters.
+* `name` - (Required, String) Specifies the name of data forwarding rule. The name contains a maximum of `256` characters.
   Only letters, Chinese characters, digits, hyphens (-), underscores (_) and the following special characters are
   allowed: `?'#().,&%@!`.
 
@@ -72,14 +90,14 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `description` - (Optional, String) Specifies the description of data forwarding rule. The description contains
-  a maximum of 256 characters.
+  a maximum of `256` characters.
 
 * `space_id` - (Optional, String, ForceNew) Specifies the resource space ID which uses the data forwarding rule.
   If omitted, all resource space will use the data forwarding rule. Changing this parameter will create a new resource.
 
-* `select` - (Optional, String) Specifies the SQL SELECT statement which contains a maximum of 500 characters.
+* `select` - (Optional, String) Specifies the SQL SELECT statement which contains a maximum of `500` characters.
 
-* `where` - (Optional, String) Specifies the SQL WHERE statement which contains a maximum of 500 characters.
+* `where` - (Optional, String) Specifies the SQL WHERE statement which contains a maximum of `500` characters.
 
 * `targets` - (Optional, List) Specifies the list of the targets (HUAWEI CLOUD services or private servers) to which you
   want to forward the data. The [targets](#IoTDA_targets) structure is documented below.
@@ -88,7 +106,7 @@ The following arguments are supported:
   DIS, OBS, Kafka, ROMA Connect service, and SMN for the first time, you need to create a agency which can access the
   target cloud services. The default agency is `iotda_admin_trust`.
 
-* `enabled` - (Optional, Bool) Specifies whether to enable the data forwarding rule. Defaults to `false`.
+* `enabled` - (Optional, Bool) Specifies whether to enable the data forwarding rule. Defaults to **false**.
   Can not enable without `targets`.
 
 <a name="IoTDA_targets"></a>
@@ -107,6 +125,10 @@ The `targets` block supports:
   + **DMS_KAFKA_FORWARDING**: Distributed Message Service (DMS) for Kafka features high throughput, concurrency, and
    scalability. It is suitable for real-time data transmission, stream data processing, system decoupling,
    and traffic balancing.
+  + **FUNCTIONGRAPH_FORWARDING**: By forwarding data to FunctionGraph service, you only need to write your business
+    function code and set the conditions for execution in FunctionGraph. There is no need to configure and manage
+    servers or other infrastructure. Functions will run in an elastic, maintenance-free, and highly reliable manner.
+    Currently, only standard and enterprise edition IoTDA instances are supported.
 
 * `http_forwarding` - (Optional, List) Specifies the detail of the HTTP forwards. It is required when type
   is `HTTP_FORWARDING`. The [http_forwarding](#IoTDA_http_forwarding) structure is documented below.
@@ -122,6 +144,9 @@ The `targets` block supports:
 
 * `kafka_forwarding` - (Optional, List) Specifies the detail of the KAFKA forwards. It is required when type
   is `DMS_KAFKA_FORWARDING`. The [properties](#IoTDA_kafka_forwarding) structure is documented below.
+
+* `fgs_forwarding` - (Optional, List) Specifies the detail of the FunctionGraph forwards. It is required when
+  type is **FUNCTIONGRAPH_FORWARDING**. The [fgs_forwarding](#IoTDA_fgs_forwarding) structure is documented below.
 
 <a name="IoTDA_http_forwarding"></a>
 The `http_forwarding` block supports:
@@ -149,7 +174,7 @@ The `obs_forwarding` block supports:
   If omitted, the default project in the region will be used.
 
 * `custom_directory` - (Optional, String) Specifies the custom directory for storing channel files. The ID contains a
- maximum of 256 characters. Multi-level directories can be separated by (/), and cannot start or end with a slash (/),
+ maximum of `256` characters. Multi-level directories can be separated by (/), and cannot start or end with a slash (/),
  and cannot contain more than two adjacent slashes (/). Only letters, digits, hyphens (-), underscores (_), slash (/)
  and braces ({}) are allowed. Braces can be used only for the time template parameters. For example, if the custom
  directory is in the format of {YYYY}/{MM}/{DD}/{HH}, data is generated in the directory based on the current
@@ -177,6 +202,13 @@ If omitted, the default project in the region will be used.
 
 * `password` - (Optional, String) Specifies the password.
 
+<a name="IoTDA_fgs_forwarding"></a>
+The `fgs_forwarding` block supports:
+
+* `func_urn` - (Required, String) Specifies the function URN.
+
+* `func_name` - (Required, String) Specifies the function name.
+
 <a name="IoTDA_forwarding_addresses"></a>
 The `addresses` block supports:
 
@@ -200,17 +232,17 @@ In addition to all arguments above, the following attributes are exported:
 
 Data forwarding rules can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_iotda_dataforwarding_rule.test 10022532f4f94f26b01daa1e424853e1
 ```
 
-Note that the imported state may not be identical to your resource definition, due to some attrubutes missing from the
+Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason. The missing attributes include: `password` of `kafka_forwarding`. It is
 generally recommended running `terraform plan` after importing the resource. You can then decide if changes should be
 applied to the resource, or the resource definition should be updated to align with the group. Also you can ignore
 changes as below.
 
-```
+```hcl
 resource "huaweicloud_iotda_device_group" "test" {
     ...
 

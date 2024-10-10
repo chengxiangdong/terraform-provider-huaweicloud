@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -22,6 +21,13 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API ModelArts POST /v1/{project_id}/notebooks/{id}/start
+// @API ModelArts POST /v1/{project_id}/notebooks/{id}/stop
+// @API ModelArts GET /v1/{project_id}/notebooks/{id}/storage
+// @API ModelArts DELETE /v1/{project_id}/notebooks/{id}
+// @API ModelArts GET /v1/{project_id}/notebooks/{id}
+// @API ModelArts PUT /v1/{project_id}/notebooks/{id}
+// @API ModelArts POST /v1/{project_id}/notebooks
 func ResourceNotebook() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceNotebookCreate,
@@ -41,9 +47,6 @@ func ResourceNotebook() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[A-Za-z][\w]{1,64}$`),
-					"The name consists of 1 to 64 characters, starting with a letter. "+
-						"Only letters, digits and underscores (_) are allowed."),
 			},
 			"flavor_id": {
 				Type:     schema.TypeString,
@@ -73,12 +76,16 @@ func ResourceNotebook() *schema.Resource {
 							ValidateFunc: validation.StringInSlice([]string{"MANAGED", "DEDICATED"}, false),
 						},
 						"size": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							Computed:     true,
-							ValidateFunc: validation.IntBetween(5, 4096),
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
 						},
 						"uri": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+						"id": {
 							Type:     schema.TypeString,
 							Optional: true,
 							ForceNew: true,
@@ -95,9 +102,6 @@ func ResourceNotebook() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[^&<>"'/]{1,256}$`),
-					"The description contains a maximum of 256 characters, "+
-						"and cannot contain special characters &<>\"'/."),
 			},
 			"key_pair": {
 				Type:         schema.TypeString,
@@ -371,9 +375,14 @@ func buildVolumeParamter(d *schema.ResourceData) (*notebook.VolumeReq, error) {
 	if rst.Category == "EFS" && rst.Ownership == "DEDICATED" {
 		v, ok := d.GetOk("volume.0.uri")
 		if !ok {
-			return nil, fmt.Errorf("uri is mandatory if the storage type is EFS and ownership is DEDICATED")
+			return nil, fmt.Errorf("the parameter 'uri' is mandatory if the storage type is EFS and ownership is DEDICATED")
 		}
 		rst.Uri = v.(string)
+		v, ok = d.GetOk("volume.0.id")
+		if !ok {
+			return nil, fmt.Errorf("the parameter 'id' is mandatory if the storage type is EFS and ownership is DEDICATED")
+		}
+		rst.ID = v.(string)
 	}
 
 	if v, ok := d.GetOk("volume.0.size"); ok {
@@ -401,6 +410,8 @@ func setVolumeToState(d *schema.ResourceData, volume notebook.VolumeRes) error {
 	result["type"] = volume.Category
 	result["ownership"] = volume.Ownership
 	result["size"] = volume.Capacity
+	result["uri"] = volume.URI
+	result["id"] = volume.ID
 	result["mount_path"] = volume.MountPath
 	return d.Set("volume", []map[string]interface{}{result})
 }

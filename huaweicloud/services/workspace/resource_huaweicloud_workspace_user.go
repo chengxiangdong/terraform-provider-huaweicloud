@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/workspace/v2/users"
 
@@ -23,6 +22,10 @@ const (
 	MilliRFC3339NoT = "2006-01-02T15:04:05.000Z"
 )
 
+// @API Workspace DELETE /v2/{project_id}/users/{user_id}
+// @API Workspace GET /v2/{project_id}/users/{user_id}
+// @API Workspace PUT /v2/{project_id}/users/{user_id}
+// @API Workspace POST /v2/{project_id}/users
 func ResourceUser() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceUserCreate,
@@ -49,11 +52,6 @@ func ResourceUser() *schema.Resource {
 			"email": {
 				Type:     schema.TypeString,
 				Required: true,
-			},
-			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 255),
 			},
 			"account_expires": {
 				Type:     schema.TypeString,

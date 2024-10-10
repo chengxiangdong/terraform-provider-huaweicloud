@@ -19,6 +19,11 @@
                 "computed": true,
                 "forcenew": true
               },
+              "elastic_resource_pool_name": {
+                "type": "string",
+                "description": "The name of the elastic resource pool to which the queue belongs.",
+                "required": true
+              },
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
@@ -57,7 +62,8 @@
               },
               "resource_mode": {
                 "type": "number",
-                "optional": true,
+                "description": "The queue resource mode.",
+                "required": true,
                 "forcenew": true
               },
               "tags": {
@@ -67,11 +73,55 @@
                 ],
                 "optional": true,
                 "forcenew": true
+              }
+            },
+            "block_types": {
+              "scaling_policies": {
+                "block": {
+                  "attributes": {
+                    "impact_start_time": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "impact_stop_time": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "max_cu": {
+                      "type": "number",
+                      "required": true
+                    },
+                    "min_cu": {
+                      "type": "number",
+                      "required": true
+                    },
+                    "priority": {
+                      "type": "number",
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "set"
               },
-              "vpc_cidr": {
-                "type": "string",
-                "optional": true,
-                "computed": true
+              "spark_driver": {
+                "block": {
+                  "attributes": {
+                    "max_concurrent": {
+                      "type": "number",
+                      "optional": true
+                    },
+                    "max_instance": {
+                      "type": "number",
+                      "optional": true
+                    },
+                    "max_prefetch_instance": {
+                      "type": "string",
+                      "optional": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
               }
             }
           },

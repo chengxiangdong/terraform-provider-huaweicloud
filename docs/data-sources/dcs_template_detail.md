@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Cache Service (DCS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dcs_template_detail"
+description: ""
 ---
 
 # huaweicloud_dcs_template_detail
@@ -41,7 +44,7 @@ The `params` block supports:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `name` - Indicates the name of the template.
 
@@ -49,7 +52,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `engine` - Indicates the cache engine. Currently, only **Redis** is supported.
 
-* `engine_version` - Indicates the cache engine version. The value can be **4.0**, **5.0.**, **6.0.**.
+* `engine_version` - Indicates the cache engine version. The value can be **4.0**, **5.0**, **6.0**.
 
 * `cache_mode` - Indicates the DCS instance type. The value can be **single**, **ha**, **cluster**, **proxy**,
   **ha_rw_split**.

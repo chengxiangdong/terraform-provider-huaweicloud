@@ -1,5 +1,8 @@
 ---
 subcategory: "NAT Gateway (NAT)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_nat_gateway"
+description: ""
 ---
 
 # huaweicloud_nat_gateway
@@ -12,11 +15,12 @@ Manages a gateway resource of the **public** NAT within HuaweiCloud.
 variable "gateway_name" {}
 variable "vpc_id" {}
 variable "network_id" {}
+variable "gateway_specification" {}
 
 resource "huaweicloud_nat_gateway" "test" {
   name        = var.gateway_name
   description = "test for terraform"
-  spec        = "3"
+  spec        = var.gateway_specification
   vpc_id      = var.vpc_id
   subnet_id   = var.network_id
 }
@@ -48,10 +52,15 @@ The following arguments are supported:
 * `description` - (Optional, String) Specifies the description of the NAT gateway, which contain maximum of `512`
   characters, and angle brackets (<) and (>) are not allowed.
 
+* `ngport_ip_address` - (Optional, String, ForceNew) Specifies the private IP address of the NAT gateway.
+  The IP address must be one of the IP addresses of the VPC subnet associated with the NAT gateway.
+  If not spacified, it will be automatically allocated.
+  Changing this will creates a new resource.
+
 * `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID of the NAT gateway.  
   Changing this will create a new resource.
 
-* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the NAT geteway.
+* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the NAT gateway.
 
 ## Attribute Reference
 

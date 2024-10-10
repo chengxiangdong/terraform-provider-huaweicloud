@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -27,6 +25,15 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPN POST /v5/{project_id}/vpn-gateways
+// @API VPN POST /v5/{project_id}/vpn-gateways/{gateway_id}/certificate
+// @API VPN PUT /v5/{project_id}/vpn-gateways/{id}
+// @API VPN PUT /v5/{project_id}/vpn-gateways/{gateway_id}/certificate/{certificate_id}
+// @API VPN GET /v5/{project_id}/vpn-gateways/{id}
+// @API VPN GET /v5/{project_id}/vpn-gateways/{gateway_id}/certificate
+// @API VPN DELETE /v5/{project_id}/vpn-gateways/{id}
+// @API VPN POST /v5/{project_id}/{resource_type}/{resource_id}/tags/create
+// @API VPN POST /v5/{project_id}/{resource_type}/{resource_id}/tags/delete
 func ResourceGateway() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceGatewayCreate,
@@ -53,11 +60,6 @@ func ResourceGateway() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `The name of the VPN gateway. Only letters, digits, underscores(_) and hypens(-) are supported.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\-_A-Za-z0-9]+$`),
-						"the input is invalid"),
-					validation.StringLenBetween(1, 64),
-				),
 			},
 			"availability_zones": {
 				Type:        schema.TypeList,
@@ -73,7 +75,7 @@ func ResourceGateway() *schema.Resource {
 				Computed:    true,
 				Description: `The flavor of the VPN gateway.`,
 				ValidateFunc: validation.StringInSlice([]string{
-					"V1G", "V300", "Basic", "Professional1", "Professional2",
+					"V1G", "V300", "Basic", "Professional1", "Professional2", "GM",
 				}, false),
 			},
 			"attachment_type": {
@@ -121,21 +123,54 @@ func ResourceGateway() *schema.Resource {
 				Computed:    true,
 				Description: `The enterprise router ID to attach with to VPN gateway.`,
 			},
+			"ha_mode": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				Computed:      true,
+				Description:   `The HA mode of the VPN gateway.`,
+				ValidateFunc:  validation.StringInSlice([]string{"active-active", "active-standby"}, false),
+				ConflictsWith: []string{"master_eip", "slave_eip"},
+			},
 			"master_eip": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				Elem:     GatewayEipSchema(),
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
+				Type:         schema.TypeList,
+				MaxItems:     1,
+				Elem:         GatewayEipSchema(),
+				Optional:     true,
+				ForceNew:     true,
+				Computed:     true,
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
+				RequiredWith: []string{"slave_eip"},
+			},
+			"eip1": {
+				Type:          schema.TypeList,
+				MaxItems:      1,
+				Elem:          GatewayEipSchema(),
+				Optional:      true,
+				ForceNew:      true,
+				Computed:      true,
+				ConflictsWith: []string{"master_eip", "slave_eip"},
+				RequiredWith:  []string{"eip2"},
 			},
 			"slave_eip": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				Elem:     GatewayEipSchema(),
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
+				Type:         schema.TypeList,
+				MaxItems:     1,
+				Elem:         GatewayEipSchema(),
+				Optional:     true,
+				ForceNew:     true,
+				Computed:     true,
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
+				RequiredWith: []string{"master_eip"},
+			},
+			"eip2": {
+				Type:          schema.TypeList,
+				MaxItems:      1,
+				Elem:          GatewayEipSchema(),
+				Optional:      true,
+				ForceNew:      true,
+				Computed:      true,
+				ConflictsWith: []string{"master_eip", "slave_eip"},
+				RequiredWith:  []string{"eip1"},
 			},
 			"access_vpc_id": {
 				Type:        schema.TypeString,
@@ -159,13 +194,33 @@ func ResourceGateway() *schema.Resource {
 				Description: `The ASN number of BGP`,
 			},
 			"enterprise_project_id": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: `The enterprise project ID`,
+			},
+			"access_private_ip_1": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Computed:     true,
 				ForceNew:     true,
-				Description:  `The enterprise project ID`,
-				ValidateFunc: validation.StringLenBetween(1, 64),
+				RequiredWith: []string{"access_private_ip_2"},
 			},
+			"access_private_ip_2": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ForceNew:     true,
+				RequiredWith: []string{"access_private_ip_1"},
+			},
+			"certificate": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem:     gatewayCertificateSchema(),
+			},
+			"tags": common.TagsSchema(),
 			"status": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -181,6 +236,11 @@ func ResourceGateway() *schema.Resource {
 				Computed:    true,
 				Description: `The update time.`,
 			},
+			"er_attachment_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: `The ER attachment ID.`,
+			},
 			"used_connection_group": {
 				Type:        schema.TypeInt,
 				Computed:    true,
@@ -195,6 +255,97 @@ func ResourceGateway() *schema.Resource {
 	}
 }
 
+func gatewayCertificateSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"content": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"private_key": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"certificate_chain": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"enc_certificate": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"enc_private_key": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"certificate_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"status": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"issuer": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"signature_algorithm": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"certificate_serial_number": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"certificate_subject": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"certificate_expire_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"certificate_chain_serial_number": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"certificate_chain_subject": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"certificate_chain_expire_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"enc_certificate_serial_number": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"enc_certificate_subject": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"enc_certificate_expire_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"created_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"updated_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+		},
+	}
+}
+
 func GatewayEipSchema() *schema.Resource {
 	sc := schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -204,11 +355,6 @@ func GatewayEipSchema() *schema.Resource {
 				Computed:    true,
 				ForceNew:    true,
 				Description: `The public IP ID.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}`),
-						"the input is invalid"),
-					validation.StringLenBetween(36, 36),
-				),
 			},
 
 			"type": {
@@ -224,11 +370,6 @@ func GatewayEipSchema() *schema.Resource {
 				Computed:    true,
 				ForceNew:    true,
 				Description: `The bandwidth name.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\-_A-Za-z0-9]+$`),
-						"the input is invalid"),
-					validation.StringLenBetween(1, 64),
-				),
 			},
 			"bandwidth_size": {
 				Type:     schema.TypeInt,
@@ -237,7 +378,6 @@ func GatewayEipSchema() *schema.Resource {
 				ForceNew: true,
 				Description: `Bandwidth size in Mbit/s. When the flavor is **V300**, the value cannot be greater than **300**.
 `,
-				ValidateFunc: validation.IntBetween(1, 1024),
 			},
 			"charge_mode": {
 				Type:        schema.TypeString,
@@ -271,17 +411,18 @@ func GatewayEipSchema() *schema.Resource {
 }
 
 func resourceGatewayCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// createGateway: Create a VPN Gateway.
 	var (
-		createGatewayHttpUrl = "v5/{project_id}/vpn-gateways"
-		createGatewayProduct = "vpn"
+		createGatewayHttpUrl            = "v5/{project_id}/vpn-gateways"
+		createGatewayCertificateHttpUrl = "v5/{project_id}/vpn-gateways/{gateway_id}/certificate"
+		createGatewayProduct            = "vpn"
 	)
-	createGatewayClient, err := config.NewServiceClient(createGatewayProduct, region)
+	createGatewayClient, err := cfg.NewServiceClient(createGatewayProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating Gateway Client: %s", err)
+		return diag.Errorf("error creating VPN client: %s", err)
 	}
 
 	createGatewayPath := createGatewayClient.Endpoint + createGatewayHttpUrl
@@ -289,14 +430,11 @@ func resourceGatewayCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 	createGatewayOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			201,
-		},
 	}
-	createGatewayOpt.JSONBody = utils.RemoveNil(buildCreateGatewayBodyParams(d, config))
+	createGatewayOpt.JSONBody = utils.RemoveNil(buildCreateGatewayBodyParams(d, cfg))
 	createGatewayResp, err := createGatewayClient.Request("POST", createGatewayPath, &createGatewayOpt)
 	if err != nil {
-		return diag.Errorf("error creating Gateway: %s", err)
+		return diag.Errorf("error creating gateway: %s", err)
 	}
 
 	createGatewayRespBody, err := utils.FlattenResponse(createGatewayResp)
@@ -304,81 +442,178 @@ func resourceGatewayCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("vpn_gateway.id", createGatewayRespBody)
-	if err != nil {
-		return diag.Errorf("error creating Gateway: ID is not found in API response")
+	id := utils.PathSearch("vpn_gateway.id", createGatewayRespBody, "").(string)
+	if id == "" {
+		return diag.Errorf("error creating VPN gateway: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	err = createGatewayWaitingForStateCompleted(ctx, d, meta, d.Timeout(schema.TimeoutCreate))
 	if err != nil {
-		return diag.Errorf("error waiting for the Create of Gateway (%s) to complete: %s", d.Id(), err)
+		return diag.Errorf("error waiting for creating VPN gateway (%s) to complete: %s", d.Id(), err)
+	}
+
+	certificateContent := d.Get("certificate").([]interface{})
+	if len(certificateContent) == 1 {
+		createGatewayCertificatePath := createGatewayClient.Endpoint + createGatewayCertificateHttpUrl
+		createGatewayCertificatePath = strings.ReplaceAll(createGatewayCertificatePath, "{project_id}", createGatewayClient.ProjectID)
+		createGatewayCertificatePath = strings.ReplaceAll(createGatewayCertificatePath, "{gateway_id}", d.Id())
+		createGatewayCertificateOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		createGatewayCertificateOpt.JSONBody = utils.RemoveNil(buildCreateGatewayCertificateBodyParams(certificateContent[0]))
+		createGatewayCertificateResp, err := createGatewayClient.Request("POST", createGatewayCertificatePath, &createGatewayCertificateOpt)
+		if err != nil {
+			return diag.Errorf("error creating VPN gateway certificate: %s", err)
+		}
+		createGatewayCertificateRespBody, err := utils.FlattenResponse(createGatewayCertificateResp)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		mErr := multierror.Append(nil, d.Set("certificate",
+			flattenGatewayCertificateResponse(d, createGatewayCertificateRespBody)))
+		if mErr.ErrorOrNil() != nil {
+			return diag.FromErr(mErr.ErrorOrNil())
+		}
+
+		err = waitingForGatewayCertificateStateCompleted(ctx, d, createGatewayClient, d.Timeout(schema.TimeoutCreate))
+		if err != nil {
+			return diag.Errorf("error waiting for creating VPN gateway (%s) certificate to complete: %s", d.Id(), err)
+		}
 	}
 	return resourceGatewayRead(ctx, d, meta)
 }
 
-func buildCreateGatewayBodyParams(d *schema.ResourceData, config *config.Config) map[string]interface{} {
+func buildCreateGatewayCertificateBodyParams(certificateContent interface{}) map[string]interface{} {
+	certificateMap := certificateContent.(map[string]interface{})
 	bodyParams := map[string]interface{}{
-		"vpn_gateway": buildCreateGatewayVpnGatewayChildBody(d, config),
+		"certificate": map[string]interface{}{
+			"name":              utils.ValueIgnoreEmpty(certificateMap["name"].(string)),
+			"certificate":       utils.ValueIgnoreEmpty(certificateMap["content"].(string)),
+			"private_key":       utils.ValueIgnoreEmpty(certificateMap["private_key"].(string)),
+			"certificate_chain": utils.ValueIgnoreEmpty(certificateMap["certificate_chain"].(string)),
+			"enc_certificate":   utils.ValueIgnoreEmpty(certificateMap["enc_certificate"].(string)),
+			"enc_private_key":   utils.ValueIgnoreEmpty(certificateMap["enc_private_key"].(string)),
+		},
 	}
 	return bodyParams
 }
 
-func buildCreateGatewayVpnGatewayChildBody(d *schema.ResourceData, config *config.Config) map[string]interface{} {
-	params := map[string]interface{}{
-		"attachment_type":       utils.ValueIngoreEmpty(d.Get("attachment_type")),
-		"availability_zone_ids": utils.ValueIngoreEmpty(d.Get("availability_zones")),
-		"bgp_asn":               utils.ValueIngoreEmpty(d.Get("asn")),
-		"connect_subnet":        utils.ValueIngoreEmpty(d.Get("connect_subnet")),
-		"enterprise_project_id": utils.ValueIngoreEmpty(common.GetEnterpriseProjectID(d, config)),
-		"flavor":                utils.ValueIngoreEmpty(d.Get("flavor")),
-		"local_subnets":         utils.ValueIngoreEmpty(d.Get("local_subnets")),
-		"name":                  utils.ValueIngoreEmpty(d.Get("name")),
-		"vpc_id":                utils.ValueIngoreEmpty(d.Get("vpc_id")),
-		"master_eip":            buildCreateGatewayMasterEipChildBody(d),
-		"slave_eip":             buildCreateGatewaySlaveEipChildBody(d),
-		"access_vpc_id":         utils.ValueIngoreEmpty(d.Get("access_vpc_id")),
-		"access_subnet_id":      utils.ValueIngoreEmpty(d.Get("access_subnet_id")),
-		"er_id":                 utils.ValueIngoreEmpty(d.Get("er_id")),
-		"network_type":          utils.ValueIngoreEmpty(d.Get("network_type")),
+func buildCreateGatewayBodyParams(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"vpn_gateway": buildCreateGatewayVpnGatewayChildBody(d, cfg),
 	}
+	return bodyParams
+}
+
+func buildCreateGatewayVpnGatewayChildBody(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
+	haMode := d.Get("ha_mode").(string)
+	masterEIP := buildCreateGatewayEIPChildBody(d, "master_eip")
+	slaveEIP := buildCreateGatewayEIPChildBody(d, "slave_eip")
+
+	// default use "active-standby" ha_mode type when declare master_eip and slave_eip
+	if haMode == "" && masterEIP != nil && slaveEIP != nil {
+		haMode = "active-standby"
+	}
+	params := map[string]interface{}{
+		"attachment_type":       utils.ValueIgnoreEmpty(d.Get("attachment_type")),
+		"availability_zone_ids": utils.ValueIgnoreEmpty(d.Get("availability_zones")),
+		"bgp_asn":               utils.ValueIgnoreEmpty(d.Get("asn")),
+		"connect_subnet":        utils.ValueIgnoreEmpty(d.Get("connect_subnet")),
+		"enterprise_project_id": utils.ValueIgnoreEmpty(cfg.GetEnterpriseProjectID(d)),
+		"flavor":                utils.ValueIgnoreEmpty(d.Get("flavor")),
+		"local_subnets":         utils.ValueIgnoreEmpty(d.Get("local_subnets")),
+		"name":                  utils.ValueIgnoreEmpty(d.Get("name")),
+		"vpc_id":                utils.ValueIgnoreEmpty(d.Get("vpc_id")),
+		"ha_mode":               utils.ValueIgnoreEmpty(haMode),
+		"eip1":                  buildCreateGatewayEIPChildBody(d, "eip1"),
+		"master_eip":            masterEIP,
+		"eip2":                  buildCreateGatewayEIPChildBody(d, "eip2"),
+		"slave_eip":             slaveEIP,
+		"access_vpc_id":         utils.ValueIgnoreEmpty(d.Get("access_vpc_id")),
+		"access_subnet_id":      utils.ValueIgnoreEmpty(d.Get("access_subnet_id")),
+		"er_id":                 utils.ValueIgnoreEmpty(d.Get("er_id")),
+		"network_type":          utils.ValueIgnoreEmpty(d.Get("network_type")),
+		"access_private_ip_1":   utils.ValueIgnoreEmpty(d.Get("access_private_ip_1")),
+		"access_private_ip_2":   utils.ValueIgnoreEmpty(d.Get("access_private_ip_2")),
+		"tags":                  utils.ValueIgnoreEmpty(utils.ExpandResourceTags(d.Get("tags").(map[string]interface{}))),
+	}
+
 	return params
 }
 
-func buildCreateGatewayMasterEipChildBody(d *schema.ResourceData) map[string]interface{} {
-	rawParams := d.Get("master_eip").([]interface{})
-	if len(rawParams) == 0 {
-		return nil
-	}
+func buildCreateGatewayEIPChildBody(d *schema.ResourceData, param string) map[string]interface{} {
+	if rawArray, ok := d.Get(param).([]interface{}); ok {
+		if len(rawArray) == 0 {
+			return nil
+		}
 
-	raw := rawParams[0].(map[string]interface{})
-	params := map[string]interface{}{
-		"bandwidth_name": utils.ValueIngoreEmpty(raw["bandwidth_name"]),
-		"bandwidth_size": utils.ValueIngoreEmpty(raw["bandwidth_size"]),
-		"charge_mode":    utils.ValueIngoreEmpty(raw["charge_mode"]),
-		"id":             utils.ValueIngoreEmpty(raw["id"]),
-		"type":           utils.ValueIngoreEmpty(raw["type"]),
-	}
+		raw, ok := rawArray[0].(map[string]interface{})
+		if !ok {
+			return nil
+		}
 
-	return params
+		params := map[string]interface{}{
+			"bandwidth_name": utils.ValueIgnoreEmpty(raw["bandwidth_name"]),
+			"bandwidth_size": utils.ValueIgnoreEmpty(raw["bandwidth_size"]),
+			"charge_mode":    utils.ValueIgnoreEmpty(raw["charge_mode"]),
+			"id":             utils.ValueIgnoreEmpty(raw["id"]),
+			"type":           utils.ValueIgnoreEmpty(raw["type"]),
+		}
+		return params
+	}
+	return nil
 }
 
-func buildCreateGatewaySlaveEipChildBody(d *schema.ResourceData) map[string]interface{} {
-	rawParams := d.Get("slave_eip").([]interface{})
-	if len(rawParams) == 0 {
-		return nil
+func waitingForGatewayCertificateStateCompleted(ctx context.Context, d *schema.ResourceData,
+	client *golangsdk.ServiceClient, t time.Duration) error {
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"BINDING"},
+		Target:       []string{"BOUND"},
+		Refresh:      waitForGatewayCertificate(client, d),
+		Timeout:      t,
+		Delay:        10 * time.Second,
+		PollInterval: 5 * time.Second,
 	}
+	_, err := stateConf.WaitForStateContext(ctx)
+	return err
+}
 
-	raw := rawParams[0].(map[string]interface{})
-	params := map[string]interface{}{
-		"bandwidth_name": utils.ValueIngoreEmpty(raw["bandwidth_name"]),
-		"bandwidth_size": utils.ValueIngoreEmpty(raw["bandwidth_size"]),
-		"charge_mode":    utils.ValueIngoreEmpty(raw["charge_mode"]),
-		"id":             utils.ValueIngoreEmpty(raw["id"]),
-		"type":           utils.ValueIngoreEmpty(raw["type"]),
+func waitForGatewayCertificate(client *golangsdk.ServiceClient, d *schema.ResourceData) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		getGatewayCertificateHttpUrl := "v5/{project_id}/vpn-gateways/{gateway_id}/certificate"
+		certificateContent := d.Get("certificate").([]interface{})
+		certificateMap := certificateContent[0].(map[string]interface{})
+		certificateID := certificateMap["certificate_id"].(string)
+
+		getGatewayCertificatePath := client.Endpoint + getGatewayCertificateHttpUrl
+		getGatewayCertificatePath = strings.ReplaceAll(getGatewayCertificatePath, "{project_id}", client.ProjectID)
+		getGatewayCertificatePath = strings.ReplaceAll(getGatewayCertificatePath, "{gateway_id}", d.Id())
+		getGatewayCertificatePath = strings.ReplaceAll(getGatewayCertificatePath, "{certificate_id}", certificateID)
+		getGatewayCertificateOpt := golangsdk.RequestOpts{KeepResponseBody: true}
+
+		gatewayCertificate, err := client.Request("GET", getGatewayCertificatePath, &getGatewayCertificateOpt)
+		if err != nil {
+			return nil, "ERROR", err
+		}
+
+		body, err := utils.FlattenResponse(gatewayCertificate)
+		if err != nil {
+			return nil, "ERROR", err
+		}
+
+		mErr := multierror.Append(nil, d.Set("certificate",
+			flattenGatewayCertificateResponse(d, body)))
+		if mErr.ErrorOrNil() != nil {
+			return nil, "ERROR", mErr.ErrorOrNil()
+		}
+
+		certificate := utils.PathSearch("certificate", body, nil)
+		status := utils.PathSearch("certificate.status", body, nil).(string)
+
+		return certificate, status, nil
 	}
-
-	return params
 }
 
 func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
@@ -386,16 +621,16 @@ func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// createGatewayWaiting: missing operation notes
 			var (
 				createGatewayWaitingHttpUrl = "v5/{project_id}/vpn-gateways/{id}"
 				createGatewayWaitingProduct = "vpn"
 			)
-			createGatewayWaitingClient, err := config.NewServiceClient(createGatewayWaitingProduct, region)
+			createGatewayWaitingClient, err := cfg.NewServiceClient(createGatewayWaitingProduct, region)
 			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error creating Gateway Client: %s", err)
+				return nil, "ERROR", fmt.Errorf("error creating VPN client: %s", err)
 			}
 
 			createGatewayWaitingPath := createGatewayWaitingClient.Endpoint + createGatewayWaitingHttpUrl
@@ -404,9 +639,6 @@ func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 
 			createGatewayWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
-				OkCodes: []int{
-					200,
-				},
 			}
 			createGatewayWaitingResp, err := createGatewayWaitingClient.Request("GET", createGatewayWaitingPath, &createGatewayWaitingOpt)
 			if err != nil {
@@ -417,9 +649,9 @@ func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 			if err != nil {
 				return nil, "ERROR", err
 			}
-			statusRaw, err := jmespath.Search(`vpn_gateway.status`, createGatewayWaitingRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `vpn_gateway.status`)
+			statusRaw := utils.PathSearch(`vpn_gateway.status`, createGatewayWaitingRespBody, nil)
+			if statusRaw == nil {
+				return nil, "ERROR", fmt.Errorf("error parsing %s from response body", `vpn_gateway.status`)
 			}
 
 			status := fmt.Sprintf("%v", statusRaw)
@@ -439,7 +671,6 @@ func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 			}
 
 			return createGatewayWaitingRespBody, status, nil
-
 		},
 		Timeout:      t,
 		Delay:        10 * time.Second,
@@ -449,20 +680,21 @@ func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 	return err
 }
 
-func resourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+func resourceGatewayRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var mErr *multierror.Error
 
 	// getGateway: Query the VPN gateway detail
 	var (
-		getGatewayHttpUrl = "v5/{project_id}/vpn-gateways/{id}"
-		getGatewayProduct = "vpn"
+		getGatewayHttpUrl            = "v5/{project_id}/vpn-gateways/{id}"
+		getGatewayCertificateHttpUrl = "v5/{project_id}/vpn-gateways/{gateway_id}/certificate"
+		getGatewayProduct            = "vpn"
 	)
-	getGatewayClient, err := config.NewServiceClient(getGatewayProduct, region)
+	getGatewayClient, err := cfg.NewServiceClient(getGatewayProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating Gateway Client: %s", err)
+		return diag.Errorf("error creating VPN client: %s", err)
 	}
 
 	getGatewayPath := getGatewayClient.Endpoint + getGatewayHttpUrl
@@ -471,14 +703,11 @@ func resourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta inter
 
 	getGatewayOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
 	}
 	getGatewayResp, err := getGatewayClient.Request("GET", getGatewayPath, &getGatewayOpt)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving Gateway")
+		return common.CheckDeletedDiag(d, err, "error retrieving gateway")
 	}
 
 	getGatewayRespBody, err := utils.FlattenResponse(getGatewayResp)
@@ -497,9 +726,12 @@ func resourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta inter
 		d.Set("enterprise_project_id", utils.PathSearch("vpn_gateway.enterprise_project_id", getGatewayRespBody, nil)),
 		d.Set("flavor", utils.PathSearch("vpn_gateway.flavor", getGatewayRespBody, nil)),
 		d.Set("local_subnets", utils.PathSearch("vpn_gateway.local_subnets", getGatewayRespBody, nil)),
-		d.Set("master_eip", flattenGetGatewayResponseBodyResponseMasterEip(getGatewayRespBody)),
+		d.Set("ha_mode", utils.PathSearch("vpn_gateway.ha_mode", getGatewayRespBody, nil)),
+		d.Set("eip1", flattenGetGatewayResponseBodyVPNGatewayBody(getGatewayRespBody, "eip1")),
+		d.Set("master_eip", flattenGetGatewayResponseBodyVPNGatewayBody(getGatewayRespBody, "master_eip")),
 		d.Set("name", utils.PathSearch("vpn_gateway.name", getGatewayRespBody, nil)),
-		d.Set("slave_eip", flattenGetGatewayResponseBodyResponseSlaveEip(getGatewayRespBody)),
+		d.Set("eip2", flattenGetGatewayResponseBodyVPNGatewayBody(getGatewayRespBody, "eip2")),
+		d.Set("slave_eip", flattenGetGatewayResponseBodyVPNGatewayBody(getGatewayRespBody, "slave_eip")),
 		d.Set("status", utils.PathSearch("vpn_gateway.status", getGatewayRespBody, nil)),
 		d.Set("updated_at", utils.PathSearch("vpn_gateway.updated_at", getGatewayRespBody, nil)),
 		d.Set("used_connection_group", utils.PathSearch("vpn_gateway.used_connection_group", getGatewayRespBody, nil)),
@@ -508,40 +740,77 @@ func resourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta inter
 		d.Set("access_vpc_id", utils.PathSearch("vpn_gateway.access_vpc_id", getGatewayRespBody, nil)),
 		d.Set("access_subnet_id", utils.PathSearch("vpn_gateway.access_subnet_id", getGatewayRespBody, nil)),
 		d.Set("er_id", utils.PathSearch("vpn_gateway.er_id", getGatewayRespBody, nil)),
+		d.Set("er_attachment_id", utils.PathSearch("vpn_gateway.er_attachment_id", getGatewayRespBody, nil)),
 		d.Set("network_type", utils.PathSearch("vpn_gateway.network_type", getGatewayRespBody, nil)),
+		d.Set("access_private_ip_1", utils.PathSearch("vpn_gateway.access_private_ip_1", getGatewayRespBody, nil)),
+		d.Set("access_private_ip_2", utils.PathSearch("vpn_gateway.access_private_ip_2", getGatewayRespBody, nil)),
+		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("vpn_gateway.tags", getGatewayRespBody, nil))),
 	)
 
+	certificateContent := d.Get("certificate").([]interface{})
+	if len(certificateContent) == 1 {
+		certificateMap := certificateContent[0].(map[string]interface{})
+		certificateID := certificateMap["certificate_id"].(string)
+		getGatewayCertificatePath := getGatewayClient.Endpoint + getGatewayCertificateHttpUrl
+		getGatewayCertificatePath = strings.ReplaceAll(getGatewayCertificatePath, "{project_id}", getGatewayClient.ProjectID)
+		getGatewayCertificatePath = strings.ReplaceAll(getGatewayCertificatePath, "{gateway_id}", d.Id())
+		getGatewayCertificatePath = strings.ReplaceAll(getGatewayCertificatePath, "{certificate_id}", certificateID)
+		getGatewayCertificateOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		getGatewayCertificateResp, err := getGatewayClient.Request("GET", getGatewayCertificatePath, &getGatewayCertificateOpt)
+		if err != nil {
+			return diag.Diagnostics{
+				diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "failed to retrieving gateway certificate",
+					Detail:   fmt.Sprintf("error retrieving gateway certificate: %s.", err),
+				},
+			}
+		}
+		getGatewayCertificateRespBody, err := utils.FlattenResponse(getGatewayCertificateResp)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		mErr = multierror.Append(mErr,
+			d.Set("certificate", flattenGatewayCertificateResponse(d, getGatewayCertificateRespBody)),
+		)
+	}
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenGetGatewayResponseBodyResponseMasterEip(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("vpn_gateway.master_eip", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing vpn_gateway.master_eip from response= %#v", resp)
+func flattenGatewayCertificateResponse(d *schema.ResourceData, resp interface{}) []interface{} {
+	rst := d.Get("certificate").([]interface{})
+	curJson := utils.PathSearch("certificate", resp, nil)
+	if curJson == nil {
+		log.Printf("[ERROR] error parsing certificate from response")
 		return rst
 	}
 
-	rst = []interface{}{
-		map[string]interface{}{
-			"bandwidth_id":   utils.PathSearch("bandwidth_id", curJson, nil),
-			"bandwidth_name": utils.PathSearch("bandwidth_name", curJson, nil),
-			"bandwidth_size": utils.PathSearch("bandwidth_size", curJson, nil),
-			"charge_mode":    utils.PathSearch("charge_mode", curJson, nil),
-			"id":             utils.PathSearch("id", curJson, nil),
-			"ip_address":     utils.PathSearch("ip_address", curJson, nil),
-			"ip_version":     utils.PathSearch("ip_version", curJson, nil),
-			"type":           utils.PathSearch("type", curJson, nil),
-		},
-	}
+	rstCertificate := rst[0].(map[string]interface{})
+	rstCertificate["certificate_id"] = utils.PathSearch("id", curJson, nil)
+	rstCertificate["status"] = utils.PathSearch("status", curJson, nil)
+	rstCertificate["issuer"] = utils.PathSearch("issuer", curJson, nil)
+	rstCertificate["signature_algorithm"] = utils.PathSearch("signature_algorithm", curJson, nil)
+	rstCertificate["certificate_serial_number"] = utils.PathSearch("certificate_serial_number", curJson, nil)
+	rstCertificate["certificate_subject"] = utils.PathSearch("certificate_subject", curJson, nil)
+	rstCertificate["certificate_expire_time"] = utils.PathSearch("certificate_expire_time", curJson, nil)
+	rstCertificate["certificate_chain_serial_number"] = utils.PathSearch("certificate_chain_serial_number", curJson, nil)
+	rstCertificate["certificate_chain_subject"] = utils.PathSearch("certificate_chain_subject", curJson, nil)
+	rstCertificate["certificate_chain_expire_time"] = utils.PathSearch("certificate_chain_expire_time", curJson, nil)
+	rstCertificate["enc_certificate_serial_number"] = utils.PathSearch("enc_certificate_serial_number", curJson, nil)
+	rstCertificate["enc_certificate_subject"] = utils.PathSearch("enc_certificate_subject", curJson, nil)
+	rstCertificate["enc_certificate_expire_time"] = utils.PathSearch("enc_certificate_expire_time", curJson, nil)
+	rstCertificate["created_at"] = utils.PathSearch("created_at", curJson, nil)
+	rstCertificate["updated_at"] = utils.PathSearch("updated_at", curJson, nil)
 	return rst
 }
 
-func flattenGetGatewayResponseBodyResponseSlaveEip(resp interface{}) []interface{} {
+func flattenGetGatewayResponseBodyVPNGatewayBody(resp interface{}, paramName string) []interface{} {
 	var rst []interface{}
-	curJson, err := jmespath.Search("vpn_gateway.slave_eip", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing vpn_gateway.slave_eip from response= %#v", resp)
+	curJson := utils.PathSearch(fmt.Sprintf("vpn_gateway.%s", paramName), resp, nil)
+	if curJson == nil {
+		log.Printf("[ERROR] error parsing vpn_gateway.%s from response", paramName)
 		return rst
 	}
 
@@ -561,49 +830,116 @@ func flattenGetGatewayResponseBodyResponseSlaveEip(resp interface{}) []interface
 }
 
 func resourceGatewayUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	gatewayId := d.Id()
 
-	updateGatewayhasChanges := []string{
+	// updateGateway: Update the configuration of VPN gateway
+	var (
+		updateGatewayHttpUrl            = "v5/{project_id}/vpn-gateways/{id}"
+		updateGatewayCertificateHttpUrl = "v5/{project_id}/vpn-gateways/{gateway_id}/certificate/{certificate_id}"
+		updateGatewayProduct            = "vpn"
+	)
+	updateGatewayClient, err := cfg.NewServiceClient(updateGatewayProduct, region)
+	if err != nil {
+		return diag.Errorf("error creating VPN client: %s", err)
+	}
+
+	updateGatewayHasChanges := []string{
 		"local_subnets",
 		"name",
 	}
 
-	if d.HasChanges(updateGatewayhasChanges...) {
-		// updateGateway: Update the configuration of VPN gateway
-		var (
-			updateGatewayHttpUrl = "v5/{project_id}/vpn-gateways/{id}"
-			updateGatewayProduct = "vpn"
-		)
-		updateGatewayClient, err := config.NewServiceClient(updateGatewayProduct, region)
-		if err != nil {
-			return diag.Errorf("error creating Gateway Client: %s", err)
-		}
-
+	if d.HasChanges(updateGatewayHasChanges...) {
 		updateGatewayPath := updateGatewayClient.Endpoint + updateGatewayHttpUrl
 		updateGatewayPath = strings.ReplaceAll(updateGatewayPath, "{project_id}", updateGatewayClient.ProjectID)
-		updateGatewayPath = strings.ReplaceAll(updateGatewayPath, "{id}", d.Id())
+		updateGatewayPath = strings.ReplaceAll(updateGatewayPath, "{id}", gatewayId)
 
 		updateGatewayOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			OkCodes: []int{
-				200,
-			},
 		}
-		updateGatewayOpt.JSONBody = utils.RemoveNil(buildUpdateGatewayBodyParams(d, config))
+		updateGatewayOpt.JSONBody = utils.RemoveNil(buildUpdateGatewayBodyParams(d))
 		_, err = updateGatewayClient.Request("PUT", updateGatewayPath, &updateGatewayOpt)
 		if err != nil {
-			return diag.Errorf("error updating Gateway: %s", err)
+			return diag.Errorf("error updating VPN gateway: %s", err)
 		}
 		err = updateGatewayWaitingForStateCompleted(ctx, d, meta, d.Timeout(schema.TimeoutUpdate))
 		if err != nil {
-			return diag.Errorf("error waiting for the Update of Gateway (%s) to complete: %s", d.Id(), err)
+			return diag.Errorf("error waiting for updating VPN gateway (%s) to complete: %s", gatewayId, err)
+		}
+	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   gatewayId,
+			ResourceType: "vpn-gateway",
+			RegionId:     region,
+			ProjectId:    updateGatewayClient.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChanges("certificate") {
+		certificate := d.Get("certificate").([]interface{})
+		certificateMap := certificate[0].(map[string]interface{})
+		updateGatewayCertificateOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		updateGatewayCertificatePath := updateGatewayClient.Endpoint + updateGatewayCertificateHttpUrl
+		updateGatewayCertificatePath = strings.ReplaceAll(updateGatewayCertificatePath, "{project_id}", updateGatewayClient.ProjectID)
+		updateGatewayCertificatePath = strings.ReplaceAll(updateGatewayCertificatePath, "{gateway_id}", d.Id())
+		updateGatewayCertificatePath = strings.ReplaceAll(updateGatewayCertificatePath, "{certificate_id}", certificateMap["certificate_id"].(string))
+		updateGatewayCertificateOpt.JSONBody = utils.RemoveNil(buildUpdateGatewayCertificateBodyParams(certificateMap))
+		updateGatewayCertificateResp, err := updateGatewayClient.Request("PUT", updateGatewayCertificatePath, &updateGatewayCertificateOpt)
+		if err != nil {
+			return diag.Errorf("error updating VPN gateway certificate: %s", err)
+		}
+
+		updateGatewayCertificateBody, err := utils.FlattenResponse(updateGatewayCertificateResp)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		mErr := multierror.Append(nil,
+			d.Set("certificate", flattenGatewayCertificateResponse(d, updateGatewayCertificateBody)),
+		)
+		if mErr.ErrorOrNil() != nil {
+			return diag.FromErr(mErr.ErrorOrNil())
+		}
+
+		err = waitingForGatewayCertificateStateCompleted(ctx, d, updateGatewayClient, d.Timeout(schema.TimeoutUpdate))
+		if err != nil {
+			return diag.Errorf("error waiting for updating VPN gateway (%s) certificate to complete: %s", d.Id(), err)
+		}
+	}
+
+	// update tags
+	if d.HasChange("tags") {
+		tagErr := updateTags(updateGatewayClient, d, "vpn-gateway", d.Id())
+		if tagErr != nil {
+			return diag.Errorf("error updating tags of VPN gateway (%s): %s", d.Id(), tagErr)
 		}
 	}
 	return resourceGatewayRead(ctx, d, meta)
 }
 
-func buildUpdateGatewayBodyParams(d *schema.ResourceData, config *config.Config) map[string]interface{} {
+func buildUpdateGatewayCertificateBodyParams(certificateContent interface{}) map[string]interface{} {
+	certificateMap := certificateContent.(map[string]interface{})
+	return map[string]interface{}{
+		"certificate": map[string]interface{}{
+			"name":              utils.ValueIgnoreEmpty(certificateMap["name"].(string)),
+			"certificate":       utils.ValueIgnoreEmpty(certificateMap["content"].(string)),
+			"private_key":       utils.ValueIgnoreEmpty(certificateMap["private_key"].(string)),
+			"certificate_chain": utils.ValueIgnoreEmpty(certificateMap["certificate_chain"].(string)),
+			"enc_certificate":   utils.ValueIgnoreEmpty(certificateMap["enc_certificate"].(string)),
+			"enc_private_key":   utils.ValueIgnoreEmpty(certificateMap["enc_private_key"].(string)),
+		},
+	}
+}
+
+func buildUpdateGatewayBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"vpn_gateway": buildUpdateGatewayVpnGatewayChildBody(d),
 	}
@@ -612,8 +948,8 @@ func buildUpdateGatewayBodyParams(d *schema.ResourceData, config *config.Config)
 
 func buildUpdateGatewayVpnGatewayChildBody(d *schema.ResourceData) map[string]interface{} {
 	params := map[string]interface{}{
-		"local_subnets": utils.ValueIngoreEmpty(d.Get("local_subnets")),
-		"name":          utils.ValueIngoreEmpty(d.Get("name")),
+		"local_subnets": utils.ValueIgnoreEmpty(d.Get("local_subnets")),
+		"name":          utils.ValueIgnoreEmpty(d.Get("name")),
 	}
 	return params
 }
@@ -623,16 +959,16 @@ func updateGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// updateGatewayWaiting: missing operation notes
 			var (
 				updateGatewayWaitingHttpUrl = "v5/{project_id}/vpn-gateways/{id}"
 				updateGatewayWaitingProduct = "vpn"
 			)
-			updateGatewayWaitingClient, err := config.NewServiceClient(updateGatewayWaitingProduct, region)
+			updateGatewayWaitingClient, err := cfg.NewServiceClient(updateGatewayWaitingProduct, region)
 			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error creating Gateway Client: %s", err)
+				return nil, "ERROR", fmt.Errorf("error creating VPN client: %s", err)
 			}
 
 			updateGatewayWaitingPath := updateGatewayWaitingClient.Endpoint + updateGatewayWaitingHttpUrl
@@ -641,9 +977,6 @@ func updateGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 
 			updateGatewayWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
-				OkCodes: []int{
-					200,
-				},
 			}
 			updateGatewayWaitingResp, err := updateGatewayWaitingClient.Request("GET", updateGatewayWaitingPath, &updateGatewayWaitingOpt)
 			if err != nil {
@@ -654,9 +987,9 @@ func updateGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 			if err != nil {
 				return nil, "ERROR", err
 			}
-			statusRaw, err := jmespath.Search(`vpn_gateway.status`, updateGatewayWaitingRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `vpn_gateway.status`)
+			statusRaw := utils.PathSearch(`vpn_gateway.status`, updateGatewayWaitingRespBody, nil)
+			if statusRaw == nil {
+				return nil, "ERROR", fmt.Errorf("error parsing %s from response body", `vpn_gateway.status`)
 			}
 
 			status := fmt.Sprintf("%v", statusRaw)
@@ -676,7 +1009,6 @@ func updateGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 			}
 
 			return updateGatewayWaitingRespBody, status, nil
-
 		},
 		Timeout:      t,
 		Delay:        10 * time.Second,
@@ -687,17 +1019,17 @@ func updateGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 }
 
 func resourceGatewayDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// deleteGateway: Delete an existing VPN Gateway
 	var (
 		deleteGatewayHttpUrl = "v5/{project_id}/vpn-gateways/{id}"
 		deleteGatewayProduct = "vpn"
 	)
-	deleteGatewayClient, err := config.NewServiceClient(deleteGatewayProduct, region)
+	deleteGatewayClient, err := cfg.NewServiceClient(deleteGatewayProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating Gateway Client: %s", err)
+		return diag.Errorf("error creating VPN client: %s", err)
 	}
 
 	deleteGatewayPath := deleteGatewayClient.Endpoint + deleteGatewayHttpUrl
@@ -706,18 +1038,15 @@ func resourceGatewayDelete(ctx context.Context, d *schema.ResourceData, meta int
 
 	deleteGatewayOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		OkCodes: []int{
-			204,
-		},
 	}
 	_, err = deleteGatewayClient.Request("DELETE", deleteGatewayPath, &deleteGatewayOpt)
 	if err != nil {
-		return diag.Errorf("error deleting Gateway: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting VPN gateway")
 	}
 
 	err = deleteGatewayWaitingForStateCompleted(ctx, d, meta, d.Timeout(schema.TimeoutDelete))
 	if err != nil {
-		return diag.Errorf("error waiting for the Delete of Gateway (%s) to complete: %s", d.Id(), err)
+		return diag.Errorf("error waiting for deleting VPN gateway (%s) to complete: %s", d.Id(), err)
 	}
 	return nil
 }
@@ -727,16 +1056,16 @@ func deleteGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// deleteGatewayWaiting: missing operation notes
 			var (
 				deleteGatewayWaitingHttpUrl = "v5/{project_id}/vpn-gateways/{id}"
 				deleteGatewayWaitingProduct = "vpn"
 			)
-			deleteGatewayWaitingClient, err := config.NewServiceClient(deleteGatewayWaitingProduct, region)
+			deleteGatewayWaitingClient, err := cfg.NewServiceClient(deleteGatewayWaitingProduct, region)
 			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error creating Gateway Client: %s", err)
+				return nil, "ERROR", fmt.Errorf("error creating VPN client: %s", err)
 			}
 
 			deleteGatewayWaitingPath := deleteGatewayWaitingClient.Endpoint + deleteGatewayWaitingHttpUrl
@@ -745,14 +1074,12 @@ func deleteGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 
 			deleteGatewayWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
-				OkCodes: []int{
-					200,
-				},
 			}
 			deleteGatewayWaitingResp, err := deleteGatewayWaitingClient.Request("GET", deleteGatewayWaitingPath, &deleteGatewayWaitingOpt)
 			if err != nil {
 				if _, ok := err.(golangsdk.ErrDefault404); ok {
-					return deleteGatewayWaitingResp, "COMPLETED", nil
+					// When the error code is 404, the value of respBody is nil, and a non-null value is returned to avoid continuing the loop check.
+					return "Resource Not Found", "COMPLETED", nil
 				}
 
 				return nil, "ERROR", err
@@ -762,19 +1089,20 @@ func deleteGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 			if err != nil {
 				return nil, "ERROR", err
 			}
-			statusRaw, err := jmespath.Search(`vpn_gateway.status`, deleteGatewayWaitingRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `vpn_gateway.status`)
+			statusRaw := utils.PathSearch(`vpn_gateway.status`, deleteGatewayWaitingRespBody, nil)
+			if statusRaw == nil {
+				return nil, "ERROR", fmt.Errorf("error parsing %s from response body", `vpn_gateway.status`)
 			}
 
 			status := fmt.Sprintf("%v", statusRaw)
 
-			targetStatus := []string{}
+			var targetStatus []string
 			if utils.StrSliceContains(targetStatus, status) {
 				return deleteGatewayWaitingRespBody, "COMPLETED", nil
 			}
 
 			pendingStatus := []string{
+				"ACTIVE",
 				"PENDING_DELETE",
 			}
 			if utils.StrSliceContains(pendingStatus, status) {
@@ -782,7 +1110,6 @@ func deleteGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 			}
 
 			return deleteGatewayWaitingRespBody, status, nil
-
 		},
 		Timeout:      t,
 		Delay:        10 * time.Second,
@@ -790,4 +1117,48 @@ func deleteGatewayWaitingForStateCompleted(ctx context.Context, d *schema.Resour
 	}
 	_, err := stateConf.WaitForStateContext(ctx)
 	return err
+}
+
+func updateTags(client *golangsdk.ServiceClient, d *schema.ResourceData, tagsType string, id string) error {
+	oRaw, nRaw := d.GetChange("tags")
+	oMap := oRaw.(map[string]interface{})
+	nMap := nRaw.(map[string]interface{})
+
+	manageTagsHttpUrl := "v5/{project_id}/{resource_type}/{resource_id}/tags/{action}"
+	manageTagsPath := client.Endpoint + manageTagsHttpUrl
+	manageTagsPath = strings.ReplaceAll(manageTagsPath, "{project_id}", client.ProjectID)
+	manageTagsPath = strings.ReplaceAll(manageTagsPath, "{resource_type}", tagsType)
+	manageTagsPath = strings.ReplaceAll(manageTagsPath, "{resource_id}", id)
+	manageTagsOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		OkCodes: []int{
+			204,
+		},
+	}
+
+	// remove old tags
+	if len(oMap) > 0 {
+		manageTagsOpt.JSONBody = map[string]interface{}{
+			"tags": utils.ExpandResourceTags(oMap),
+		}
+		deleteTagsPath := strings.ReplaceAll(manageTagsPath, "{action}", "delete")
+		_, err := client.Request("POST", deleteTagsPath, &manageTagsOpt)
+		if err != nil {
+			return err
+		}
+	}
+
+	// set new tags
+	if len(nMap) > 0 {
+		manageTagsOpt.JSONBody = map[string]interface{}{
+			"tags": utils.ExpandResourceTags(nMap),
+		}
+		createTagsPath := strings.ReplaceAll(manageTagsPath, "{action}", "create")
+		_, err := client.Request("POST", createTagsPath, &manageTagsOpt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

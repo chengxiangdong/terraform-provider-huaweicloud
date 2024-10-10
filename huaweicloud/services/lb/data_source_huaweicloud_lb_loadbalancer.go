@@ -8,13 +8,14 @@ import (
 	"github.com/chnsz/golangsdk/openstack/common/tags"
 	"github.com/chnsz/golangsdk/openstack/elb/v2/loadbalancers"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
+// @API ELB GET /v2/{project_id}/elb/loadbalancers
+// @API ELB GET /v2.0/{project_id}/loadbalancers/{id}/tags
 func DataSourceELBV2Loadbalancer() *schema.Resource {
 	return &schema.Resource{
 		Read: dataSourceELBV2LoadbalancerRead,
@@ -80,9 +81,9 @@ func DataSourceELBV2Loadbalancer() *schema.Resource {
 }
 
 func dataSourceELBV2LoadbalancerRead(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	elbClient, err := config.LoadBalancerClient(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	elbClient, err := cfg.LoadBalancerClient(region)
 	if err != nil {
 		return fmtp.Errorf("Error creating Huaweicloud elb client %s", err)
 	}
@@ -93,7 +94,7 @@ func dataSourceELBV2LoadbalancerRead(d *schema.ResourceData, meta interface{}) e
 		Description:         d.Get("description").(string),
 		VipAddress:          d.Get("vip_address").(string),
 		VipSubnetID:         d.Get("vip_subnet_id").(string),
-		EnterpriseProjectID: common.GetEnterpriseProjectID(d, config),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 	}
 	pages, err := loadbalancers.List(elbClient, listOpts).AllPages()
 	if err != nil {
@@ -118,7 +119,7 @@ func dataSourceELBV2LoadbalancerRead(d *schema.ResourceData, meta interface{}) e
 		publicIp = lb.PublicIps[0].PublicIpAddress
 	}
 	mErr := multierror.Append(
-		d.Set("region", config.GetRegion(d)),
+		d.Set("region", cfg.GetRegion(d)),
 		d.Set("name", lb.Name),
 		d.Set("status", lb.OperatingStatus),
 		d.Set("description", lb.Description),
@@ -133,7 +134,7 @@ func dataSourceELBV2LoadbalancerRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	// Get tags for v2.0 API
-	elbV2Client, err := config.ElbV2Client(config.GetRegion(d))
+	elbV2Client, err := cfg.ElbV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return fmtp.Errorf("Error creating HuaweiCloud elb v2.0 client: %s", err)
 	}

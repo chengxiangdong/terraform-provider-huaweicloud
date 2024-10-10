@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Search Service (CSS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_css_flavors"
+description: ""
 ---
 
 # huaweicloud_css_flavors
@@ -45,10 +48,19 @@ In addition to all arguments above, the following attributes are exported:
 The `flavors` block contains:
 
 * `name` - The name of the CSS flavor. It is referenced by `node_config.flavor` in `huaweicloud_css_cluster`.
+
 * `id` - The ID of CSS flavor.
+
 * `region` - The region where the node resides.
+
 * `type` - The node instance type.
+
 * `version` - The engine version.
+
 * `vcpus` - The number of vCPUs.
+
 * `memory` - The memory size in GB.
+
 * `disk_range` - The disk capacity range of an instance, in GB.
+
+* `availability_zones` - The valid availability zones for current flavor.

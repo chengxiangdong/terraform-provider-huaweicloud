@@ -2,6 +2,7 @@ package eip
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -48,17 +49,19 @@ func TestAccVpcBandWidth_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "status", "NORMAL"),
 					resource.TestCheckResourceAttr(resourceName, "charging_mode", "postPaid"),
 					resource.TestCheckResourceAttr(resourceName, "publicips.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "charge_mode", "bandwidth"),
 				),
 			},
 			{
-				Config: testAccVpcBandWidth_basic(randName+"_update", 6),
+				Config: testAccVpcBandWidth_update(randName+"_update", 300),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", randName+"_update"),
-					resource.TestCheckResourceAttr(resourceName, "size", "6"),
+					resource.TestCheckResourceAttr(resourceName, "size", "300"),
 					resource.TestCheckResourceAttr(resourceName, "share_type", "WHOLE"),
 					resource.TestCheckResourceAttr(resourceName, "status", "NORMAL"),
 					resource.TestCheckResourceAttr(resourceName, "charging_mode", "postPaid"),
+					resource.TestCheckResourceAttr(resourceName, "charge_mode", "95peak_plus"),
 				),
 			},
 			{
@@ -168,6 +171,55 @@ func TestAccVpcBandWidth_prePaid(t *testing.T) {
 	})
 }
 
+func TestAccVpcBandWidth_changeToPeriod(t *testing.T) {
+	var bandwidth bandwidths.BandWidth
+
+	randName := acceptance.RandomAccResourceName()
+	resourceName := "huaweicloud_vpc_bandwidth.test"
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&bandwidth,
+		getBandwidthResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckChargingMode(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVpcBandWidth_basic(randName, 5),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", randName),
+				),
+			},
+			{
+				Config: testAccVpcBandWidth_prePaid(randName, 5, false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "auto_renew", "false"),
+				),
+			},
+			{
+				Config:      testAccVpcBandWidth_prePaidToPostPaid(randName, 5),
+				ExpectError: regexp.MustCompile(`only support changing post-paid bandwidth to pre-paid`),
+			},
+			{
+				Config: testAccVpcBandWidth_prePaid(randName, 5, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "auto_renew", "true"),
+				),
+			},
+		},
+	})
+}
+
 func testAccVpcBandWidth_basic(rName string, size int) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_vpc_bandwidth" "test" {
@@ -199,4 +251,26 @@ resource "huaweicloud_vpc_bandwidth" "test" {
   auto_renew    = "%v"
 }
 `, rName, size, isAutoRenew)
+}
+
+func testAccVpcBandWidth_prePaidToPostPaid(rName string, size int) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_vpc_bandwidth" "test" {
+  name = "%s"
+  size = "%d"
+
+  charging_mode = "postPaid"
+}
+`, rName, size)
+}
+
+func testAccVpcBandWidth_update(rName string, size int) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_vpc_bandwidth" "test" {
+  name = "%s"
+  size = "%d"
+
+  charge_mode = "95peak_plus"
+}
+`, rName, size)
 }

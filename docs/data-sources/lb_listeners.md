@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Load Balance (ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_lb_listeners"
+description: ""
 ---
 
 # huaweicloud_lb_listeners
@@ -8,7 +11,7 @@ Use this data source to query the list of ELB listeners.
 
 ## Example Usage
 
-```
+```hcl
 variable "protocol" {}
 
 data "huaweicloud_lb_listeners" "test" {
@@ -35,7 +38,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `listeners` - Listener list.
 The [object](#listeners_listeners) structure is documented below.

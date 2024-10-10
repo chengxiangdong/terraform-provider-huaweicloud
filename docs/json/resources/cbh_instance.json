@@ -5,6 +5,11 @@
         "huaweicloud_cbh_instance": {
           "block": {
             "attributes": {
+              "attach_disk_size": {
+                "type": "number",
+                "description": "Specifies the size of the additional data disk for the CBH instance.",
+                "optional": true
+              },
               "auto_renew": {
                 "type": "string",
                 "description": "Specifies whether auto renew is enabled.",
@@ -18,15 +23,25 @@
               },
               "charging_mode": {
                 "type": "string",
-                "description": "Specifies the charging mode of the read replica instance.",
+                "description": "Specifies the charging mode of the CBH instance.",
                 "required": true,
                 "forcenew": true
+              },
+              "data_disk_size": {
+                "type": "number",
+                "description": "Indicates the data disk size of the instance.",
+                "computed": true
+              },
+              "enterprise_project_id": {
+                "type": "string",
+                "description": "Specifies the enterprise project ID to which the CBH instance belongs.",
+                "optional": true,
+                "computed": true
               },
               "flavor_id": {
                 "type": "string",
                 "description": "Specifies the product ID of the CBH server.",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "id": {
                 "type": "string",
@@ -36,7 +51,6 @@
                 "type": "bool",
                 "description": "Specifies whether the IPv6 network is enabled.",
                 "optional": true,
-                "computed": true,
                 "forcenew": true
               },
               "name": {
@@ -53,7 +67,7 @@
               },
               "period": {
                 "type": "number",
-                "description": "Specifies the charging period of the read replica instance.",
+                "description": "Specifies the charging period of the CBH instance.",
                 "required": true,
                 "forcenew": true
               },
@@ -63,15 +77,19 @@
                 "required": true,
                 "forcenew": true
               },
+              "power_action": {
+                "type": "string",
+                "description": "Specifies the power action after the CBH instance is created.",
+                "optional": true
+              },
               "private_ip": {
                 "type": "string",
-                "description": "Indicates the private ip of the instance.",
+                "description": "Indicates the private IP of the instance.",
                 "computed": true
               },
               "public_ip": {
                 "type": "string",
-                "description": "Specifies the elastic IP address.",
-                "optional": true,
+                "description": "The elastic IP address.",
                 "computed": true
               },
               "public_ip_id": {
@@ -85,9 +103,8 @@
               },
               "security_group_id": {
                 "type": "string",
-                "description": "Specifies the ID of the security group.",
-                "required": true,
-                "forcenew": true
+                "description": "Specifies the IDs of the security group.",
+                "required": true
               },
               "status": {
                 "type": "string",
@@ -103,8 +120,14 @@
               "subnet_id": {
                 "type": "string",
                 "description": "Specifies the ID of a subnet.",
-                "required": true,
-                "forcenew": true
+                "required": true
+              },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
               },
               "version": {
                 "type": "string",
@@ -114,8 +137,7 @@
               "vpc_id": {
                 "type": "string",
                 "description": "Specifies the ID of a VPC.",
-                "required": true,
-                "forcenew": true
+                "required": true
               }
             }
           },

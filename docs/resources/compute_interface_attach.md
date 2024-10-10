@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Cloud Server (ECS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_compute_interface_attach"
+description: ""
 ---
 
 # huaweicloud_compute_interface_attach
@@ -23,8 +26,8 @@ resource "huaweicloud_compute_interface_attach" "test" {
 ### Attach a port (under the specified network) to the ECS instance and use the custom security groups
 
 ```hcl
-variable "instance_id" {
-variable "network_id" {
+variable "instance_id" {}
+variable "network_id" {}
 variable "security_group_ids" {
   type = list(string)
 }
@@ -32,7 +35,6 @@ variable "security_group_ids" {
 resource "huaweicloud_compute_interface_attach" "test" {
   instance_id        = var.instance_id
   network_id         = var.network_id
-  fixed_ip           = "192.168.10.199"
   security_group_ids = var.security_group_ids
 }
 ```
@@ -86,7 +88,7 @@ The following arguments are supported:
   automatically.
   This option and `port_id` are mutually exclusive.
 
-* `fixed_ip` - (Optional, String, ForceNew) An IP address to assosciate with the port.
+* `fixed_ip` - (Optional, String, ForceNew) An IP address to associate with the port.
 
   ->This option cannot be used with port_id. You must specify a network_id. The IP address must lie in a range on
   the supplied network.
@@ -98,18 +100,26 @@ The following arguments are supported:
 * `security_group_ids` - (Optional, List) Specifies the list of security group IDs bound to the specified port.  
   Defaults to the default security group.
 
+* `ipv6_enable` - (Optional, Bool, ForceNew) Specifies if the NIC supporting IPv6 or not.
+
+* `ipv6_bandwidth_id` - (Optional, String, ForceNew) Specifies the shared bandwidth ID to which the IPv6 NIC attaches.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID in format of ECS instance ID and port ID separated by a slash.
+
 * `mac` - The MAC address of the NIC.
+
+* `fixed_ipv6` - The IPv6 address.
 
 ## Timeouts
 
 This resource provides the following timeouts configuration options:
 
 * `create` - Default is 10 minutes.
+
 * `delete` - Default is 10 minutes.
 
 ## Import

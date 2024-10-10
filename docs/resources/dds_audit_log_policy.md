@@ -1,5 +1,8 @@
 ---
 subcategory: "Document Database Service (DDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dds_audit_log_policy"
+description: ""
 ---
 
 # huaweicloud_dds_audit_log_policy
@@ -29,7 +32,8 @@ The following arguments are supported:
 
   Changing this parameter will create a new resource.
 
-* `keep_days` - (Required, Int) Specifies the number of days for storing audit logs. The value ranges from 7 to 732.
+* `keep_days` - (Required, Int) Specifies the number of days for storing audit logs.  
+  The value ranges from `7` to `732`.
 
 * `audit_scope` - (Optional, String) Specifies the audit scope.
   If this parameter is left blank or set to **all**, all audit log policies are enabled.
@@ -59,6 +63,14 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID.
+
+## Timeouts
+
+This resource provides the following timeouts configuration options:
+
+* `create` - Default is 5 minutes.
+* `update` - Default is 5 minutes.
+* `delete` - Default is 5 minutes.
 
 ## Import
 

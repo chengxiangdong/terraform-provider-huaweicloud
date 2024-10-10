@@ -49,7 +49,6 @@
                 "type": "string",
                 "description": "Enterprise project ID.",
                 "optional": true,
-                "forcenew": true,
                 "default": "0"
               },
               "expired_at": {
@@ -65,6 +64,11 @@
               },
               "id": {
                 "type": "string",
+                "computed": true
+              },
+              "instance_id": {
+                "type": "string",
+                "description": "The ID of the audit instance.",
                 "computed": true
               },
               "ip_address": {
@@ -97,9 +101,9 @@
                 "description": "The ID of the port that the EIP is bound to.",
                 "computed": true
               },
-              "product_id": {
+              "product_spec_desc": {
                 "type": "string",
-                "description": "The product ID.",
+                "description": "The product specification description in json string format.",
                 "required": true,
                 "forcenew": true
               },

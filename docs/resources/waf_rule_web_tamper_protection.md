@@ -1,5 +1,8 @@
 ---
 subcategory: "Web Application Firewall (WAF)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_waf_rule_web_tamper_protection"
+description: ""
 ---
 
 # huaweicloud_waf_rule_web_tamper_protection
@@ -49,7 +52,7 @@ The following arguments are supported:
   + **0**: Disabled.
   + **1**: Enabled.
 
-  The default value is **1**.
+  The default value is `1`.
 
 ## Attribute Reference
 

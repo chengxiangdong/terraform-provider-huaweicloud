@@ -19,9 +19,14 @@ func TestAccDDSFlavorV3DataSource_basic(t *testing.T) {
 				Config: testAccDDSFlavorV3DataSource_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(dataSourceName, "flavors.0.engine_name", "DDS-Community"),
+					resource.TestCheckResourceAttr(dataSourceName, "flavors.0.engine_versions.0", "3.4"),
 					resource.TestCheckResourceAttr(dataSourceName, "flavors.0.vcpus", "2"),
 					resource.TestCheckResourceAttr(dataSourceName, "flavors.0.memory", "4"),
 					resource.TestCheckResourceAttr(dataSourceName, "flavors.0.type", "mongos"),
+
+					resource.TestCheckResourceAttrSet(dataSourceName, "flavors.0.spec_code"),
+					resource.TestCheckResourceAttrSet(dataSourceName, "flavors.0.az_status.%"),
 				),
 			},
 		},
@@ -30,9 +35,10 @@ func TestAccDDSFlavorV3DataSource_basic(t *testing.T) {
 
 var testAccDDSFlavorV3DataSource_basic = `
 data "huaweicloud_dds_flavors" "flavor" {
-  engine_name = "DDS-Community"
-  vcpus       = 2
-  memory      = 4
-  type        = "mongos"
+  engine_name    = "DDS-Community"
+  engine_version = "3.4"
+  vcpus          = 2
+  memory         = 4
+  type           = "mongos"
 }
 `

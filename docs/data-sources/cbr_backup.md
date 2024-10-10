@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Backup and Recovery (CBR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cbr_backup"
+description: ""
 ---
 
 # huaweicloud_cbr_backup
@@ -167,7 +170,7 @@ The `extend_info` block supports:
 
 * `snapshot_id` - Snapshot ID of the disk backup.
 
-* `support_lld` - Whether to allow lazyloading for fast restoration.
+* `support_lld` - Whether to allow lazy loading for fast restoration.
 
 * `supported_restore_mode` - The restoration mode.
 

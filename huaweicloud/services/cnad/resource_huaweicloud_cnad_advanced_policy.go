@@ -22,6 +22,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API AAD POST /v1/cnad/policies
+// @API AAD GET /v1/cnad/policies
+// @API AAD DELETE /v1/cnad/policies/{policy_id}
+// @API AAD GET /v1/cnad/policies/{policy_id}
+// @API AAD PUT /v1/cnad/policies/{policy_id}
 func ResourceCNADAdvancedPolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCNADAdvancedPolicyCreate,
@@ -99,12 +104,13 @@ func ResourceCNADAdvancedPolicy() *schema.Resource {
 
 func resourceCNADAdvancedPolicyCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var (
 		createPolicyHttpUrl = "v1/cnad/policies"
 		createPolicyProduct = "aad"
 	)
-	createPolicyClient, err := cfg.NewServiceClient(createPolicyProduct, "")
+	createPolicyClient, err := cfg.NewServiceClient(createPolicyProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating CNAD Client: %s", err)
 	}
@@ -147,16 +153,17 @@ func resourceCNADAdvancedPolicyCreate(ctx context.Context, d *schema.ResourceDat
 
 func buildCreatePolicyBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"package_id": utils.ValueIngoreEmpty(d.Get("instance_id")),
-		"name":       utils.ValueIngoreEmpty(d.Get("name")),
+		"package_id": utils.ValueIgnoreEmpty(d.Get("instance_id")),
+		"name":       utils.ValueIgnoreEmpty(d.Get("name")),
 	}
 	return bodyParams
 }
 
 func resourceCNADAdvancedPolicyRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
-	getPolicyClient, err := cfg.NewServiceClient("aad", "")
+	getPolicyClient, err := cfg.NewServiceClient("aad", region)
 	if err != nil {
 		return diag.Errorf("error creating CNAD Client: %s", err)
 	}
@@ -200,8 +207,9 @@ func resourceCNADAdvancedPolicyRead(_ context.Context, d *schema.ResourceData, m
 
 func resourceCNADAdvancedPolicyUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
-	updatePolicyClient, err := cfg.NewServiceClient("aad", "")
+	updatePolicyClient, err := cfg.NewServiceClient("aad", region)
 	if err != nil {
 		return diag.Errorf("error creating CNAD Client: %s", err)
 	}
@@ -233,21 +241,22 @@ func updatePolicy(client *golangsdk.ServiceClient, d *schema.ResourceData) error
 
 func buildUpdatePolicyBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"name":      utils.ValueIngoreEmpty(d.Get("name")),
-		"threshold": utils.ValueIngoreEmpty(d.Get("threshold")),
-		"udp":       utils.ValueIngoreEmpty(d.Get("udp")),
+		"name":      utils.ValueIgnoreEmpty(d.Get("name")),
+		"threshold": utils.ValueIgnoreEmpty(d.Get("threshold")),
+		"udp":       utils.ValueIgnoreEmpty(d.Get("udp")),
 	}
 	return bodyParams
 }
 
 func resourceCNADAdvancedPolicyDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var (
 		deletePolicyHttpUrl = "v1/cnad/policies/{policy_id}"
 		deletePolicyProduct = "aad"
 	)
-	deletePolicyClient, err := cfg.NewServiceClient(deletePolicyProduct, "")
+	deletePolicyClient, err := cfg.NewServiceClient(deletePolicyProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating CNAD Client: %s", err)
 	}

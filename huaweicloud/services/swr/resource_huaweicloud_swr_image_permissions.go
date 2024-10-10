@@ -8,13 +8,11 @@ package swr
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/identity/v3.0/users"
@@ -24,6 +22,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API SWR DELETE /v2/manage/namespaces/{namespace}/repos/{repository}/access
+// @API SWR GET /v2/manage/namespaces/{namespace}/repos/{repository}/access
+// @API SWR PATCH /v2/manage/namespaces/{namespace}/repos/{repository}/access
+// @API SWR POST /v2/manage/namespaces/{namespace}/repos/{repository}/access
 func ResourceSwrImagePermissions() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSwrImagePermissionsCreate,
@@ -201,13 +203,12 @@ func resourceSwrImagePermissionsRead(_ context.Context, d *schema.ResourceData, 
 
 func flattenGetImagePermissionsSelfPermissionResponseBody(resp interface{}) []interface{} {
 	var rst []interface{}
-	curJson, err := jmespath.Search("self_auth", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing self_permission from response= %#v", resp)
+	curJson := utils.PathSearch("self_auth", resp, nil)
+	if curJson == nil {
 		return rst
 	}
 
-	permission := utils.PathSearch("auth", curJson, 0).(float64)
+	permission := utils.PathSearch("auth", curJson, float64(0)).(float64)
 	rst = []interface{}{
 		map[string]interface{}{
 			"user_id":    utils.PathSearch("user_id", curJson, nil),
@@ -226,7 +227,7 @@ func flattenGetImagePermissionsResponseBodyUser(resp interface{}) []interface{} 
 	curArray := curJson.([]interface{})
 	rst := make([]interface{}, 0)
 	for _, v := range curArray {
-		permission := utils.PathSearch("auth", v, 0).(float64)
+		permission := utils.PathSearch("auth", v, float64(0)).(float64)
 		rst = append(rst, map[string]interface{}{
 			"user_id":    utils.PathSearch("user_id", v, nil),
 			"user_name":  utils.PathSearch("user_name", v, nil),
@@ -297,7 +298,7 @@ func resourceSwrImagePermissionsDelete(_ context.Context, d *schema.ResourceData
 
 	err = deleteSwrImagePermissions(d, deleteSwrImagePermissionsClient, d.Get("users").([]interface{}))
 	if err != nil {
-		return diag.FromErr(err)
+		return common.CheckDeletedDiag(d, err, "error deleting SWR image permissions")
 	}
 
 	return nil
@@ -366,7 +367,7 @@ func deleteSwrImagePermissions(d *schema.ResourceData, client *golangsdk.Service
 	_, err := client.Request("DELETE", deleteSwrImagePermissionsPath,
 		&deleteSwrImagePermissionsOpt)
 	if err != nil {
-		return fmt.Errorf("error deleting SWR image permissions: %s", err)
+		return err
 	}
 	return nil
 }
@@ -383,7 +384,7 @@ func buildSwrImagePermissionsUsersChildBody(d *schema.ResourceData, cfg *config.
 	}
 	for _, rawParam := range rawParams {
 		raw := rawParam.(map[string]interface{})
-		userId := utils.ValueIngoreEmpty(raw["user_id"]).(string)
+		userId := utils.ValueIgnoreEmpty(raw["user_id"]).(string)
 		userName := raw["user_name"].(string)
 		if userName == "" {
 			user, err := users.Get(iamClient, userId).Extract()

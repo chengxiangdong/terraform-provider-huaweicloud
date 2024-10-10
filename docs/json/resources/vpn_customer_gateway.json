@@ -7,25 +7,52 @@
             "attributes": {
               "asn": {
                 "type": "number",
-                "description": "The BGP ASN number of the customer gateway, only required when the route_mode is bgp, the default value is 65000.",
+                "description": "The BGP ASN number of the customer gateway, the default value is 65000.",
                 "optional": true,
                 "forcenew": true,
                 "default": 65000
+              },
+              "certificate_content": {
+                "type": "string",
+                "optional": true
+              },
+              "certificate_id": {
+                "type": "string",
+                "computed": true
               },
               "created_at": {
                 "type": "string",
                 "description": "The create time.",
                 "computed": true
               },
+              "expire_time": {
+                "type": "string",
+                "computed": true
+              },
               "id": {
                 "type": "string",
                 "computed": true
               },
-              "ip": {
+              "id_type": {
                 "type": "string",
-                "description": "The IP address of the customer gateway.",
+                "description": "The identifier type of a customer gateway.",
+                "optional": true,
+                "forcenew": true,
+                "default": "ip"
+              },
+              "id_value": {
+                "type": "string",
+                "description": "The identifier of a customer gateway.",
                 "required": true,
                 "forcenew": true
+              },
+              "is_updatable": {
+                "type": "bool",
+                "computed": true
+              },
+              "issuer": {
+                "type": "string",
+                "computed": true
               },
               "name": {
                 "type": "string",
@@ -36,12 +63,24 @@
                 "type": "string",
                 "computed": true
               },
-              "route_mode": {
+              "serial_number": {
                 "type": "string",
-                "description": "The route mode of the customer gateway.",
-                "optional": true,
-                "forcenew": true,
-                "default": "bgp"
+                "computed": true
+              },
+              "signature_algorithm": {
+                "type": "string",
+                "computed": true
+              },
+              "subject": {
+                "type": "string",
+                "computed": true
+              },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
               },
               "updated_at": {
                 "type": "string",

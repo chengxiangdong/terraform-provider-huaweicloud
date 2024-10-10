@@ -1,5 +1,8 @@
 ---
 subcategory: "Software Repository for Container (SWR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_swr_image_permissions"
+description: ""
 ---
 
 # huaweicloud_swr_image_permissions
@@ -62,7 +65,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID.
 
-* `self_permission` -  Indicates the permission information of current user.
+* `self_permission` - Indicates the permission information of current user.
   The [SelfPermission](#SwrImagePermissions_SelfPermission) structure is documented below.
 
 <a name="SwrImagePermissions_SelfPermission"></a>

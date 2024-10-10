@@ -2,6 +2,7 @@ package fgs
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -36,15 +37,14 @@ func TestAccAsyncInvokeConfig_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
-			// The agency should be FunctionGraph and authorize with "FunctionGraph FullAccess" and "DIS Operator"
-			// and "OBS Administrator" and "SMN Administrator"
-			acceptance.TestAccPreCheckFgsTrigger(t)
+			// Please read the instructions carefully before use to ensure sufficient permissions.
+			acceptance.TestAccPreCheckFgsAgency(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAsyncInvokeConfig_basic_step1(name, acceptance.HW_FGS_TRIGGER_LTS_AGENCY),
+				Config: testAccAsyncInvokeConfig_basic_step1(name, acceptance.HW_FGS_AGENCY_NAME),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(rName, "function_urn",
@@ -56,10 +56,12 @@ func TestAccAsyncInvokeConfig_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "on_failure.0.destination", "SMN"),
 					resource.TestCheckResourceAttrSet(rName, "on_failure.0.param"),
 					resource.TestCheckResourceAttr(rName, "enable_async_status_log", "true"),
+					resource.TestMatchResourceAttr(rName, "created_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
 				),
 			},
 			{
-				Config: testAccAsyncInvokeConfig_basic_step2(name, acceptance.HW_FGS_TRIGGER_LTS_AGENCY),
+				Config: testAccAsyncInvokeConfig_basic_step2(name, acceptance.HW_FGS_AGENCY_NAME),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(rName, "function_urn",
@@ -71,6 +73,8 @@ func TestAccAsyncInvokeConfig_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "on_failure.0.destination", "FunctionGraph"),
 					resource.TestCheckResourceAttrSet(rName, "on_failure.0.param"),
 					resource.TestCheckResourceAttr(rName, "enable_async_status_log", "false"),
+					resource.TestMatchResourceAttr(rName, "updated_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
 				),
 			},
 			{

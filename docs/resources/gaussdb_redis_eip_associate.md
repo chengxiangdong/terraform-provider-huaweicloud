@@ -1,10 +1,13 @@
 ---
-subcategory: "GaussDB NoSQL"
+subcategory: "GeminiDB"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_gaussdb_redis_eip_associate"
+description: ""
 ---
 
 # huaweicloud_gaussdb_redis_eip_associate
 
-Manages a GaussDB Redis node EIP associate resource within HuaweiCloud.
+GeminiDB Redis node EIP associate resource within HuaweiCloud.
 
 ## Example Usage
 

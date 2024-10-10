@@ -1,10 +1,13 @@
 ---
 subcategory: "Enterprise Router (ER)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_er_attachments"
+description: ""
 ---
 
 # huaweicloud_er_attachments
 
-Use this data source to filter ER attachments within Huaweicloud.
+Use this data source to filter ER attachments within HuaweiCloud.
 
 ## Example Usage
 
@@ -41,6 +44,8 @@ The following arguments are supported:
 
 * `name` - (Optional, String) Specifies the name used to filter the attachments.
 
+* `resource_id` - (Optional, String) Specifies the associated resource ID used to filter the attachments.
+
 * `status` - (Optional, String) Specifies the status used to filter the attachments.
   The valid values are as follows:
   + **available**
@@ -69,6 +74,10 @@ The `attachments` block supports:
 * `description` - The description of the attachment.
 
 * `status` - The current status of the attachment.
+
+* `associated` - Whether this attachment has been associated.
+
+* `resource_id` - The associated resource ID.
 
 * `created_at` - The creation time of the attachment.
 

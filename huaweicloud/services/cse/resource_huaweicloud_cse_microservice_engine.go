@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -26,8 +25,19 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-var DefaultVersion = "CSE2"
+var (
+	DefaultVersion = "CSE2"
 
+	engineNotFoundCodes = []string{
+		"SVCSTG.00501116",
+		"SVCSTG.00501125",
+	}
+)
+
+// @API CSE DELETE /v2/{project_id}/enginemgr/engines/{engineId}
+// @API CSE GET /v2/{project_id}/enginemgr/engines/{engineId}
+// @API CSE POST /v2/{project_id}/enginemgr/engines
+// @API CSE GET /v2/{project_id}/enginemgr/engines/{engineId}/jobs/{jobId}
 func ResourceMicroserviceEngine() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceMicroserviceEngineCreate,
@@ -54,12 +64,6 @@ func ResourceMicroserviceEngine() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z]([A-Za-z0-9-]*[A-Za-z0-9])?$`),
-						"The name must start a letter and cannot end with a hyphen (-), and can only contain "+
-							"letters, digits and hyphens (-)."),
-					validation.StringLenBetween(3, 24),
-				),
 			},
 			"flavor": {
 				Type:     schema.TypeString,
@@ -68,7 +72,8 @@ func ResourceMicroserviceEngine() *schema.Resource {
 			},
 			"availability_zones": {
 				Type:     schema.TypeSet,
-				Required: true,
+				Optional: true,
+				Computed: true,
 				ForceNew: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -100,13 +105,13 @@ func ResourceMicroserviceEngine() *schema.Resource {
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 				ForceNew: true,
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ValidateFunc: validation.StringLenBetween(0, 255),
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
 			},
 			"eip_id": {
 				Type:     schema.TypeString,
@@ -215,9 +220,9 @@ func resourceMicroserviceEngineCreate(ctx context.Context, d *schema.ResourceDat
 
 	log.Printf("[DEBUG] Waiting for the Microservice engine to become running, the engine ID is %s.", d.Id())
 	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"Init", "Executing"},
-		Target:       []string{"Finished"},
-		Refresh:      MicroserviceJobRefreshFunc(client, d.Id(), strconv.Itoa(resp.JobId), epsId),
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      MicroserviceJobRefreshFunc(client, d.Id(), strconv.Itoa(resp.JobId), epsId, []string{"Finished"}),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        180 * time.Second,
 		PollInterval: 15 * time.Second,
@@ -327,14 +332,14 @@ func resourceMicroserviceEngineRead(_ context.Context, d *schema.ResourceData, m
 }
 
 func resourceMicroserviceEngineDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	conf := meta.(*config.Config)
-	region := conf.GetRegion(d)
-	client, err := conf.CseV2Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.CseV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating CSE v2 client: %s", err)
 	}
 
-	epsId := common.GetEnterpriseProjectID(d, conf)
+	epsId := cfg.GetEnterpriseProjectID(d)
 	resp, err := engines.Delete(client, d.Id(), epsId)
 	if err != nil {
 		return diag.Errorf("error getting Microservice engine: %s", err)
@@ -342,9 +347,9 @@ func resourceMicroserviceEngineDelete(ctx context.Context, d *schema.ResourceDat
 
 	log.Printf("[DEBUG] Waiting for the Microservice engine delete complete, the engine ID is %s.", d.Id())
 	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"Init", "Executing"},
-		Target:       []string{"Deleted"},
-		Refresh:      MicroserviceJobRefreshFunc(client, d.Id(), strconv.Itoa(resp.JobId), epsId),
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      MicroserviceJobRefreshFunc(client, d.Id(), strconv.Itoa(resp.JobId), epsId, nil),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        120 * time.Second,
 		PollInterval: 15 * time.Second,
@@ -361,15 +366,8 @@ func resourceMicroserviceEngineDelete(ctx context.Context, d *schema.ResourceDat
 
 func parseEngineJobError(respErr error) error {
 	var apiErr engines.ErrorResponse
-	if errCode, ok := respErr.(golangsdk.ErrDefault400); ok {
-		pErr := json.Unmarshal(errCode.Body, &apiErr)
-		if pErr == nil && (apiErr.ErrCode == "SVCSTG.00501116") {
-			return golangsdk.ErrDefault404{
-				ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-					Body: []byte("the microservice engine has been deleted"),
-				},
-			}
-		}
+	if _, ok := respErr.(golangsdk.ErrDefault400); ok {
+		return common.ConvertExpected400ErrInto404Err(respErr, "error_code", engineNotFoundCodes...)
 	}
 	if errCode, ok := respErr.(golangsdk.ErrDefault401); ok {
 		pErr := json.Unmarshal(errCode.Body, &apiErr)
@@ -384,16 +382,25 @@ func parseEngineJobError(respErr error) error {
 	return respErr
 }
 
-func MicroserviceJobRefreshFunc(c *golangsdk.ServiceClient, engineId, jobId, epsId string) resource.StateRefreshFunc {
+func MicroserviceJobRefreshFunc(client *golangsdk.ServiceClient, engineId, jobId, epsId string,
+	targets []string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		resp, err := engines.GetJob(c, engineId, jobId, epsId)
+		resp, err := engines.GetJob(client, engineId, jobId, epsId)
 		if newErr := parseEngineJobError(err); newErr != nil {
-			if _, ok := newErr.(golangsdk.ErrDefault404); ok {
-				return resp, "Deleted", nil
+			if _, ok := newErr.(golangsdk.ErrDefault404); ok && len(targets) < 1 {
+				return resp, "COMPLETED", nil
 			}
-			return resp, "ERROR", newErr
+			return resp, "ERROR", err
 		}
-		return resp, resp.Status, nil
+
+		if utils.StrSliceContains([]string{"CreateFail", "DeleteFailed", "UpgradeFailed", "ModifyFailed"}, resp.Status) {
+			return resp, "ERROR", fmt.Errorf("unexpect status (%s)", resp.Status)
+		}
+
+		if utils.StrSliceContains(targets, resp.Status) {
+			return resp, "COMPLETED", nil
+		}
+		return resp, "PENDING", nil
 	}
 }
 
@@ -409,6 +416,6 @@ func resourceEngineImportState(_ context.Context, d *schema.ResourceData,
 		d.SetId(parts[0])
 		return []*schema.ResourceData{d}, d.Set("enterprise_project_id", parts[1])
 	}
-	return nil, fmt.Errorf("The imported ID specifies an invalid format: want '<id>' or "+
+	return nil, fmt.Errorf("the imported ID specifies an invalid format: want '<id>' or "+
 		"'<id>/<enterprise_project_id>', but '%s'", importedId)
 }

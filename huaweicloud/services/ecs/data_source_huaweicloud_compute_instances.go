@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"context"
+	"log"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -13,6 +14,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/hashcode"
 )
 
+// @API ECS GET /v1/{project_id}/cloudservers/detail
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}/block_device
+// @API EVS GET /v2/{project_id}/cloudvolumes/{volume_id}
+// @API VPC GET /v2.0/ports/{id}
 func DataSourceComputeInstances() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceComputeInstancesRead,
@@ -31,6 +36,10 @@ func DataSourceComputeInstances() *schema.Resource {
 				Optional: true,
 			},
 			"flavor_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fixed_ip_v4": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -128,6 +137,14 @@ func DataSourceComputeInstances() *schema.Resource {
 							Computed: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
+						"charging_mode": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"expired_time": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -135,13 +152,14 @@ func DataSourceComputeInstances() *schema.Resource {
 	}
 }
 
-func buildListOptsWithoutIP(d *schema.ResourceData, conf *config.Config) *cloudservers.ListOpts {
+func buildListOpts(d *schema.ResourceData, cfg *config.Config) *cloudservers.ListOpts {
 	result := cloudservers.ListOpts{
 		Limit:               100,
-		EnterpriseProjectID: conf.DataGetEnterpriseProjectID(d),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d, "all_granted_eps"),
 		Name:                d.Get("name").(string),
 		Flavor:              d.Get("flavor_id").(string),
 		Status:              d.Get("status").(string),
+		IPEqual:             d.Get("fixed_ip_v4").(string),
 	}
 
 	return &result
@@ -183,7 +201,7 @@ func dataSourceComputeInstancesRead(_ context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error creating ECS client: %s", err)
 	}
 
-	opts := buildListOptsWithoutIP(d, conf)
+	opts := buildListOpts(d, conf)
 	allServers, err := queryEcsInstances(ecsClient, opts)
 	if err != nil {
 		return diag.Errorf("unable to retrieve ECS instances: %s", err)
@@ -230,6 +248,7 @@ func setComputeInstancesParams(d *schema.ResourceData, conf *config.Config, serv
 			"tags":                  flattenEcsInstanceTags(item.Tags),
 			"security_group_ids":    flattenEcsInstanceSecurityGroupIds(item.SecurityGroups),
 			"scheduler_hints":       flattenEcsInstanceSchedulerHints(item.OsSchedulerHints),
+			"charging_mode":         normalizeChargingMode(item.Metadata.ChargingMode),
 		}
 
 		if len(item.VolumeAttached) > 0 {
@@ -242,6 +261,16 @@ func setComputeInstancesParams(d *schema.ResourceData, conf *config.Config, serv
 			networks, eip := flattenEcsInstanceNetworks(networkingClient, item.Addresses)
 			server["network"] = networks
 			server["public_ip"] = eip
+		}
+
+		// Set expired time for prePaid instance
+		if normalizeChargingMode(item.Metadata.ChargingMode) == "prePaid" {
+			expiredTime, err := getPrePaidExpiredTime(d, conf, item.ID)
+			if err != nil {
+				log.Printf("error get prePaid expired time: %s", err)
+			}
+
+			server["expired_time"] = expiredTime
 		}
 
 		result[i] = server

@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"regexp"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/sdkerr"
 	client "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cts/v3"
 	cts "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cts/v3/model"
 
@@ -24,6 +24,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CTS POST /v3/{project_id}/tracker
+// @API CTS PUT /v3/{project_id}/tracker
+// @API CTS GET /v3/{project_id}/trackers
 func ResourceCTSTracker() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCTSTrackerCreate,
@@ -55,11 +58,6 @@ func ResourceCTSTracker() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"bucket_name"},
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 64),
-					validation.StringMatch(regexp.MustCompile(`^[\.\-_A-Za-z0-9]+$`),
-						"only letters, numbers, hyphens (-), underscores (_), and periods (.) are allowed"),
-				),
 			},
 			"validate_file": {
 				Type:         schema.TypeBool,
@@ -70,6 +68,24 @@ func ResourceCTSTracker() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"bucket_name"},
+			},
+			"compress_type": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"bucket_name"},
+			},
+			"is_sort_by_service": {
+				Type:         schema.TypeBool,
+				Optional:     true,
+				RequiredWith: []string{"bucket_name"},
+				Default:      true,
+			},
+			"exclude_service": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
 			"lts_enabled": {
 				Type:     schema.TypeBool,
@@ -85,7 +101,11 @@ func ResourceCTSTracker() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
-
+			"delete_tracker": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"tags": common.TagsSchema(),
 			"name": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -100,6 +120,10 @@ func ResourceCTSTracker() *schema.Resource {
 			},
 			"transfer_enabled": {
 				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"agency_name": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 		},
@@ -125,16 +149,33 @@ func resourceCTSTrackerCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return resourceCTSTrackerUpdate(ctx, d, meta)
 	}
 
-	// return the error with non-404 code
-	if _, ok := err.(golangsdk.ErrDefault404); !ok {
+	var statusCode int
+	// check if the error is raised by golangsdk.
+	if _, ok := err.(golangsdk.ErrDefault404); ok {
+		statusCode = http.StatusNotFound
+		// check if the error is raised by huaweicloud-sdk-go-v3.
+	} else if responseErr, ok := err.(*sdkerr.ServiceResponseError); ok {
+		statusCode = responseErr.StatusCode
+	}
+
+	if statusCode != http.StatusNotFound {
 		return diag.Errorf("error retrieving CTS tracker: %s", err)
 	}
 
-	if err := createSystemTracker(d, ctsClient); err != nil {
-		return diag.Errorf("error creating system CTS tracker: %s", err)
+	resourceID, err = createSystemTracker(d, ctsClient)
+	if err != nil {
+		return diag.Errorf("error creating CTS tracker: %s", err)
 	}
 
 	d.SetId(resourceID)
+
+	if rawTag := d.Get("tags").(map[string]interface{}); len(rawTag) > 0 {
+		tagList := expandResourceTags(rawTag)
+		_, err = ctsClient.BatchCreateResourceTags(buildCreateTagOpt(tagList, resourceID))
+		if err != nil {
+			return diag.Errorf("error creating CTS tracker tags: %s", err)
+		}
+	}
 
 	// disable status if necessary
 	if enabled := d.Get("enabled").(bool); !enabled {
@@ -142,7 +183,7 @@ func resourceCTSTrackerCreate(ctx context.Context, d *schema.ResourceData, meta 
 			return diag.Errorf("failed to disable CTS system tracker: %s", err)
 		}
 	}
-	return nil
+	return resourceCTSTrackerRead(ctx, d, meta)
 }
 
 func resourceCTSTrackerUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -167,11 +208,20 @@ func resourceCTSTrackerUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	// update other configurations
 	if d.IsNewResource() || d.HasChangeExcept("enabled") {
 		obsInfo := cts.TrackerObsInfo{
-			BucketName:     utils.String(d.Get("bucket_name").(string)),
-			FilePrefixName: utils.String(d.Get("file_prefix").(string)),
+			BucketName:      utils.String(d.Get("bucket_name").(string)),
+			FilePrefixName:  utils.String(d.Get("file_prefix").(string)),
+			IsSortByService: utils.Bool(d.Get("is_sort_by_service").(bool)),
+		}
+		if v, ok := d.GetOk("compress_type"); ok {
+			compressType := cts.GetTrackerObsInfoCompressTypeEnum().GZIP
+			if v.(string) != "gzip" {
+				compressType = cts.GetTrackerObsInfoCompressTypeEnum().JSON
+			}
+			obsInfo.CompressType = &compressType
 		}
 
 		trackerType := cts.GetUpdateTrackerRequestBodyTrackerTypeEnum().SYSTEM
+		agencyName := cts.GetUpdateTrackerRequestBodyAgencyNameEnum().CTS_ADMIN_TRUST
 		updateBody := cts.UpdateTrackerRequestBody{
 			TrackerName:           "system",
 			TrackerType:           trackerType,
@@ -179,6 +229,11 @@ func resourceCTSTrackerUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			IsOrganizationTracker: utils.Bool(d.Get("organization_enabled").(bool)),
 			IsSupportValidate:     utils.Bool(d.Get("validate_file").(bool)),
 			ObsInfo:               &obsInfo,
+			AgencyName:            &agencyName,
+		}
+
+		if v, ok := d.GetOk("exclude_service"); ok {
+			updateBody.ManagementEventSelector = buildManagementEventSelector(v.(*schema.Set).List())
 		}
 
 		var encryption bool
@@ -196,6 +251,13 @@ func resourceCTSTrackerUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		_, err = ctsClient.UpdateTracker(&updateOpts)
 		if err != nil {
 			return diag.Errorf("error updating CTS tracker: %s", err)
+		}
+
+		if d.HasChange("tags") {
+			err = updateResourceTags(ctsClient, d)
+			if err != nil {
+				return diag.Errorf("error updating CTS tracker tags: %s", err)
+			}
 		}
 	}
 
@@ -225,11 +287,18 @@ func resourceCTSTrackerRead(_ context.Context, d *schema.ResourceData, meta inte
 		nil,
 		d.Set("region", region),
 		d.Set("name", ctsTracker.TrackerName),
-		d.Set("lts_enabled", ctsTracker.Lts.IsLtsEnabled),
 		d.Set("organization_enabled", ctsTracker.IsOrganizationTracker),
 		d.Set("validate_file", ctsTracker.IsSupportValidate),
 		d.Set("kms_id", ctsTracker.KmsId),
 	)
+
+	if ctsTracker.Lts != nil {
+		mErr = multierror.Append(mErr, d.Set("lts_enabled", ctsTracker.Lts.IsLtsEnabled))
+	}
+
+	if ctsTracker.AgencyName != nil {
+		mErr = multierror.Append(mErr, d.Set("agency_name", ctsTracker.AgencyName.Value()))
+	}
 
 	if ctsTracker.ObsInfo != nil {
 		bucketName := ctsTracker.ObsInfo.BucketName
@@ -237,7 +306,12 @@ func resourceCTSTrackerRead(_ context.Context, d *schema.ResourceData, meta inte
 			mErr,
 			d.Set("bucket_name", bucketName),
 			d.Set("file_prefix", ctsTracker.ObsInfo.FilePrefixName),
+			d.Set("is_sort_by_service", ctsTracker.ObsInfo.IsSortByService),
 		)
+
+		if ctsTracker.ObsInfo.CompressType != nil {
+			mErr = multierror.Append(mErr, d.Set("compress_type", formatValue(ctsTracker.ObsInfo.CompressType)))
+		}
 
 		if *bucketName != "" {
 			mErr = multierror.Append(mErr, d.Set("transfer_enabled", true))
@@ -246,6 +320,9 @@ func resourceCTSTrackerRead(_ context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
+	if ctsTracker.ManagementEventSelector != nil {
+		mErr = multierror.Append(mErr, d.Set("exclude_service", ctsTracker.ManagementEventSelector.ExcludeService))
+	}
 	if ctsTracker.TrackerType != nil {
 		mErr = multierror.Append(mErr, d.Set("type", formatValue(ctsTracker.TrackerType)))
 	}
@@ -268,13 +345,32 @@ func resourceCTSTrackerDelete(_ context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error creating CTS client: %s", err)
 	}
 
+	trackerCanBeDeleted := d.Get("delete_tracker").(bool)
+	if trackerCanBeDeleted {
+		trackerName := d.Get("name").(string)
+		trackerType := cts.GetDeleteTrackerRequestTrackerTypeEnum().SYSTEM
+		deleteOpts := cts.DeleteTrackerRequest{
+			TrackerName: &trackerName,
+			TrackerType: &trackerType,
+		}
+
+		_, err = ctsClient.DeleteTracker(&deleteOpts)
+		if err != nil {
+			return common.CheckDeletedDiag(d, convertExpected403ErrInto404Err(err, "CTS.0013"), "error deleting CTS system tracker")
+		}
+		return nil
+	}
+
 	if err := updateSystemTrackerStatus(ctsClient, "disabled"); err != nil {
 		return diag.Errorf("failed to disable CTS system tracker: %s", err)
 	}
 
+	compressType := cts.GetTrackerObsInfoCompressTypeEnum().JSON
 	obsInfo := cts.TrackerObsInfo{
-		BucketName:     utils.String(""),
-		FilePrefixName: utils.String(""),
+		BucketName:      utils.String(""),
+		FilePrefixName:  utils.String(""),
+		IsSortByService: utils.Bool(false),
+		CompressType:    &compressType,
 	}
 
 	updateBody := cts.UpdateTrackerRequestBody{
@@ -297,6 +393,15 @@ func resourceCTSTrackerDelete(_ context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("falied to reset CTS system tracker: %s", err)
 	}
 
+	oldRaw, _ := d.GetChange("tags")
+	if oldTags := oldRaw.(map[string]interface{}); len(oldTags) > 0 {
+		oldTagList := expandResourceTags(oldTags)
+		_, err = ctsClient.BatchDeleteResourceTags(buildDeleteTagOpt(oldTagList, d.Id()))
+		if err != nil {
+			return diag.Errorf("falied to delete CTS system tracker tags: %s", err)
+		}
+	}
+
 	return nil
 }
 
@@ -316,13 +421,23 @@ func formatValue(i interface{}) string {
 	return strings.Trim(string(jsonRaw), `"`)
 }
 
-func createSystemTracker(d *schema.ResourceData, ctsClient *client.CtsClient) error {
+func createSystemTracker(d *schema.ResourceData, ctsClient *client.CtsClient) (string, error) {
 	obsInfo := cts.TrackerObsInfo{
-		BucketName:     utils.String(d.Get("bucket_name").(string)),
-		FilePrefixName: utils.String(d.Get("file_prefix").(string)),
+		BucketName:      utils.String(d.Get("bucket_name").(string)),
+		FilePrefixName:  utils.String(d.Get("file_prefix").(string)),
+		IsSortByService: utils.Bool(d.Get("is_sort_by_service").(bool)),
+	}
+
+	if v, ok := d.GetOk("compress_type"); ok {
+		compressType := cts.GetTrackerObsInfoCompressTypeEnum().GZIP
+		if v.(string) != "gzip" {
+			compressType = cts.GetTrackerObsInfoCompressTypeEnum().JSON
+		}
+		obsInfo.CompressType = &compressType
 	}
 
 	trackerType := cts.GetCreateTrackerRequestBodyTrackerTypeEnum().SYSTEM
+	agencyName := cts.GetCreateTrackerRequestBodyAgencyNameEnum().CTS_ADMIN_TRUST
 	reqBody := cts.CreateTrackerRequestBody{
 		TrackerName:           "system",
 		TrackerType:           trackerType,
@@ -330,6 +445,11 @@ func createSystemTracker(d *schema.ResourceData, ctsClient *client.CtsClient) er
 		IsOrganizationTracker: utils.Bool(d.Get("organization_enabled").(bool)),
 		IsSupportValidate:     utils.Bool(d.Get("validate_file").(bool)),
 		ObsInfo:               &obsInfo,
+		AgencyName:            &agencyName,
+	}
+
+	if v, ok := d.GetOk("exclude_service"); ok {
+		reqBody.ManagementEventSelector = buildManagementEventSelector(v.(*schema.Set).List())
 	}
 
 	if v, ok := d.GetOk("kms_id"); ok {
@@ -343,8 +463,28 @@ func createSystemTracker(d *schema.ResourceData, ctsClient *client.CtsClient) er
 		Body: &reqBody,
 	}
 
-	_, err := ctsClient.CreateTracker(&createOpts)
-	return err
+	resp, err := ctsClient.CreateTracker(&createOpts)
+	if err != nil {
+		return "", err
+	}
+	if resp.Id == nil {
+		return "", fmt.Errorf("ID is not found in API response")
+	}
+
+	return *resp.Id, nil
+}
+
+func buildManagementEventSelector(rawServices []interface{}) *cts.ManagementEventSelector {
+	if len(rawServices) == 0 {
+		return nil
+	}
+
+	services := utils.ExpandToStringList(rawServices)
+	selector := cts.ManagementEventSelector{
+		ExcludeService: &services,
+	}
+
+	return &selector
 }
 
 func getSystemTracker(ctsClient *client.CtsClient) (*cts.TrackerResponseBody, error) {
@@ -373,15 +513,26 @@ func updateSystemTrackerStatus(c *client.CtsClient, status string) error {
 	}
 
 	trackerType := cts.GetUpdateTrackerRequestBodyTrackerTypeEnum().SYSTEM
+	agencyName := cts.GetUpdateTrackerRequestBodyAgencyNameEnum().CTS_ADMIN_TRUST
 	statusOpts := cts.UpdateTrackerRequestBody{
 		TrackerName: "system",
 		TrackerType: trackerType,
 		Status:      enabledStatus,
+		AgencyName:  &agencyName,
 	}
 	statusReq := cts.UpdateTrackerRequest{
 		Body: &statusOpts,
 	}
 
 	_, err := c.UpdateTracker(&statusReq)
+	return err
+}
+
+func convertExpected403ErrInto404Err(err error, errCode string) error {
+	if responseErr, ok := err.(*sdkerr.ServiceResponseError); ok {
+		if responseErr.StatusCode == http.StatusForbidden && responseErr.ErrorCode == errCode {
+			return golangsdk.ErrDefault404{}
+		}
+	}
 	return err
 }

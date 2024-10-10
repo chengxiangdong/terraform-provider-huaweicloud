@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Instance (CCI)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cci_pvc"
+description: ""
 ---
 
 # huaweicloud_cci_pvc
@@ -132,6 +135,6 @@ This resource provides the following timeouts configuration options:
 
 PVCs can be imported using the `namespace`, `volume_type` and `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_cci_pvc.test <namespace>/<volume_type>/<id>
 ```

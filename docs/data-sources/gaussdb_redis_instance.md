@@ -1,10 +1,13 @@
 ---
-subcategory: "GaussDB NoSQL"
+subcategory: "GeminiDB"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_gaussdb_redis_instance"
+description: ""
 ---
 
 # huaweicloud_gaussdb_redis_instance
 
-Use this data source to get available HuaweiCloud gaussdb redis instance.
+Use this data source to get available HuaweiCloud GeminiDB Redis instance.
 
 ## Example Usage
 

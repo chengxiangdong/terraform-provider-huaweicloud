@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Network (VPN)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpn_connection"
+description: ""
 ---
 
 # huaweicloud_vpn_connection
@@ -89,9 +92,11 @@ The following arguments are supported:
 
 * `customer_gateway_id` - (Required, String) The customer gateway ID.
 
-* `peer_subnets` - (Required, List) The CIDR list of customer subnets.
-
 * `psk` - (Required, String) The pre-shared key.
+
+* `peer_subnets` - (Optional, List) The CIDR list of customer subnets. This parameter must be empty
+  when the `attachment_type` of the VPN gateway is set to **er** and `vpn_type` is set to **policy** or **bgp**.
+  This parameter is mandatory in other scenarios.
 
 * `tunnel_local_address` - (Optional, String) The local tunnel address.
 
@@ -108,6 +113,19 @@ The [ipsecpolicy](#Connection_CreateRequestIpsecPolicy) structure is documented 
 * `policy_rules` - (Optional, List) The policy rules. Only works when vpn_type is set to **policy**
 The [policy_rules](#Connection_PolicyRule) structure is documented below.
 
+* `tags` - (Optional, Map) Specifies the tags of the VPN connection.
+
+* `ha_role` - (Optional, String, ForceNew) Specifies the mode of the VPN connection.
+  The valid values are **master** and **slave**, defaults to **master**.
+  This parameter is optional when you create a connection for a VPN gateway in **active-active** mode.
+  When you create a connection for a VPN gateway in **active-standby** mode, **master** indicates
+  the active connection, and **slave** indicates the standby connection.
+  In **active-active** mode, this field must be set to **master** for the connection established
+  using the active EIP or active private IP address of the VPN gateway, and must be set to **slave**
+  for the connection established using active EIP 2 or active private IP address 2 of the VPN gateway.
+
+  Changing this parameter will create a new resource.
+
 <a name="Connection_CreateRequestIkePolicy"></a>
 The `ikepolicy` block supports:
 
@@ -121,8 +139,8 @@ The `ikepolicy` block supports:
 
 * `ike_version` - (Optional, String) The IKE negotiation version. The value can be **v1** and **v2**. Defaults to **v2**.
 
-* `lifetime_seconds` - (Optional, Int) The life cycle of SA in seconds. The value ranges from **60** to **604800**.
-  Defaults to **86400**. When the life cycle expires, IKE SA will be automatically updated.
+* `lifetime_seconds` - (Optional, Int) The life cycle of SA in seconds. The value ranges from `60` to `604,800`.
+  Defaults to `86,400`. When the life cycle expires, IKE SA will be automatically updated.
 
 * `local_id_type` - (Optional, String) The local ID type. The value can be **ip** or **fqdn**. Defaults to **ip**.
 
@@ -150,10 +168,10 @@ The `ikepolicy` block supports:
 The `dpd` block supports:
 
 * `timeout` - (Optional, Int) Specifies the interval for retransmitting DPD packets.
-  The value ranges from **2** to **60**, in seconds. Defaults to **15**.
+  The value ranges from `2` to `60`, in seconds. Defaults to `15`.
 
 * `interval` - (Optional, Int) Specifies the DPD idle timeout period.
-  The value ranges from **10** to **3600**, in seconds. Defaults to **30**.
+  The value ranges from `10` to `3,600`, in seconds. Defaults to `30`.
 
 * `msg` - (Optional, String) Specifies the format of DPD packets. The value can be:
   + **seq-hash-notify**: indicates that the payload of DPD packets is in the sequence of hash-notify;
@@ -176,7 +194,7 @@ The `ipsecpolicy` block supports:
   **group16**, **group19**, **group20**, **group21**. Defaults to **group14**.
 
 * `lifetime_seconds` - (Optional, Int) The lifecycle time of Ipsec tunnel in seconds.
-  The value ranges from **60** to **604800**. Defaults to **3600**.
+  The value ranges from `60` to `604,800`. Defaults to `3600`.
 
 * `transform_protocol` - (Optional, String) The transform protocol. Only **esp** supported for now.
   Defaults to **esp**.
@@ -219,6 +237,6 @@ This resource provides the following timeouts configuration options:
 
 The connection can be imported using the `id`, e.g.
 
-```
-$ terraform import huaweicloud_vpn_connection.test 0ce123456a00f2591fabc00385ff1234
+```bash
+$ terraform import huaweicloud_vpn_connection.test <id>
 ```

@@ -1,5 +1,8 @@
 ---
 subcategory: "Object Storage Service (OBS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_obs_bucket_policy"
+description: ""
 ---
 
 # huaweicloud_obs_bucket_policy
@@ -92,12 +95,12 @@ In addition to all arguments above, the following attributes are exported:
 
 OBS format bucket policy can be imported using the `<bucket>`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_obs_bucket_policy.policy <bucket-name>
 ```
 
-S3 foramt bucket policy can be imported using the `<bucket>` and "s3" by a slash, e.g.
+S3 format bucket policy can be imported using the `<bucket>` and "s3" by a slash, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_obs_bucket_policy.s3_policy <bucket-name>/s3
 ```

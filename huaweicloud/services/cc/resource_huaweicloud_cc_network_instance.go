@@ -7,14 +7,12 @@ package cc
 
 import (
 	"context"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -23,6 +21,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CC POST /v3/{domain_id}/ccaas/network-instances
+// @API CC DELETE /v3/{domain_id}/ccaas/network-instances/{id}
+// @API CC GET /v3/{domain_id}/ccaas/network-instances/{id}
+// @API CC PUT /v3/{domain_id}/ccaas/network-instances/{id}
 func ResourceNetworkInstance() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceNetworkInstanceCreate,
@@ -84,21 +86,11 @@ func ResourceNetworkInstance() *schema.Resource {
 				Optional:    true,
 				Computed:    true,
 				Description: `The network instance name.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\x{4E00}-\x{9FFC}A-Za-z-_0-9.]*$`),
-						"the input is invalid"),
-					validation.StringLenBetween(1, 64),
-				),
 			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: `The description about the network instance.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[^<>]+$`),
-						"the input is invalid"),
-					validation.StringLenBetween(0, 255),
-				),
 			},
 			"instance_domain_id": {
 				Type:        schema.TypeString,
@@ -155,11 +147,11 @@ func resourceNetworkInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("network_instance.id", createNetworkInstanceRespBody)
-	if err != nil {
+	id := utils.PathSearch("network_instance.id", createNetworkInstanceRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating NetworkInstance: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
 
 	return resourceNetworkInstanceRead(ctx, d, meta)
 }
@@ -173,15 +165,15 @@ func buildCreateNetworkInstanceBodyParams(d *schema.ResourceData) map[string]int
 
 func buildCreateNetworkInstanceNetworkInstanceChildBody(d *schema.ResourceData) map[string]interface{} {
 	params := map[string]interface{}{
-		"name":                utils.ValueIngoreEmpty(d.Get("name")),
-		"description":         utils.ValueIngoreEmpty(d.Get("description")),
-		"type":                utils.ValueIngoreEmpty(d.Get("type")),
-		"instance_id":         utils.ValueIngoreEmpty(d.Get("instance_id")),
-		"instance_domain_id":  utils.ValueIngoreEmpty(d.Get("instance_domain_id")),
-		"project_id":          utils.ValueIngoreEmpty(d.Get("project_id")),
-		"region_id":           utils.ValueIngoreEmpty(d.Get("region_id")),
-		"cloud_connection_id": utils.ValueIngoreEmpty(d.Get("cloud_connection_id")),
-		"cidrs":               utils.ValueIngoreEmpty(d.Get("cidrs")),
+		"name":                utils.ValueIgnoreEmpty(d.Get("name")),
+		"description":         utils.ValueIgnoreEmpty(d.Get("description")),
+		"type":                utils.ValueIgnoreEmpty(d.Get("type")),
+		"instance_id":         utils.ValueIgnoreEmpty(d.Get("instance_id")),
+		"instance_domain_id":  utils.ValueIgnoreEmpty(d.Get("instance_domain_id")),
+		"project_id":          utils.ValueIgnoreEmpty(d.Get("project_id")),
+		"region_id":           utils.ValueIgnoreEmpty(d.Get("region_id")),
+		"cloud_connection_id": utils.ValueIgnoreEmpty(d.Get("cloud_connection_id")),
+		"cidrs":               utils.ValueIgnoreEmpty(d.Get("cidrs")),
 	}
 	return params
 }
@@ -293,9 +285,9 @@ func buildUpdateNetworkInstanceBodyParams(d *schema.ResourceData) map[string]int
 
 func buildUpdateNetworkInstanceNetworkInstanceChildBody(d *schema.ResourceData) map[string]interface{} {
 	params := map[string]interface{}{
-		"name":        utils.ValueIngoreEmpty(d.Get("name")),
+		"name":        utils.ValueIgnoreEmpty(d.Get("name")),
 		"description": d.Get("description"),
-		"cidrs":       utils.ValueIngoreEmpty(d.Get("cidrs")),
+		"cidrs":       utils.ValueIgnoreEmpty(d.Get("cidrs")),
 	}
 	return params
 }
@@ -326,7 +318,9 @@ func resourceNetworkInstanceDelete(_ context.Context, d *schema.ResourceData, me
 	}
 	_, err = deleteNetworkInstanceClient.Request("DELETE", deleteNetworkInstancePath, &deleteNetworkInstanceOpt)
 	if err != nil {
-		return diag.Errorf("error deleting NetworkInstance: %s", err)
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected400ErrInto404Err(err, "error_code", "CC.1002"),
+			"error deleting NetworkInstance")
 	}
 
 	return nil

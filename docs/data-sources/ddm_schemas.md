@@ -1,5 +1,8 @@
 ---
 subcategory: "Distributed Database Middleware (DDM)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_ddm_schemas"
+description: ""
 ---
 
 # huaweicloud_ddm_schemas
@@ -37,7 +40,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `schemas` - Indicates the list of DDM schema.
   The [Schema](#DdmSchemas_Schema) structure is documented below.

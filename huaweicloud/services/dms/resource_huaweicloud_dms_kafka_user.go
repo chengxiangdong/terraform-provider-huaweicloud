@@ -15,6 +15,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API Kafka PUT /v2/{engine}/{project_id}/instances/{instance_id}/users/{user_name}
+// @API Kafka GET /v2/{project_id}/instances/{instance_id}/users
+// @API Kafka POST /v2/{project_id}/instances/{instance_id}/users
+// @API Kafka PUT /v2/{project_id}/instances/{instance_id}/users
 func ResourceDmsKafkaUser() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDmsKafkaUserCreate,
@@ -47,6 +51,22 @@ func ResourceDmsKafkaUser() *schema.Resource {
 				Required:  true,
 				Sensitive: true,
 			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"default_app": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"role": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"created_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -66,6 +86,7 @@ func resourceDmsKafkaUserCreate(ctx context.Context, d *schema.ResourceData, met
 		Body: &model.CreateInstanceUserReq{
 			UserName:   utils.String(instanceUser),
 			UserPasswd: utils.String(d.Get("password").(string)),
+			UserDesc:   utils.String(d.Get("description").(string)),
 		},
 	}
 
@@ -110,6 +131,10 @@ func resourceDmsKafkaUserRead(ctx context.Context, d *schema.ResourceData, meta 
 			if *user.UserName == instanceUser {
 				d.Set("instance_id", instanceId)
 				d.Set("name", instanceUser)
+				d.Set("description", user.UserDesc)
+				d.Set("default_app", user.DefaultApp)
+				d.Set("role", user.Role)
+				d.Set("created_at", utils.FormatTimeStampRFC3339(*user.CreatedTime/1000, false))
 				return nil
 			}
 		}
@@ -131,15 +156,18 @@ func resourceDmsKafkaUserUpdate(ctx context.Context, d *schema.ResourceData, met
 
 	instanceId := d.Get("instance_id").(string)
 
-	updateOpts := &model.ResetUserPasswrodRequest{
+	updateOpts := &model.UpdateInstanceUserRequest{
+		Engine:     "kafka",
 		InstanceId: instanceId,
 		UserName:   d.Get("name").(string),
-		Body: &model.ResetUserPasswrodReq{
+		Body: &model.UpdateUserReq{
+			UserName:    utils.String(d.Get("name").(string)),
 			NewPassword: utils.String(d.Get("password").(string)),
+			UserDesc:    utils.String(d.Get("description").(string)),
 		},
 	}
 
-	_, err = client.ResetUserPasswrod(updateOpts)
+	_, err = client.UpdateInstanceUser(updateOpts)
 	if err != nil {
 		return diag.Errorf("error updating DMS instance user: %s", err)
 	}

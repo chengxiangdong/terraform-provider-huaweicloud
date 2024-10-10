@@ -1,0 +1,19 @@
+info:
+    version: ""
+    title: resource_huaweicloud_dns_resolver_rule_associate
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: DNS
+paths:
+    /v2.1/resolverrules/{resolverrule_id}:
+        GET:
+            tag: DNS
+    /v2.1/resolverrules/{resolverrule_id}/associaterouter:
+        POST:
+            tag: DNS
+    /v2.1/resolverrules/{resolverrule_id}/disassociaterouter:
+        POST:
+            tag: DNS

@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_node_pool"
+description: ""
 ---
 
 # huaweicloud_cce_node_pool
@@ -168,6 +171,88 @@ resource "huaweicloud_cce_node_pool" "node_pool" {
 
   ~> You need to remove all nodes in the node pool on the console, before deleting a prepaid node pool.
 
+## Node pool with extension scale groups
+
+```hcl
+variable "cluster_id" {}
+variable "key_pair" {}
+variable "availability_zone_1" {}
+variable "availability_zone_2" {}
+
+resource "huaweicloud_cce_node_pool" "node_pool" {
+  cluster_id               = var.cluster_id
+  name                     = "testpool"
+  os                       = "EulerOS 2.5"
+  initial_node_count       = 2
+  flavor_id                = "s3.large.4"
+  availability_zone        = var.availability_zone_1
+  key_pair                 = var.keypair
+  scall_enable             = true
+  min_node_count           = 1
+  max_node_count           = 10
+  scale_down_cooldown_time = 100
+  priority                 = 1
+  type                     = "vm"
+
+  root_volume {
+    size       = 40
+    volumetype = "SAS"
+  }
+  data_volumes {
+    size       = 100
+    volumetype = "SAS"
+  }
+
+  extension_scale_groups {
+    metadata {
+      name = "group1"
+    }
+
+    spec {
+      flavor = "s3.large.4"
+      az     = var.availability_zone_1
+
+      autoscaling {
+        extension_priority = 1
+        enable             = true
+      }
+    }
+  }
+
+  extension_scale_groups {
+    metadata {
+      name = "group2"
+    }
+
+    spec {
+      flavor = "s3.xlarge.4"
+      az     = var.availability_zone_1
+
+      autoscaling {
+        extension_priority = 1
+        enable             = true
+      }
+    }
+  }
+
+  extension_scale_groups {
+    metadata {
+      name = "group3"
+    }
+
+    spec {
+      flavor = "s3.xlarge.4"
+      az     = var.availability_zone_2
+
+      autoscaling {
+        extension_priority = 1
+        enable             = true
+      }
+    }
+  }
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
@@ -267,6 +352,26 @@ The following arguments are supported:
 
 * `taints` - (Optional, List) Specifies the taints configuration of the nodes to set anti-affinity.
   The structure is described below.
+
+* `tag_policy_on_existing_nodes` - (Optional, String) Specifies the tag policy on existing nodes.
+  The value can be **ignore** and **refresh**, defaults to **ignore**.
+
+* `label_policy_on_existing_nodes` - (Optional, String) Specifies the label policy on existing nodes.
+  The value can be **ignore** and **refresh**, defaults to **refresh**.
+
+* `taint_policy_on_existing_nodes` - (Optional, String) Specifies the taint policy on existing nodes.
+  The value can be **ignore** and **refresh**, defaults to **refresh**.
+
+* `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID of the node pool.
+  If updated, the new value will apply only to new nodes.
+
+* `hostname_config` - (Optional, List, ForceNew) Specifies the hostname config of the kubernetes node,
+  which is supported by clusters of v1.23.6-r0 to v1.25 or clusters of v1.25.2-r0 or later versions.
+  The [object](#hostname_config) structure is documented below.
+  Changing this parameter will create a new resource.
+
+* `extension_scale_groups` - (Optional, List) Specifies the configurations of extended scaling groups in the node pool.
+  The [object](#extension_scale_groups) structure is documented below.
 
 The `root_volume` block supports:
 
@@ -369,7 +474,7 @@ The `selectors` block supports:
 * `match_label_metadata_encrypted` - (Optional, String, ForceNew) Specifies the disk encryption identifier.
   Values can be: **0** indicates that the disk is not encrypted and **1** indicates that the disk is encrypted.
   If omitted, whether the disk is encrypted is not limited. Changing this parameter will create a new resource.
-* `match_label_metadata_cmkid` - (Optional, String, ForceNew) Specifies the cstomer master key ID of an encrypted
+* `match_label_metadata_cmkid` - (Optional, String, ForceNew) Specifies the customer master key ID of an encrypted
   disk. Changing this parameter will create a new resource.
 * `match_label_count` - (Optional, String, ForceNew) Specifies the number of disks to be selected. If omitted,
   all disks of this type are selected. Changing this parameter will create a new resource.
@@ -381,7 +486,7 @@ The `groups` block supports:
 * `cce_managed` - (Optional, Bool, ForceNew) Specifies the whether the storage space is for **kubernetes** and
   **runtime** components. Only one group can be set to true. The default value is **false**.
   Changing this parameter will create a new resource.
-* `selector_names` - (Required, List, ForceNew) Specifies the list of names of seletors to match.
+* `selector_names` - (Required, List, ForceNew) Specifies the list of names of selectors to match.
   This parameter corresponds to name in `selectors`. A group can match multiple selectors,
   but a selector can match only one group. Changing this parameter will create a new resource.
 * `virtual_spaces` - (Required, List, ForceNew) Specifies the detailed management of space configuration in a group.
@@ -399,6 +504,80 @@ The `groups` block supports:
     This parameter takes effect only in **user** configuration. Changing this parameter will create a new resource.
   + `runtime_lv_type` - (Optional, String, ForceNew) Specifies the LVM write mode, values can be **linear** and **striped**.
     This parameter takes effect only in **runtime** configuration. Changing this parameter will create a new resource.
+
+<a name="hostname_config"></a>
+The `hostname_config` block supports:
+
+* `type` - (Required, String, ForceNew) Specifies the hostname type of the kubernetes node.
+  The value can be:
+  + **privateIp**: The Kubernetes node is named after its IP address.
+  + **cceNodeName**: The Kubernetes node is named after the CCE node.
+  
+  If `hostname_config` not specified, the default value is **privateIp**.
+  Changing this parameter will create a new resource.
+
+  ~>For a node which is configured using cceNodeName, the name is the same as the Kubernetes node name and the ECS name.
+    The node name cannot be changed. If the ECS name is changed on the ECS console, the node name will retain unchanged
+    after ECS synchronization. To avoid a conflict between Kubernetes nodes, the system automatically adds a suffix to
+    each node name. The suffix is in the format of A hyphen (-) Five random characters. The value of the random
+    characters is a lowercase letter or a digit ranging from 0 to 9.
+
+<a name="extension_scale_groups"></a>
+The `extension_scale_groups` block supports:
+
+* `metadata` - (Optional, List) Specifies the basic information about the extended scaling group.
+  The [object](#metadata) structure is documented below.
+
+* `spec` - (Optional, List) Specifies the configurations of the extended scaling group,
+  which carry different configurations from those of the default scaling group.
+  The [object](#spec) structure is documented below.
+
+<a name="metadata"></a>
+The `metadata` block supports:
+
+* `name` - (Optional, String) Specifies the name of an extended scaling group.
+  The value cannot be default and can contain a maximum of 55 characters.
+  Only digits, lowercase letters, and hyphens (-) are allowed.
+
+<a name="spec"></a>
+The `spec` block supports:
+
+* `flavor` - (Optional, String) Specifies the node flavor.
+
+* `az` - (Optional, String) Specifies the availability zone of a node.
+  If this parameter is not specified or left blank, the default scaling group configurations take effect.
+
+* `capacity_reservation_specification` - (Optional, List) Specifies the capacity reservation
+  configurations of the extended scaling group.
+  The [object](#capacity_reservation_specification) structure is documented below.
+
+* `autoscaling` - (Optional, List) Specifies the auto scaling configurations of the extended scaling group.
+  The [object](#autoscaling) structure is documented below.
+
+<a name="capacity_reservation_specification"></a>
+The `capacity_reservation_specification` block supports:
+
+* `id` - (Optional, String) Specifies the private pool ID.
+  The parameter value can be ignored when preference is set to none.
+
+* `preference` - (Optional, String) Specifies the capacity of a private storage pool. If the value is none,
+  the capacity reservation is not specified. If the value is targeted, the capacity reservation is specified.
+  In this case, the `id` cannot be left blank.
+
+<a name="autoscaling"></a>
+The `autoscaling` block supports:
+
+* `enable` - (Optional, Bool) Specifies whether to enable auto scaling for the scaling group, defaults to **false**.
+
+* `extension_priority` - (Optional, Int) Specifies the priority of the scaling group, defaults to **0**.
+  A higher value indicates a greater priority.
+
+* `min_node_count` - (Optional, Int) Specifies the minimum number of nodes in the scaling group during auto scaling.
+  The value must be greater than **0**.
+
+* `max_node_count` - (Optional, Int) Specifies the maximum number of nodes that can be retained in the scaling group
+  during auto scaling. The value must be greater than or equal to that of `min_node_count`, and can neither be greater
+  than the maximum number of nodes allowed by the cluster nor the maximum number of nodes in the node pool.
 
 ## Attribute Reference
 
@@ -429,7 +608,7 @@ $ terraform import huaweicloud_cce_node_pool.my_node_pool <cluster_id>/<id>
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason. The missing attributes include:
-`password`, `subnet_id`, `extend_params`, `taints`, `initial_node_count` and `pod_security_groups`.
+`password`, `subnet_id`, `extend_params`, `taints`, `initial_node_count`, `pod_security_groups` and `extension_scale_groups`.
 It is generally recommended running `terraform plan` after importing a node pool.
 You can then decide if changes should be applied to the node pool, or the resource
 definition should be updated to align with the node pool. Also you can ignore changes as below.

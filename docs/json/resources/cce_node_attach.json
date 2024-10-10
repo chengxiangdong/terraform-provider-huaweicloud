@@ -45,6 +45,10 @@
                 "type": "string",
                 "computed": true
               },
+              "enterprise_project_id": {
+                "type": "string",
+                "computed": true
+              },
               "flavor_id": {
                 "type": "string",
                 "computed": true
@@ -169,6 +173,20 @@
               }
             },
             "block_types": {
+              "hostname_config": {
+                "block": {
+                  "attributes": {
+                    "type": {
+                      "type": "string",
+                      "required": true,
+                      "forcenew": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "forcenew": true,
+                "max_items": 1
+              },
               "storage": {
                 "block": {
                   "block_types": {

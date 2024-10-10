@@ -7,14 +7,11 @@ package cc
 
 import (
 	"context"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -23,6 +20,12 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CC POST /v3/{domain_id}/ccaas/cloud-connections
+// @API CC DELETE /v3/{domain_id}/ccaas/cloud-connections/{id}
+// @API CC GET /v3/{domain_id}/ccaas/cloud-connections/{id}
+// @API CC PUT /v3/{domain_id}/ccaas/cloud-connections/{id}
+// @API CC POST /v3/{domain_id}/ccaas/cloud-connections/{id}/tag
+// @API CC POST /v3/{domain_id}/ccaas/cloud-connections/{id}/untag
 func ResourceCloudConnection() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCloudConnectionCreate,
@@ -44,30 +47,20 @@ func ResourceCloudConnection() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `The cloud connection name.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[\x{4E00}-\x{9FFC}A-Za-z-_0-9.]*$`),
-						"the input is invalid"),
-					validation.StringLenBetween(1, 64),
-				),
 			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
 				Description: `The description about the cloud connection.`,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[^<>]+$`),
-						"the input is invalid"),
-					validation.StringLenBetween(0, 255),
-				),
 			},
 			"enterprise_project_id": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Description: `The enterprise project id of the cloud connection.`,
 			},
+			"tags": common.TagsSchema(),
 			"domain_id": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -136,11 +129,18 @@ func resourceCloudConnectionCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("cloud_connection.id", createCloudConnectionRespBody)
-	if err != nil {
+	id := utils.PathSearch("cloud_connection.id", createCloudConnectionRespBody, "").(string)
+	if id == "" {
 		return diag.Errorf("error creating CloudConnection: ID is not found in API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(id)
+
+	if rawTags := d.Get("tags").(map[string]interface{}); len(rawTags) > 0 {
+		err = createResourceTags(createCloudConnectionClient, d.Id(), conf.DomainID, rawTags)
+		if err != nil {
+			return diag.Errorf("error creating CloudConnection tags: %s", err)
+		}
+	}
 
 	return resourceCloudConnectionRead(ctx, d, meta)
 }
@@ -152,11 +152,11 @@ func buildCreateCloudConnectionBodyParams(d *schema.ResourceData, conf *config.C
 	return bodyParams
 }
 
-func buildCreateCloudConnectionCloudConnectionChildBody(d *schema.ResourceData, conf *config.Config) map[string]interface{} {
+func buildCreateCloudConnectionCloudConnectionChildBody(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
 	params := map[string]interface{}{
-		"name":                  utils.ValueIngoreEmpty(d.Get("name")),
-		"description":           utils.ValueIngoreEmpty(d.Get("description")),
-		"enterprise_project_id": utils.ValueIngoreEmpty(common.GetEnterpriseProjectID(d, conf)),
+		"name":                  utils.ValueIgnoreEmpty(d.Get("name")),
+		"description":           utils.ValueIgnoreEmpty(d.Get("description")),
+		"enterprise_project_id": utils.ValueIgnoreEmpty(cfg.GetEnterpriseProjectID(d)),
 	}
 	return params
 }
@@ -210,34 +210,36 @@ func resourceCloudConnectionRead(_ context.Context, d *schema.ResourceData, meta
 		d.Set("network_instance_number", utils.PathSearch("cloud_connection.network_instance_number", getCloudConnectionRespBody, nil)),
 		d.Set("bandwidth_package_number", utils.PathSearch("cloud_connection.bandwidth_package_number", getCloudConnectionRespBody, nil)),
 		d.Set("inter_region_bandwidth_number", utils.PathSearch("cloud_connection.inter_region_bandwidth_number", getCloudConnectionRespBody, nil)),
+		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("cloud_connection.tags", getCloudConnectionRespBody, nil))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
 func resourceCloudConnectionUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	conf := meta.(*config.Config)
-	region := conf.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
+	// updateCloudConnection: update the Cloud Connection
+	var (
+		updateCloudConnectionHttpUrl = "v3/{domain_id}/ccaas/cloud-connections/{id}"
+		updateCloudConnectionProduct = "cc"
+	)
+	updateCloudConnectionClient, err := cfg.NewServiceClient(updateCloudConnectionProduct, region)
+	if err != nil {
+		return diag.Errorf("error creating CloudConnection Client: %s", err)
+	}
+
+	connectionId := d.Id()
 	updateCloudConnectionhasChanges := []string{
 		"name",
 		"description",
 	}
 
 	if d.HasChanges(updateCloudConnectionhasChanges...) {
-		// updateCloudConnection: update the Cloud Connection
-		var (
-			updateCloudConnectionHttpUrl = "v3/{domain_id}/ccaas/cloud-connections/{id}"
-			updateCloudConnectionProduct = "cc"
-		)
-		updateCloudConnectionClient, err := conf.NewServiceClient(updateCloudConnectionProduct, region)
-		if err != nil {
-			return diag.Errorf("error creating CloudConnection Client: %s", err)
-		}
-
 		updateCloudConnectionPath := updateCloudConnectionClient.Endpoint + updateCloudConnectionHttpUrl
-		updateCloudConnectionPath = strings.ReplaceAll(updateCloudConnectionPath, "{domain_id}", conf.DomainID)
-		updateCloudConnectionPath = strings.ReplaceAll(updateCloudConnectionPath, "{id}", d.Id())
+		updateCloudConnectionPath = strings.ReplaceAll(updateCloudConnectionPath, "{domain_id}", cfg.DomainID)
+		updateCloudConnectionPath = strings.ReplaceAll(updateCloudConnectionPath, "{id}", connectionId)
 
 		updateCloudConnectionOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -251,6 +253,26 @@ func resourceCloudConnectionUpdate(ctx context.Context, d *schema.ResourceData, 
 			return diag.Errorf("error updating CloudConnection: %s", err)
 		}
 	}
+
+	if d.HasChange("tags") {
+		err := updateResourceTags(updateCloudConnectionClient, d, cfg.DomainID)
+		if err != nil {
+			return diag.Errorf("error updating CloudConnection tags: %s", err)
+		}
+	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   connectionId,
+			ResourceType: "cc",
+			RegionId:     region,
+			ProjectId:    updateCloudConnectionClient.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceCloudConnectionRead(ctx, d, meta)
 }
 
@@ -263,10 +285,72 @@ func buildUpdateCloudConnectionBodyParams(d *schema.ResourceData) map[string]int
 
 func buildUpdateCloudConnectionCloudConnectionChildBody(d *schema.ResourceData) map[string]interface{} {
 	params := map[string]interface{}{
-		"name":        utils.ValueIngoreEmpty(d.Get("name")),
-		"description": utils.ValueIngoreEmpty(d.Get("description")),
+		"name":        utils.ValueIgnoreEmpty(d.Get("name")),
+		"description": utils.ValueIgnoreEmpty(d.Get("description")),
 	}
 	return params
+}
+
+func createResourceTags(client *golangsdk.ServiceClient, id, domainID string, tags map[string]interface{}) error {
+	createTagsHttpUrl := "v3/{domain_id}/ccaas/cloud-connections/{id}/tag"
+	createTagsPath := client.Endpoint + createTagsHttpUrl
+	createTagsPath = strings.ReplaceAll(createTagsPath, "{domain_id}", domainID)
+	createTagsPath = strings.ReplaceAll(createTagsPath, "{id}", id)
+
+	tagsOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		OkCodes: []int{
+			204,
+		},
+	}
+
+	tagsOpt.JSONBody = map[string]interface{}{
+		"tags": utils.ExpandResourceTags(tags),
+	}
+	_, err := client.Request("POST", createTagsPath, &tagsOpt)
+	return err
+}
+
+func deleteResourceTags(client *golangsdk.ServiceClient, id, domainID string, tags map[string]interface{}) error {
+	deleteTagsHttpUrl := "v3/{domain_id}/ccaas/cloud-connections/{id}/untag"
+	deleteTagsPath := client.Endpoint + deleteTagsHttpUrl
+	deleteTagsPath = strings.ReplaceAll(deleteTagsPath, "{domain_id}", domainID)
+	deleteTagsPath = strings.ReplaceAll(deleteTagsPath, "{id}", id)
+
+	tagsOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		OkCodes: []int{
+			204,
+		},
+	}
+
+	tagsOpt.JSONBody = map[string]interface{}{
+		"tags": utils.ExpandResourceTags(tags),
+	}
+	_, err := client.Request("POST", deleteTagsPath, &tagsOpt)
+	return err
+}
+
+func updateResourceTags(client *golangsdk.ServiceClient, d *schema.ResourceData, domainID string) error {
+	oRaw, nRaw := d.GetChange("tags")
+
+	// remove old tags
+	if oMap := oRaw.(map[string]interface{}); len(oMap) > 0 {
+		err := deleteResourceTags(client, d.Id(), domainID, oMap)
+		if err != nil {
+			return err
+		}
+	}
+
+	// set new tags
+	if nMap := nRaw.(map[string]interface{}); len(nMap) > 0 {
+		err := createResourceTags(client, d.Id(), domainID, nMap)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func resourceCloudConnectionDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -295,7 +379,7 @@ func resourceCloudConnectionDelete(_ context.Context, d *schema.ResourceData, me
 	}
 	_, err = deleteCloudConnectionClient.Request("DELETE", deleteCloudConnectionPath, &deleteCloudConnectionOpt)
 	if err != nil {
-		return diag.Errorf("error deleting CloudConnection: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting CloudConnection")
 	}
 
 	return nil

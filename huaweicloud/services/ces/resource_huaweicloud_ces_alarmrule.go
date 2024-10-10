@@ -5,13 +5,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/cloudeyeservice/v1/alarmrule"
 	alarmrulev2 "github.com/chnsz/golangsdk/openstack/cloudeyeservice/v2/alarmrule"
@@ -44,6 +42,19 @@ var cesAlarmActions = schema.Schema{
 	},
 }
 
+// @API CES POST /v2/{project_id}/alarms
+// @API CES GET /v2/{project_id}/alarms
+// @API CES GET /v2/{project_id}/alarms/{id}/resources
+// @API CES POST /v2/{project_id}/alarms/{id}/resources/batch-delete
+// @API CES POST /v2/{project_id}/alarms/{id}/resources/batch-create
+// @API CES PUT /v2/{project_id}/alarms/{id}/policies
+// @API CES POST /v2/{project_id}/alarms/action
+// @API CES POST /v2/{project_id}/alarms/{id}/resources/{operation}
+// @API CES POST /v2/{project_id}/alarms/batch-delete
+// @API CES GET /V1.0/{project_id}/alarms/{id}
+// @API CES PUT /V1.0/{project_id}/alarms/{id}
+// @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/resources-migrate
+
 func ResourceAlarmRule() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAlarmRuleCreate,
@@ -71,18 +82,11 @@ func ResourceAlarmRule() *schema.Resource {
 			"alarm_name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(1, 128),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5-_A-Za-z0-9]+$"),
-						"The name can only consist of letters, digits, underscores (_),"+
-							" hyphens (-) and chinese characters."),
-				),
 			},
 
 			"alarm_description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(1, 256),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			"metric": {
@@ -269,7 +273,6 @@ func ResourceAlarmRule() *schema.Resource {
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 
@@ -752,12 +755,13 @@ func buildUpdatePoliciesOptsWithMetricName(d *schema.ResourceData, level int, me
 }
 
 func resourceAlarmRuleUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	conf := meta.(*config.Config)
-	clientV1, err := conf.CesV1Client(conf.GetRegion(d))
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	clientV1, err := cfg.CesV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating Cloud Eye Service v1 client: %s", err)
 	}
-	clientV2, err := conf.CesV2Client(conf.GetRegion(d))
+	clientV2, err := cfg.CesV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating Cloud Eye Service v2 client: %s", err)
 	}
@@ -892,6 +896,18 @@ func resourceAlarmRuleUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		err := alarmrulev2.Action(clientV2, arId, actionOpts).ExtractErr()
 		if err != nil {
 			return diag.Errorf("error updating %s %s: %s", nameCESAR, arId, err)
+		}
+	}
+
+	if d.HasChange("enterprise_project_id") {
+		migrateOpts := config.MigrateResourceOpts{
+			ResourceId:   arId,
+			ResourceType: "CES-alarm",
+			RegionId:     region,
+			ProjectId:    clientV1.ProjectID,
+		}
+		if err := cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
 		}
 	}
 

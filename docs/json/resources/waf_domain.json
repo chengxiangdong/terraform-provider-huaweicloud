@@ -5,6 +5,10 @@
         "huaweicloud_waf_domain": {
           "block": {
             "attributes": {
+              "access_code": {
+                "type": "string",
+                "computed": true
+              },
               "access_status": {
                 "type": "number",
                 "computed": true
@@ -23,6 +27,16 @@
                 "forcenew": true,
                 "default": "prePaid"
               },
+              "cipher": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "description": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "domain": {
                 "type": "string",
                 "required": true,
@@ -33,8 +47,26 @@
                 "optional": true,
                 "forcenew": true
               },
+              "forward_header_map": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true,
+                "computed": true
+              },
+              "http2_enable": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
+              },
               "id": {
                 "type": "string",
+                "computed": true
+              },
+              "ipv6_enable": {
+                "type": "bool",
+                "optional": true,
                 "computed": true
               },
               "keep_policy": {
@@ -42,14 +74,29 @@
                 "optional": true,
                 "default": true
               },
+              "lb_algorithm": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "pci_3ds": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
+              },
+              "pci_dss": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
+              },
               "policy_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "protect_status": {
                 "type": "number",
+                "optional": true,
                 "computed": true
               },
               "protocol": {
@@ -61,12 +108,46 @@
                 "optional": true,
                 "default": false
               },
+              "redirect_url": {
+                "type": "string",
+                "optional": true
+              },
               "region": {
                 "type": "string",
+                "computed": true
+              },
+              "tls": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "website_name": {
+                "type": "string",
+                "optional": true,
                 "computed": true
               }
             },
             "block_types": {
+              "custom_page": {
+                "block": {
+                  "attributes": {
+                    "block_page_type": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "http_return_code": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "page_content": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
+              },
               "server": {
                 "block": {
                   "attributes": {
@@ -85,11 +166,69 @@
                     "server_protocol": {
                       "type": "string",
                       "required": true
+                    },
+                    "type": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "weight": {
+                      "type": "number",
+                      "optional": true,
+                      "default": 1
                     }
                   }
                 },
                 "nesting_mode": "list",
                 "min_items": 1
+              },
+              "timeout_settings": {
+                "block": {
+                  "attributes": {
+                    "connection_timeout": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "read_timeout": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "write_timeout": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
+              },
+              "traffic_mark": {
+                "block": {
+                  "attributes": {
+                    "ip_tags": {
+                      "type": [
+                        "list",
+                        "string"
+                      ],
+                      "optional": true,
+                      "computed": true
+                    },
+                    "session_tag": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "user_tag": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
               }
             }
           },

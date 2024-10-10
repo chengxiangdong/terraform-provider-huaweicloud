@@ -1,5 +1,8 @@
 ---
 subcategory: "Web Application Firewall (WAF)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_waf_rule_cc_protection"
+description: ""
 ---
 
 # huaweicloud_waf_rule_cc_protection
@@ -125,7 +128,7 @@ The [conditions](#RuleCCProtection_conditions) structure is documented below.
   + **0**: Disabled.
   + **1**: Enabled.
 
-  The default value is **1**.
+  The default value is `1`.
 
 <a name="RuleCCProtection_conditions"></a>
 The `conditions` block supports:

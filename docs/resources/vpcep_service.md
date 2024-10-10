@@ -1,5 +1,8 @@
 ---
 subcategory: "VPC Endpoint (VPCEP)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpcep_service"
+description: ""
 ---
 
 # huaweicloud_vpcep_service
@@ -65,6 +68,20 @@ The following arguments are supported:
 
 * `description` - (Optional, String) Specifies the description of the VPC endpoint service.
 
+* `tcp_proxy` - (Optional, String) Specifies whether to transfer client information (such as source IP address,
+  source port number and packet ID) to the server.
+  The valid values are as follows:
+  + **close**: Neither **TCP TOA** nor **Proxy Protocol** information is carried. Default value.
+  + **toa_open**: **TCP TOA** information is carried.
+  + **proxy_open**: **Proxy Protocol** information is carried.
+  + **open**: Both **TCP TOA** and **Proxy Protocol** information are carried.
+
+  -> 1.**TCP TOA**: The client information is placed into the `tcp option` field and sent to the server.
+    This type is available only when the backend resource is an OBS resource.
+  <br/>2.**Proxy Protocol**: The client information is placed into the `tcp payload` field and sent to the server.
+
+  -> This parameter is available only when the server can parse the `tcp option` and `tcp payload` fields.
+
 * `enable_policy` - (Optional, Bool, ForceNew) Specifies whether the VPC endpoint policy is enabled. Defaults to **false**.
   Changing this creates a new VPC endpoint service resource.
 
@@ -73,10 +90,10 @@ The following arguments are supported:
 The `port_mapping` block supports:
 
 * `service_port` - (Required, Int) Specifies the port for accessing the VPC endpoint service. This port is provided by
-  the backend service to provide services. The value ranges from 1 to 65535.
+  the backend service to provide services. The value ranges from `1` to `65,535`.
 
 * `terminal_port` - (Required, Int) Specifies the port for accessing the VPC endpoint. This port is provided by the VPC
-  endpoint, allowing you to access the VPC endpoint service. The value ranges from 1 to 65535.
+  endpoint, allowing you to access the VPC endpoint service. The value ranges from `1` to `65,535`.
 
 * `protocol` - (Optional, String) Specifies the protocol used in port mappings. Only **TCP** is supported.
 

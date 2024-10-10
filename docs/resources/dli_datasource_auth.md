@@ -1,5 +1,8 @@
 ---
 subcategory: "Data Lake Insight (DLI)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dli_datasource_auth"
+description: ""
 ---
 
 # huaweicloud_dli_datasource_auth
@@ -81,7 +84,9 @@ The following arguments are supported:
 * `region` - (Optional, String, ForceNew) Specifies the region in which to create the resource.
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
-* `name` - (Required, String) The name of a datasource authentication.
+* `name` - (Required, String) The name of a datasource authentication.  
+  Only letters, digits and underscores (_) are allowed.
+  And the name cannot be all digits or start with a underscore.
 
 * `type` - (Required, String, ForceNew) Data source type.  
   The options are as follows:
@@ -92,9 +97,10 @@ The following arguments are supported:
 
   Changing this parameter will create a new resource.
 
-* `username` - (Optional, String) Username for accessing the security cluster or datasource.
+* `user_name` - (Optional, String) Specifies the user name for accessing the security cluster or datasource.
 
 * `password` - (Optional, String) The password for accessing the security cluster or datasource.
+  This parameter must be used together with `user_name`.
 
 * `certificate_location` - (Optional, String, ForceNew) Path of the security cluster certificate.  
  Currently, only OBS paths and CER files are supported.

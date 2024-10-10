@@ -13,6 +13,10 @@
                 "type": "string",
                 "optional": true
               },
+              "fixed_ip_v4": {
+                "type": "string",
+                "optional": true
+              },
               "flavor_id": {
                 "type": "string",
                 "optional": true
@@ -40,7 +44,9 @@
                     "object",
                     {
                       "availability_zone": "string",
+                      "charging_mode": "string",
                       "enterprise_project_id": "string",
+                      "expired_time": "string",
                       "flavor_id": "string",
                       "flavor_name": "string",
                       "id": "string",

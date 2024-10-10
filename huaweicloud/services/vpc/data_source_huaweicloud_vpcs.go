@@ -16,6 +16,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPC GET /v2.0/{project_id}/vpcs/{id}/tags
+// @API VPC GET /v1/{project_id}/vpcs
 func DataSourceVpcs() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceVpcsRead,
@@ -86,6 +88,11 @@ func DataSourceVpcs() *schema.Resource {
 							Computed: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
+						"secondary_cidrs": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
 					},
 				},
 			},
@@ -94,16 +101,21 @@ func DataSourceVpcs() *schema.Resource {
 }
 
 func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.NetworkingV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	v1client, err := cfg.NetworkingV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating VPC client: %s", err)
 	}
 
-	vpcV2Client, err := config.NetworkingV2Client(region)
+	v2Client, err := cfg.NetworkingV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating VPC V2 client: %s", err)
+	}
+
+	v3Client, err := cfg.HcVpcV3Client(region)
+	if err != nil {
+		return diag.Errorf("error creating VPC v3 client: %s", err)
 	}
 
 	listOpts := vpcs.ListOpts{
@@ -111,15 +123,15 @@ func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interfac
 		Name:                d.Get("name").(string),
 		Status:              d.Get("status").(string),
 		CIDR:                d.Get("cidr").(string),
-		EnterpriseProjectID: config.DataGetEnterpriseProjectID(d),
+		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d, "all_granted_eps"),
 	}
 
-	vpcList, err := vpcs.List(client, listOpts)
+	vpcList, err := vpcs.List(v1client, listOpts)
 	if err != nil {
 		return diag.Errorf("unable to retrieve vpcs: %s", err)
 	}
 
-	log.Printf("[DEBUG] Retrieved Vpc using given filter: %+v", vpcList)
+	log.Printf("[DEBUG] retrieved VPC using given filter: %+v", vpcList)
 
 	var vpcs []map[string]interface{}
 	tagFilter := d.Get("tags").(map[string]interface{})
@@ -134,7 +146,7 @@ func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interfac
 			"description":           vpcResource.Description,
 		}
 
-		if resourceTags, err := tags.Get(vpcV2Client, "vpcs", vpcResource.ID).Extract(); err == nil {
+		if resourceTags, err := tags.Get(v2Client, "vpcs", vpcResource.ID).Extract(); err == nil {
 			tagmap := utils.TagsToMap(resourceTags.Tags)
 
 			if !utils.HasMapContains(tagmap, tagFilter) {
@@ -144,20 +156,27 @@ func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interfac
 		} else {
 			// The tags api does not support eps authorization, so don't return 403 to avoid error
 			if _, ok := err.(golangsdk.ErrDefault403); ok {
-				log.Printf("[WARN] Error query tags of VPC (%s): %s", vpcResource.ID, err)
+				log.Printf("[WARN] error query tags of VPC (%s): %s", vpcResource.ID, err)
 			} else {
 				return diag.Errorf("error query tags of VPC (%s): %s", vpcResource.ID, err)
 			}
 		}
 
+		// save VirtualPrivateCloudV3 extend_cidr
+		res, err := obtainV3VpcResp(v3Client, vpcResource.ID)
+		if err != nil {
+			diag.Errorf("error retrieving VPC (%s) v3 detail: %s", vpcResource.ID, err)
+		}
+		vpc["secondary_cidrs"] = res.Vpc.ExtendCidrs
+
 		vpcs = append(vpcs, vpc)
 		ids = append(ids, vpcResource.ID)
 	}
-	log.Printf("[DEBUG] Vpc List after filter, count=%d :%+v", len(vpcs), vpcs)
+	log.Printf("[DEBUG] VPC List after filter, count: %d vpcs: %+v", len(vpcs), vpcs)
 
 	mErr := d.Set("vpcs", vpcs)
 	if mErr != nil {
-		return diag.Errorf("set vpcs err:%s", mErr)
+		return diag.Errorf("set vpcs err: %s", mErr)
 	}
 
 	d.SetId(hashcode.Strings(ids))

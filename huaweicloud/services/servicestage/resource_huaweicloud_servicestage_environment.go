@@ -3,7 +3,6 @@ package servicestage
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -16,6 +15,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+// @API ServiceStage POST /v2/{project_id}/cas/environments
+// @API ServiceStage GET /v2/{project_id}/cas/environments/{environment_id}
+// @API ServiceStage PUT /v2/{project_id}/cas/environments/{environment_id}
+// @API ServiceStage PATCH /v2/{project_id}/cas/environments/{environment_id}/resources
+// @API ServiceStage DELETE /v2/{project_id}/cas/environments/{environment_id}
 func ResourceEnvironment() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceEnvironmentCreate,
@@ -37,17 +41,10 @@ func ResourceEnvironment() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[A-Za-z]([\w-]*[A-Za-z0-9])?$`),
-						"The name must start with a letter and end with a letter or digit, and can only contain "+
-							"letters, digits, underscores (_) and hyphens (-)."),
-					validation.StringLenBetween(2, 64),
-				),
 			},
 			"description": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(0, 128),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"vpc_id": {
 				Type:     schema.TypeString,
@@ -119,7 +116,7 @@ func buildResourcesList(resources *schema.Set) []environments.Resource {
 	return result
 }
 
-func buildEnvironmentCreateOpts(d *schema.ResourceData, conf *config.Config) environments.CreateOpts {
+func buildEnvironmentCreateOpts(d *schema.ResourceData, cfg *config.Config) environments.CreateOpts {
 	desc := d.Get("description").(string)
 	return environments.CreateOpts{
 		Name:                d.Get("name").(string),
@@ -127,7 +124,7 @@ func buildEnvironmentCreateOpts(d *schema.ResourceData, conf *config.Config) env
 		VpcId:               d.Get("vpc_id").(string),
 		BaseResources:       buildResourcesList(d.Get("basic_resources").(*schema.Set)),
 		OptionalResources:   buildResourcesList(d.Get("optional_resources").(*schema.Set)),
-		EnterpriseProjectId: common.GetEnterpriseProjectID(d, conf),
+		EnterpriseProjectId: cfg.GetEnterpriseProjectID(d),
 	}
 }
 

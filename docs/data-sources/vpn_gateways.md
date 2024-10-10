@@ -1,5 +1,8 @@
 ---
 subcategory: "Virtual Private Network (VPN)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_vpn_gateways"
+description: ""
 ---
 
 # huaweicloud_vpn_gateways
@@ -60,6 +63,8 @@ The `gateways` block supports:
 * `vpc_id` - The ID of the VPC to which the VPN gateway is connected.
 
 * `er_id` - The ID of the ER to which the VPN gateway is connected.
+
+* `er_attachment_id` - The ER attachment ID.
 
 * `local_subnets` - The local subnets.
 

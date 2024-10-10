@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Load Balance (ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_lb_certificate"
+description: ""
 ---
 
 # huaweicloud_lb_certificate
@@ -104,6 +107,7 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - Specifies a resource ID in UUID format.
 * `update_time` - Indicates the update time.
 * `create_time` - Indicates the creation time.
+* `expire_time` - Indicates the expire time.
 
 ## Timeouts
 
@@ -117,7 +121,7 @@ This resource provides the following timeouts configuration options:
 
 ELB certificate can be imported using the certificate ID, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_lb_certificate.certificate_1 5c20fdad-7288-11eb-b817-0255ac10158b
 ```
 
@@ -127,7 +131,7 @@ It is generally recommended running `terraform plan` after importing a certifica
 You can then decide if changes should be applied to the certificate, or the resource
 definition should be updated to align with the certificate. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_lb_certificate" "certificate_1" {
     ...
 

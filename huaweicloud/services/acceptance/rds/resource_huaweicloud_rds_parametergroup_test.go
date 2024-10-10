@@ -30,6 +30,10 @@ func TestAccRdsConfiguration_basic(t *testing.T) {
 					testAccCheckRdsConfigExists(resourceName, &config),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
 					resource.TestCheckResourceAttr(resourceName, "description", "description_1"),
+					resource.TestCheckResourceAttr(resourceName, "datastore.0.type", "mysql"),
+					resource.TestCheckResourceAttr(resourceName, "datastore.0.version", "8.0"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
 				),
 			},
 			{
@@ -109,7 +113,7 @@ resource "huaweicloud_rds_parametergroup" "pg_1" {
   }
   datastore {
     type    = "mysql"
-    version = "5.6"
+    version = "8.0"
   }
 }
 `, rName)
@@ -127,7 +131,7 @@ resource "huaweicloud_rds_parametergroup" "pg_1" {
   }
   datastore {
     type    = "mysql"
-    version = "5.6"
+    version = "8.0"
   }
 }
 `, updateName)

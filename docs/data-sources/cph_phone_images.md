@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Phone (CPH)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cph_phone_images"
+description: ""
 ---
 
 # huaweicloud_cph_phone_images
@@ -8,7 +11,7 @@ Use this data source to get available images of CPH phone.
 
 ## Example Usage
 
-```
+```hcl
 data "huaweicloud_cph_phone_images" "images" {
   is_public = 1
 }
@@ -33,7 +36,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `images` - The list of images detail.
   The [Images](#phoneImages_Images) structure is documented below.

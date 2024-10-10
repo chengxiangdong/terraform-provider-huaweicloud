@@ -1,5 +1,8 @@
 ---
 subcategory: Dedicated Load Balance (Dedicated ELB)
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_elb_pools"
+description: ""
 ---
 
 # huaweicloud_elb_pools
@@ -34,7 +37,7 @@ The following arguments are supported:
 * `healthmonitor_id` - (Optional, String) Specifies the health monitor ID of the ELB pool.
 
 * `protocol` - (Optional, String) Specifies the protocol of the ELB pool. Value options: **TCP**, **UDP**, **HTTP**,
-  **HTTPS** or **QUIC**.
+  **HTTPS**, **QUIC**, **GRPC** or **TLS**.
 
 * `lb_method` - (Optional, String) Specifies the method of the ELB pool. Value options: **ROUND_ROBIN**,
   **LEAST_CONNECTIONS**, **SOURCE_IP** or **QUIC_CID**.
@@ -52,7 +55,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `pools` - Pool list. For details, see data structure of the pool field.
   The [object](#pools_object) structure is documented below.
@@ -86,6 +89,12 @@ The `pools` block supports:
 
 * `slow_start_duration` - The slow start duration, in seconds.
 
+* `connection_drain_enabled` - Whether to enable delayed logout.
+
+* `connection_drain_timeout` - The timeout of the delayed logout in seconds.
+
+* `minimum_healthy_member_count` - The minimum healthy member count.
+
 * `listeners` - The listener list. The [object](#elem_object) structure is documented below.
 
 * `loadbalancers` - The loadbalancer list. The [object](#elem_object) structure is documented below.
@@ -106,3 +115,5 @@ The `persistence` block supports:
 * `type` - The type of persistence mode.
 
 * `cookie_name` - The name of the cookie if persistence mode is set appropriately.
+
+* `timeout` - The stickiness duration, in minutes.

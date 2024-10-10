@@ -1,5 +1,8 @@
 ---
 subcategory: "Resource Formation (RFS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_rfs_stack"
+description: ""
 ---
 
 # huaweicloud_rfs_stack
@@ -58,7 +61,7 @@ The content of the template file (in JSON format) is as follows:
       {
         "huaweicloud": {
           "source": "huawei.com/provider/huaweicloud",
-          "version": "&gt= 1.41.0"
+          "version": ">= 1.41.0"
         }
       }
     ]
@@ -114,12 +117,12 @@ The following arguments are supported:
   If omitted, the provider-level region will be used. Change this parameter will create a new resource.
 
 * `name` - (Required, String, ForceNew) Specifies the name of the resource stack.  
-  The valid length is limited from can contain `1` to `64`, only letters, digits and hyphens (-) are allowed.
+  The valid length is limited from `1` to `64`, only letters, digits and hyphens (-) are allowed.
   The name must start with a lowercase letter and end with a lowercase letter or digit.
   Change this parameter will create a new resource.
 
 * `description` - (Optional, String, ForceNew) Specifies the description of the resource stack, which contain maximum of
-  255 characters.  
+  `255` characters.  
   Change this parameter will create a new resource.
 
 * `agency` - (Optional, List, ForceNew) Specifies the configuration of the agencies authorized to IAC.  
@@ -195,7 +198,7 @@ resource "huaweicloud_rfs_stack" "test" {
 
 Stacks can be imported using their `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_rfs_stack.test edd2f099-e1ac-4bd0-be32-8b2185620a90
 ```
 

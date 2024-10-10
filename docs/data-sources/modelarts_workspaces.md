@@ -1,5 +1,8 @@
 ---
 subcategory: "AI Development Platform (ModelArts)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_modelarts_workspaces"
+description: ""
 ---
 
 # huaweicloud_modelarts_workspaces
@@ -34,7 +37,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `workspaces` - The list of workspaces.
   The [workspaces](#Workspaces_Workspaces) structure is documented below.
@@ -52,7 +55,7 @@ The `workspaces` block supports:
     + **private**: Only the creator and master account can access.
     + **internal**: Accessible to the creator, main account, and specified IAM sub-accounts.
 
-* `description` - The description of the worksapce.  
+* `description` - The description of the workspace.  
 
 * `owner` - Account name of the owner.
 

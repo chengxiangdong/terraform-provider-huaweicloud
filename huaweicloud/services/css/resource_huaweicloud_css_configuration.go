@@ -23,6 +23,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/ymls/update
+// @API CSS GET /v1.0/{project_id}/clusters/{id}/ymls/joblists
+// @API CSS GET /v1.0/{project_id}/clusters/{id}/ymls/template
+// @API CSS POST /v1.0/{project_id}/clusters/{id}/ymls/update
 func ResourceCssConfiguration() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCssConfigurationUpdate,
@@ -158,15 +162,15 @@ func buildUpdateConfigurationBodyParams(d *schema.ResourceData) map[string]inter
 		"edit": map[string]interface{}{
 			"modify": map[string]interface{}{
 				"elasticsearch.yml": map[string]interface{}{
-					"http.cors.allow-credentials":  utils.ValueIngoreEmpty(d.Get("http_cors_allow_credetials")),
-					"http.cors.allow-origin":       utils.ValueIngoreEmpty(d.Get("http_cors_allow_origin")),
-					"http.cors.max-age":            utils.ValueIngoreEmpty(d.Get("http_cors_max_age")),
-					"http.cors.allow-headers":      utils.ValueIngoreEmpty(d.Get("http_cors_allow_headers")),
-					"http.cors.enabled":            utils.ValueIngoreEmpty(d.Get("http_cors_enabled")),
-					"http.cors.allow-methods":      utils.ValueIngoreEmpty(d.Get("http_cors_allow_methods")),
-					"reindex.remote.whitelist":     utils.ValueIngoreEmpty(d.Get("reindex_remote_whitelist")),
-					"indices.queries.cache.size":   utils.ValueIngoreEmpty(d.Get("indices_queries_cache_size")),
-					"thread_pool.force_merge.size": utils.ValueIngoreEmpty(d.Get("thread_pool_force_merge_size")),
+					"http.cors.allow-credentials":  utils.ValueIgnoreEmpty(d.Get("http_cors_allow_credetials")),
+					"http.cors.allow-origin":       utils.ValueIgnoreEmpty(d.Get("http_cors_allow_origin")),
+					"http.cors.max-age":            utils.ValueIgnoreEmpty(d.Get("http_cors_max_age")),
+					"http.cors.allow-headers":      utils.ValueIgnoreEmpty(d.Get("http_cors_allow_headers")),
+					"http.cors.enabled":            utils.ValueIgnoreEmpty(d.Get("http_cors_enabled")),
+					"http.cors.allow-methods":      utils.ValueIgnoreEmpty(d.Get("http_cors_allow_methods")),
+					"reindex.remote.whitelist":     utils.ValueIgnoreEmpty(d.Get("reindex_remote_whitelist")),
+					"indices.queries.cache.size":   utils.ValueIgnoreEmpty(d.Get("indices_queries_cache_size")),
+					"thread_pool.force_merge.size": utils.ValueIgnoreEmpty(d.Get("thread_pool_force_merge_size")),
 				},
 			},
 		},
@@ -203,9 +207,10 @@ func resourceCssConfigurationRead(_ context.Context, d *schema.ResourceData, met
 	}
 
 	getConfigurationResp, err := getConfigurationClient.Request("GET", getConfigurationPath, &getConfigurationOpt)
-
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving CSS configuration")
+		// The cluster does not exist, http code is 403, key/value of error code is errCode/CSS.0015
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected403ErrInto404Err(err, "errCode", "CSS.0015"), "error retrieving CSS configuration")
 	}
 
 	getConfigurationRespBody, err := utils.FlattenResponse(getConfigurationResp)
@@ -260,7 +265,9 @@ func resourceCssConfigurationDelete(ctx context.Context, d *schema.ResourceData,
 	deleteConfigurationOpt.JSONBody = buildDeleteConfigurationBodyParams()
 	_, err = deleteConfigurationClient.Request("POST", deleteConfigurationPath, &deleteConfigurationOpt)
 	if err != nil {
-		return diag.Errorf("error deleting CSS configuration: %s", err)
+		// The cluster does not exist, http code is 403, key/value of error code is errCode/CSS.0015
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected403ErrInto404Err(err, "errCode", "CSS.0015"), "error deleting CSS configuration")
 	}
 
 	err = configurationWaitingForStateCompleted(ctx, d, meta, d.Timeout(schema.TimeoutDelete))

@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	vod "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/vod/v1/model"
 
@@ -17,6 +16,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VOD POST /v1.0/{project_id}/asset/category
+// @API VOD GET /v1.0/{project_id}/asset/category
+// @API VOD PUT /v1.0/{project_id}/asset/category
+// @API VOD DELETE /v1.0/{project_id}/asset/category
 func ResourceMediaCategory() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceMediaCategoryCreate,
@@ -36,9 +39,8 @@ func ResourceMediaCategory() *schema.Resource {
 				ForceNew: true,
 			},
 			"name": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringLenBetween(1, 64),
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"parent_id": {
 				Type:     schema.TypeString,

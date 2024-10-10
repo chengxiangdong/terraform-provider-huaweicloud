@@ -14,6 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/hashcode"
 )
 
+// @API ECS GET /v1/{project_id}/cloudservers/flavors
 func DataSourceEcsFlavors() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceEcsFlavorsRead,
@@ -29,6 +30,10 @@ func DataSourceEcsFlavors() *schema.Resource {
 				Optional: true,
 			},
 			"performance_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"storage_type": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -59,6 +64,10 @@ func DataSourceEcsFlavors() *schema.Resource {
 							Computed: true,
 						},
 						"performance_type": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"storage_type": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -107,6 +116,7 @@ func dataSourceEcsFlavorsRead(_ context.Context, d *schema.ResourceData, meta in
 	mem := int64(d.Get("memory_size").(int)) * 1024
 	pType := d.Get("performance_type").(string)
 	gen := d.Get("generation").(string)
+	sType := d.Get("storage_type").(string)
 
 	var ids []string
 	var filteredFlavors []map[string]interface{}
@@ -124,6 +134,10 @@ func dataSourceEcsFlavorsRead(_ context.Context, d *schema.ResourceData, meta in
 			continue
 		}
 
+		if sType != "" && flavor.OsExtraSpecs.StorageType != sType {
+			continue
+		}
+
 		if gen != "" && flavor.OsExtraSpecs.Generation != gen {
 			continue
 		}
@@ -133,6 +147,7 @@ func dataSourceEcsFlavorsRead(_ context.Context, d *schema.ResourceData, meta in
 		flavorToSet := map[string]interface{}{
 			"id":               flavor.ID,
 			"performance_type": flavor.OsExtraSpecs.PerformanceType,
+			"storage_type":     flavor.OsExtraSpecs.StorageType,
 			"generation":       flavor.OsExtraSpecs.Generation,
 			"cpu_core_count":   vCpu,
 			"memory_size":      flavor.Ram / 1024,

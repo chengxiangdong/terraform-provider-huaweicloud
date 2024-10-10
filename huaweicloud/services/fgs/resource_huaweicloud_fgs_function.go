@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +23,22 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API FunctionGraph POST /v2/{project_id}/fgs/functions
+// @API FunctionGraph GET /v2/{project_id}/fgs/functions/{function_urn}/config
+// @API FunctionGraph GET /v2/{project_id}/fgs/functions/{function_urn}/versions
+// @API FunctionGraph GET /v2/{project_id}/fgs/functions/reservedinstances
+// @API FunctionGraph POST /v2/{project_id}/fgs/functions/{function_urn}/tags/create
+// @API FunctionGraph DELETE /v2/{project_id}/fgs/functions/{function_urn}/tags/delete
+// @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/code
+// @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/config
+// @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/config-max-instance
+// @API FunctionGraph POST /v2/{project_id}/fgs/functions/{function_urn}/versions
+// @API FunctionGraph GET /v2/{project_id}/fgs/functions/{function_urn}/aliases
+// @API FunctionGraph POST /v2/{project_id}/fgs/functions/{function_urn}/aliases
+// @API FunctionGraph DELETE /v2/{project_id}/fgs/functions/{function_urn}/aliases/{alias_name}
+// @API FunctionGraph DELETE /v2/{project_id}/fgs/functions/{function_urn}
+// @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/reservedinstances
+// @API FunctionGraph GET /v2/{project_id}/fgs/functions/reservedinstanceconfigs
 func ResourceFgsFunctionV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceFgsFunctionCreate,
@@ -68,6 +83,12 @@ func ResourceFgsFunctionV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+				Description: utils.SchemaDesc(
+					`The code type of the function.`,
+					utils.SchemaDescInput{
+						Required: true,
+					},
+				),
 			},
 			"handler": {
 				Type:        schema.TypeString,
@@ -140,7 +161,7 @@ func ResourceFgsFunctionV2() *schema.Resource {
 				StateFunc: utils.DecodeHashAndHexEncode,
 			},
 			"depend_list": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
@@ -249,8 +270,35 @@ func ResourceFgsFunctionV2() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"url": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Specifies the URL of SWR image.",
+						},
+						"command": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Specifies the startup commands of the SWR image.",
+						},
+						"args": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Specifies the command line arguments used to start the SWR image.",
+						},
+						"working_dir": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+							Description: "Specifies the working directory of the SWR image.",
+						},
+						"user_id": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "schema: Internal; Specifies the user ID for running the image.",
+						},
+						"user_group_id": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "schema: Internal; Specifies the user group ID for running the image.",
 						},
 					},
 				},
@@ -269,8 +317,6 @@ func ResourceFgsFunctionV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^\-?\d+$`),
-					`invalid value of maximum instance number, want an integer number or integer string.`),
 			},
 			"versions": {
 				Type:     schema.TypeSet,
@@ -308,6 +354,66 @@ func ResourceFgsFunctionV2() *schema.Resource {
 				Description: "The versions management of the function.",
 			},
 			"tags": common.TagsSchema(),
+			"reserved_instances": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"qualifier_type": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"qualifier_name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"count": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"idle_mode": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"tactics_config": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem:     tracticsConfigsSchema(),
+						},
+					},
+				},
+			},
+			// The value in the api document is -1 to 1000, After confirmation, when the parameter set to -1 or 0,
+			// the actual number of concurrent requests is 1, so the value range is set to 1 to 1000, and the document
+			// will be modified later (2024.02.29).
+			"concurrency_num": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"gpu_memory": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				RequiredWith: []string{"gpu_type"},
+			},
+			"gpu_type": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"gpu_memory"},
+			},
+			// Currently, the "pre_stop_timeout" and "pre_stop_timeout" are not visible on the page,
+			// so they are temporarily used as internal parameters.
+			"pre_stop_handler": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "schema: Internal; Specifies the pre-stop handler of a function.",
+			},
+			"pre_stop_timeout": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "schema: Internal; Specifies the maximum duration that the function can be initialized.",
+			},
 			"version": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -320,6 +426,65 @@ func ResourceFgsFunctionV2() *schema.Resource {
 	}
 }
 
+func tracticsConfigsSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"cron_configs": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"cron": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"count": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"start_time": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"expired_time": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+					},
+				},
+			},
+			"metric_configs": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"threshold": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"min": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func buildCustomImage(imageConfig []interface{}) *function.CustomImage {
 	if len(imageConfig) < 1 {
 		return nil
@@ -327,8 +492,13 @@ func buildCustomImage(imageConfig []interface{}) *function.CustomImage {
 
 	cfg := imageConfig[0].(map[string]interface{})
 	return &function.CustomImage{
-		Enabled: true,
-		Image:   cfg["url"].(string),
+		Enabled:     true,
+		Image:       cfg["url"].(string),
+		Command:     cfg["command"].(string),
+		Args:        cfg["args"].(string),
+		WorkingDir:  cfg["working_dir"].(string),
+		UserId:      cfg["user_id"].(string),
+		UserGroupId: cfg["user_group_id"].(string),
 	}
 }
 
@@ -370,6 +540,10 @@ func buildFgsFunctionParameters(d *schema.ResourceData, cfg *config.Config) (fun
 		Xrole:               agencyV,
 		EnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 		CustomImage:         buildCustomImage(d.Get("custom_image").([]interface{})),
+		GPUMemory:           d.Get("gpu_memory").(int),
+		GPUType:             d.Get("gpu_type").(string),
+		PreStopHandler:      d.Get("pre_stop_handler").(string),
+		PreStopTimeout:      d.Get("pre_stop_timeout").(int),
 	}
 	if v, ok := d.GetOk("func_code"); ok {
 		funcCode := function.FunctionCodeOpts{
@@ -411,7 +585,7 @@ func resourceFgsFunctionCreate(ctx context.Context, d *schema.ResourceData, meta
 	d.SetId(f.FuncUrn)
 	urn := resourceFgsFunctionUrn(d.Id())
 	// lintignore:R019
-	if d.HasChanges("vpc_id", "func_mounts", "app_agency", "initializer_handler", "initializer_timeout") {
+	if d.HasChanges("vpc_id", "func_mounts", "app_agency", "initializer_handler", "initializer_timeout", "concurrency_num") {
 		err := resourceFgsFunctionMetadataUpdate(fgsClient, urn, d)
 		if err != nil {
 			return diag.FromErr(err)
@@ -446,6 +620,12 @@ func resourceFgsFunctionCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating function versions: %s", err)
 	}
 
+	if d.HasChanges("reserved_instances") {
+		if err = updateReservedInstanceConfig(fgsClient, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceFgsFunctionRead(ctx, d, meta)
 }
 
@@ -453,22 +633,32 @@ func createFunctionVersions(client *golangsdk.ServiceClient, functionUrn string,
 	for _, v := range versionSet.List() {
 		version := v.(map[string]interface{})
 		versionNum := version["name"].(string) // The version name, also name as the version number.
+
+		if versionNum != "latest" {
+			createOpts := versions.CreateOpts{
+				FunctionUrn: functionUrn,
+				Version:     versionNum,
+			}
+			_, err := versions.Create(client, createOpts)
+			if err != nil {
+				return err
+			}
+		}
 		// In the future, the function will support manage multiple versions, and will add the corresponding logic to
 		// create versions based on the related API (Create) in this place.
 		aliasCfg := version["aliases"].([]interface{})
-		if len(aliasCfg) < 1 {
-			continue
-		}
-		alias := aliasCfg[0].(map[string]interface{})
-		opt := aliases.CreateOpts{
-			FunctionUrn: functionUrn,
-			Name:        alias["name"].(string),
-			Version:     versionNum,
-			Description: alias["description"].(string),
-		}
-		_, err := aliases.Create(client, opt)
-		if err != nil {
-			return err
+		for _, val := range aliasCfg {
+			alias := val.(map[string]interface{})
+			opt := aliases.CreateOpts{
+				FunctionUrn: functionUrn,
+				Name:        alias["name"].(string),
+				Version:     versionNum,
+				Description: alias["description"].(string),
+			}
+			_, err := aliases.Create(client, opt)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -529,7 +719,12 @@ func flattenFgsCustomImage(imageConfig function.CustomImage) []map[string]interf
 	if (imageConfig != function.CustomImage{}) {
 		return []map[string]interface{}{
 			{
-				"url": imageConfig.Image,
+				"url":           imageConfig.Image,
+				"command":       imageConfig.Command,
+				"args":          imageConfig.Args,
+				"working_dir":   imageConfig.WorkingDir,
+				"user_id":       imageConfig.UserId,
+				"user_group_id": imageConfig.UserGroupId,
 			},
 		}
 	}
@@ -587,11 +782,74 @@ func parseFunctionVersions(client *golangsdk.ServiceClient, functionUrn string) 
 		}
 		if v, ok := aliasesConfig[versionNum]; ok {
 			version["aliases"] = v
+		} else if versionNum == "latest" {
+			// If no alias is set for the default version, the corresponding structure object is not saved.
+			continue
 		}
 		result = append(result, version)
 	}
 
 	return result, nil
+}
+
+func flattenTracticsConfigs(policyConfig function.TacticsConfigObj) []map[string]interface{} {
+	if len(policyConfig.CronConfigs) == 0 && len(policyConfig.MetricConfigs) == 0 {
+		return nil
+	}
+
+	cronConfigRst := make([]map[string]interface{}, len(policyConfig.CronConfigs))
+	for i, v := range policyConfig.CronConfigs {
+		cronConfigRst[i] = map[string]interface{}{
+			"name":         v.Name,
+			"cron":         v.Cron,
+			"count":        v.Count,
+			"start_time":   v.StartTime,
+			"expired_time": v.ExpiredTime,
+		}
+	}
+
+	metricConfigs := make([]map[string]interface{}, len(policyConfig.MetricConfigs))
+	for i, v := range policyConfig.MetricConfigs {
+		metricConfigs[i] = map[string]interface{}{
+			"name":      v.Name,
+			"type":      v.Type,
+			"threshold": v.Threshold,
+			"min":       v.Min,
+		}
+	}
+
+	return []map[string]interface{}{
+		{
+			"cron_configs":   cronConfigRst,
+			"metric_configs": metricConfigs,
+		},
+	}
+}
+
+func getReservedInstanceConfig(c *golangsdk.ServiceClient, d *schema.ResourceData) ([]map[string]interface{}, error) {
+	opts := function.ListReservedInstanceConfigOpts{
+		FunctionUrn: d.Id(),
+	}
+	reservedInstances, err := function.ListReservedInstanceConfigs(c, opts)
+	if err != nil {
+		return nil, fmt.Errorf("error getting list of the function reserved instance config: %s", err)
+	}
+
+	result := make([]map[string]interface{}, len(reservedInstances))
+	for i, v := range reservedInstances {
+		result[i] = map[string]interface{}{
+			"count":          v.MinCount,
+			"idle_mode":      v.IdleMode,
+			"qualifier_name": v.QualifierName,
+			"qualifier_type": v.QualifierType,
+			"tactics_config": flattenTracticsConfigs(v.TacticsConfig),
+		}
+	}
+	return result, nil
+}
+
+func getConcurrencyNum(concurrencyNum *int) int {
+	return *concurrencyNum
 }
 
 func resourceFgsFunctionRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -628,7 +886,7 @@ func resourceFgsFunctionRead(_ context.Context, d *schema.ResourceData, meta int
 		d.Set("version", f.Version),
 		d.Set("urn", functionUrn),
 		d.Set("app_agency", f.AppXrole),
-		d.Set("depend_list", f.DependList),
+		d.Set("depend_list", f.DependVersionList),
 		d.Set("initializer_handler", f.InitializerHandler),
 		d.Set("initializer_timeout", f.InitializerTimeout),
 		d.Set("enterprise_project_id", f.EnterpriseProjectID),
@@ -642,8 +900,23 @@ func resourceFgsFunctionRead(_ context.Context, d *schema.ResourceData, meta int
 		setFgsFunctionAgency(d, f.Xrole),
 		setFgsFunctionVpcAccess(d, f.FuncVpc),
 		setFuncionMountConfig(d, f.MountConfig),
+		d.Set("concurrency_num", getConcurrencyNum(f.StrategyConfig.ConcurrencyNum)),
 		d.Set("versions", versionConfig),
+		d.Set("gpu_memory", f.GPUMemory),
+		d.Set("gpu_type", f.GPUType),
+		d.Set("pre_stop_handler", f.PreStopHandler),
+		d.Set("pre_stop_timeout", f.PreStopTimeout),
 	)
+
+	reservedInstances, err := getReservedInstanceConfig(fgsClient, d)
+	if err != nil {
+		return diag.Errorf("error retrieving function reserved instance: %s", err)
+	}
+
+	mErr = multierror.Append(mErr,
+		d.Set("reserved_instances", reservedInstances),
+	)
+
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting function fields: %s", err)
 	}
@@ -683,16 +956,24 @@ func deleteFunctionVersions(client *golangsdk.ServiceClient, functionUrn string,
 	// In the future, the function will support manage multiple versions.
 	for _, v := range versionSet.List() {
 		version := v.(map[string]interface{})
+		versionNum := version["name"].(string) // The version name, also name as the version number.
+		if versionNum != "latest" {
+			// Deletes a function version, also deleting all aliases beneath it.
+			err := function.Delete(client, fmt.Sprintf("%s:%s", functionUrn, versionNum)).ExtractErr()
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		// Since the latest version cannot be deleted, only the version alias under it can be deleted.
 		aliasCfg := version["aliases"].([]interface{})
-		if len(aliasCfg) > 0 {
-			alias := aliasCfg[0].(map[string]interface{})
+		for _, val := range aliasCfg {
+			alias := val.(map[string]interface{})
 			err := aliases.Delete(client, functionUrn, alias["name"].(string))
 			if err != nil {
 				return err
 			}
 		}
-		// There will be added the corresponding logic to delete versions based on the related APIs in this place when
-		// the API (Delete) is support.
 	}
 	return nil
 }
@@ -719,6 +1000,165 @@ func updateFunctionVersions(client *golangsdk.ServiceClient, d *schema.ResourceD
 	return nil
 }
 
+func buildCronConfigs(cronConfigs []interface{}) []function.CronConfigObj {
+	if len(cronConfigs) < 1 {
+		return nil
+	}
+
+	result := make([]function.CronConfigObj, len(cronConfigs))
+	for i, v := range cronConfigs {
+		cronConfig := v.(map[string]interface{})
+		result[i] = function.CronConfigObj{
+			Name:        cronConfig["name"].(string),
+			Cron:        cronConfig["cron"].(string),
+			Count:       cronConfig["count"].(int),
+			StartTime:   cronConfig["start_time"].(int),
+			ExpiredTime: cronConfig["expired_time"].(int),
+		}
+	}
+	return result
+}
+
+func buildMetricConfigs(metricConfigs []interface{}) []function.MetricConfigObj {
+	if len(metricConfigs) < 1 {
+		return nil
+	}
+	result := make([]function.MetricConfigObj, len(metricConfigs))
+	for i, v := range metricConfigs {
+		metricConfig := v.(map[string]interface{})
+		result[i] = function.MetricConfigObj{
+			Name:      metricConfig["name"].(string),
+			Type:      metricConfig["type"].(string),
+			Threshold: metricConfig["threshold"].(int),
+			Min:       metricConfig["min"].(int),
+		}
+	}
+	return result
+}
+
+func buildTracticsConfigs(tacticsConfigs []interface{}) *function.TacticsConfigObj {
+	if len(tacticsConfigs) < 1 {
+		return nil
+	}
+
+	tacticsConfig := tacticsConfigs[0].(map[string]interface{})
+	result := function.TacticsConfigObj{
+		CronConfigs:   buildCronConfigs(tacticsConfig["cron_configs"].([]interface{})),
+		MetricConfigs: buildMetricConfigs(tacticsConfig["metric_configs"].([]interface{})),
+	}
+	return &result
+}
+
+func getVersionUrn(client *golangsdk.ServiceClient, functionUrn string, qualifierName string) (string, error) {
+	queryOpts := versions.ListOpts{
+		FunctionUrn: functionUrn,
+	}
+	versionList, err := versions.List(client, queryOpts)
+	if err != nil {
+		return "", fmt.Errorf("error querying version list for the specified function URN: %s", err)
+	}
+
+	for _, val := range versionList {
+		if val.Version == qualifierName {
+			return val.FuncUrn, nil
+		}
+	}
+
+	return "", nil
+}
+
+func getReservedInstanceUrn(client *golangsdk.ServiceClient, functionUrn string, policy map[string]interface{}) (string, error) {
+	qualifierName := policy["qualifier_name"].(string)
+	if policy["qualifier_type"].(string) == "version" {
+		urn, err := getVersionUrn(client, functionUrn, qualifierName)
+		if err != nil {
+			return "", err
+		}
+		return urn, nil
+	}
+
+	aliasList, err := aliases.List(client, functionUrn)
+	if err != nil {
+		return "", fmt.Errorf("error querying alias list for the specified function URN: %s", err)
+	}
+	for _, val := range aliasList {
+		if val.Name == qualifierName {
+			return val.AliasUrn, nil
+		}
+	}
+
+	return "", nil
+}
+
+func removeReservedInstances(client *golangsdk.ServiceClient, functionUrn string, policies []interface{}) error {
+	for _, v := range policies {
+		policy := v.(map[string]interface{})
+		urn, err := getReservedInstanceUrn(client, functionUrn, policy)
+		if err != nil {
+			return err
+		}
+		// Deleting the alias will also delete the corresponding reserved instance.
+		if urn == "" {
+			return nil
+		}
+		opts := function.UpdateReservedInstanceObj{
+			FunctionUrn: urn,
+			Count:       utils.Int(0),
+			IdleMode:    utils.Bool(false),
+		}
+		_, err = function.UpdateReservedInstanceConfig(client, opts)
+		if err != nil {
+			return fmt.Errorf("error removing function reversed instance: %s", err)
+		}
+	}
+
+	return nil
+}
+
+func addReservedInstances(client *golangsdk.ServiceClient, functionUrn string, addPolicies []interface{}) error {
+	for _, v := range addPolicies {
+		addPolicy := v.(map[string]interface{})
+		urn, err := getReservedInstanceUrn(client, functionUrn, addPolicy)
+
+		if err != nil {
+			return err
+		}
+
+		opts := function.UpdateReservedInstanceObj{
+			FunctionUrn:   urn,
+			Count:         utils.Int(addPolicy["count"].(int)),
+			IdleMode:      utils.Bool(addPolicy["idle_mode"].(bool)),
+			TacticsConfig: buildTracticsConfigs(addPolicy["tactics_config"].([]interface{})),
+		}
+		_, err = function.UpdateReservedInstanceConfig(client, opts)
+		if err != nil {
+			return fmt.Errorf("error updating function reversed instance: %s", err)
+		}
+	}
+
+	return nil
+}
+
+func updateReservedInstanceConfig(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	oldRaw, newRaw := d.GetChange("reserved_instances")
+	addRaw := newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
+	removeRaw := oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
+	functionUrn := resourceFgsFunctionUrn(d.Id())
+	if removeRaw.Len() > 0 {
+		if err := removeReservedInstances(client, functionUrn, removeRaw.List()); err != nil {
+			return err
+		}
+	}
+
+	if addRaw.Len() > 0 {
+		if err := addReservedInstances(client, functionUrn, addRaw.List()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func resourceFgsFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	fgsClient, err := cfg.FgsV2Client(cfg.GetRegion(d))
@@ -736,10 +1176,10 @@ func resourceFgsFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 	// lintignore:R019
-	if d.HasChanges("app", "handler", "depend_list", "memory_size", "timeout", "encrypted_user_data",
+	if d.HasChanges("app", "handler", "memory_size", "timeout", "encrypted_user_data",
 		"user_data", "agency", "app_agency", "description", "initializer_handler", "initializer_timeout",
 		"vpc_id", "network_id", "dns_list", "mount_user_id", "mount_user_group_id", "func_mounts", "custom_image",
-		"log_group_id", "log_stream_id", "log_group_name", "log_stream_name") {
+		"log_group_id", "log_stream_id", "log_group_name", "log_stream_name", "concurrency_num", "gpu_memory", "gpu_type") {
 		err := resourceFgsFunctionMetadataUpdate(fgsClient, urn, d)
 		if err != nil {
 			return diag.FromErr(err)
@@ -766,6 +1206,12 @@ func resourceFgsFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 
+	if d.HasChanges("reserved_instances") {
+		if err = updateReservedInstanceConfig(fgsClient, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceFgsFunctionRead(ctx, d, meta)
 }
 
@@ -780,7 +1226,7 @@ func resourceFgsFunctionDelete(_ context.Context, d *schema.ResourceData, meta i
 
 	err = function.Delete(fgsClient, urn).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting function: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting function")
 	}
 	return nil
 }
@@ -822,6 +1268,10 @@ func resourceFgsFunctionMetadataUpdate(fgsClient *golangsdk.ServiceClient, urn s
 		InitializerTimeout: d.Get("initializer_timeout").(int),
 		CustomImage:        buildCustomImage(d.Get("custom_image").([]interface{})),
 		DomainNames:        d.Get("dns_list").(string),
+		GPUMemory:          d.Get("gpu_memory").(int),
+		GPUType:            d.Get("gpu_type").(string),
+		PreStopHandler:     d.Get("pre_stop_handler").(string),
+		PreStopTimeout:     d.Get("pre_stop_timeout").(int),
 	}
 
 	if _, ok := d.GetOk("vpc_id"); ok {
@@ -843,6 +1293,13 @@ func resourceFgsFunctionMetadataUpdate(fgsClient *golangsdk.ServiceClient, urn s
 		updateMetadateOpts.LogConfig = &logConfig
 	}
 
+	if v, ok := d.GetOk("concurrency_num"); ok {
+		strategyConfig := function.StrategyConfig{
+			ConcurrencyNum: utils.Int(v.(int)),
+		}
+		updateMetadateOpts.StrategyConfig = &strategyConfig
+	}
+
 	log.Printf("[DEBUG] Metaddata Update Options: %#v", updateMetadateOpts)
 	_, err := function.UpdateMetadata(fgsClient, urn, updateMetadateOpts).Extract()
 	if err != nil {
@@ -860,9 +1317,9 @@ func resourceFgsFunctionCodeUpdate(fgsClient *golangsdk.ServiceClient, urn strin
 	}
 
 	if v, ok := d.GetOk("depend_list"); ok {
-		dependListRaw := v.([]interface{})
-		dependList := make([]string, 0, len(dependListRaw))
-		for _, depend := range dependListRaw {
+		dependListRaw := v.(*schema.Set)
+		dependList := make([]string, 0, dependListRaw.Len())
+		for _, depend := range dependListRaw.List() {
 			dependList = append(dependList, depend.(string))
 		}
 		updateCodeOpts.DependList = dependList

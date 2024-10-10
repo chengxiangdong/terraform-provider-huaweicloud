@@ -1,10 +1,14 @@
 ---
-subcategory: "FunctionGraph"
+subcategory: "Deprecated"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_fgs_trigger"
+description: ""
 ---
 
 # huaweicloud_fgs_trigger
 
-Manages a trigger resource within HuaweiCloud FunctionGraph.
+Manages a trigger resource within HuaweiCloud FunctionGraph.  
+It's recommend to use `huaweicloud_fgs_function_trigger`, which makes a great improvement of managing function triggers.
 
 ## Example Usage
 
@@ -110,6 +114,7 @@ resource "huaweicloud_fgs_trigger" "test" {
 variable "function_urn" {}
 variable "kafka_instance_id" {}
 variable "kafka_topic_id" {}
+variable "user_password" {}
 
 resource "huaweicloud_fgs_trigger" "test" {
   function_urn = var.function_urn
@@ -118,7 +123,7 @@ resource "huaweicloud_fgs_trigger" "test" {
   kafka {
     instance_id = var.kafka_instance_id
     user_name   = "user"
-    password    = "passWord@123"     
+    password    = var.user_password     
     batch_size  = 100
 
     topic_ids = [
@@ -245,7 +250,7 @@ The following arguments are supported:
 <a name="fgs_trigger_timer"></a>
 The `timer` block supports:
 
-* `name` - (Required, String, ForceNew) Specifies the trigger name, which can contains of 1 to 64 characters.
+* `name` - (Required, String, ForceNew) Specifies the trigger name, which can contains of `1` to `64` characters.
   The name must start with a letter, only letters, digits, hyphens (-) and underscores (_) are allowed.
   Changing this will create a new trigger resource.
 

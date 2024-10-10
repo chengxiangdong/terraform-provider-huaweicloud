@@ -1,5 +1,8 @@
 ---
 subcategory: "CloudTable"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cloudtable_cluster"
+description: ""
 ---
 
 # huaweicloud_cloudtable_cluster
@@ -44,8 +47,9 @@ The following arguments are supported:
   Please following [reference](https://developer.huaweicloud.com/en-us/endpoint/?CloudTable) for the values.
   Changing this parameter will create a new resource.
 
-* `name` - (Required, String, ForceNew) Specifies the cluster name. The name consists of 4 to 64 characters, including
-  lowercase letters, numbers and hyphens (-). Changing this parameter will create a new resource.
+* `name` - (Required, String, ForceNew) Specifies the cluster name.  
+  The name consists of `4` to `64` characters, including lowercase letters, numbers and hyphens (-).  
+  Changing this parameter will create a new resource.
 
 * `storage_type` - (Required, String, ForceNew) Specifies the storage type.
   The valid values are **COMMON** and **ULTRAHIGH**. Changing this parameter will create a new resource.
@@ -68,7 +72,8 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `rs_num` - (Optional, Int, ForceNew) Specifies the compute nodes number of the cluster.
-  The valid values must be greater than `2`. Defaults to `2`. Changing this parameter will create a new resource.
+  The valid values must be at least `2`. Defaults to `2`.  
+  Changing this parameter will create a new resource.
 
 ## Attribute Reference
 
@@ -92,11 +97,18 @@ In addition to all arguments above, the following attributes are exported:
 
 * `zookeeper_link` - The intranet zookeeper connection access address.
 
+## Timeouts
+
+This resource provides the following timeouts configuration options:
+
+* `create` - Default is 30 minutes.
+* `delete` - Default is 5 minutes.
+
 ## Import
 
 Clusters can be imported by their `id`. e.g.:
 
-```
+```bash
 terraform import huaweicloud_cloudtable_cluster.test 4c2d38b6-6fb0-480c-8813-5f536b5ba6a4
 ```
 
@@ -107,7 +119,7 @@ It is generally recommended running `terraform plan` after importing a cluster.
 You can then decide if changes should be applied to the cluster, or the resource definition should be updated to
 align with the cluster. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_cloudtable_cluster" "test" {
     ...
 
@@ -118,10 +130,3 @@ resource "huaweicloud_cloudtable_cluster" "test" {
   }
 }
 ```
-
-## Timeouts
-
-This resource provides the following timeouts configuration options:
-
-* `create` - Default is 30 minutes.
-* `delete` - Default is 5 minutes.

@@ -2,14 +2,12 @@ package waf
 
 import (
 	"context"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk/openstack/waf/v1/certificates"
 
@@ -18,6 +16,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API WAF GET /v1/{project_id}/waf/certificate/{certificate_id}
+// @API WAF PUT /v1/{project_id}/waf/certificate/{certificate_id}
+// @API WAF DELETE /v1/{project_id}/waf/certificate/{certificate_id}
+// @API WAF POST /v1/{project_id}/waf/certificate
 func ResourceWafCertificateV1() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceWafCertificateV1Create,
@@ -43,8 +45,6 @@ func ResourceWafCertificateV1() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^[\w-]{1,256}$`),
-					"The maximum length is 256 characters. Only digits, letters, underscores (_), and hyphens (-) are allowed"),
 			},
 			"certificate": {
 				Type:             schema.TypeString,
@@ -104,6 +104,7 @@ func resourceWafCertificateV1Read(_ context.Context, d *schema.ResourceData, met
 	epsID := cfg.GetEnterpriseProjectID(d)
 	n, err := certificates.GetWithEpsID(client, d.Id(), epsID).Extract()
 	if err != nil {
+		// If the certificate does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving WAF certificate")
 	}
 
@@ -153,7 +154,8 @@ func resourceWafCertificateV1Delete(_ context.Context, d *schema.ResourceData, m
 	epsID := cfg.GetEnterpriseProjectID(d)
 	err = certificates.DeleteWithEpsID(client, d.Id(), epsID).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting WAF certificate: %s", err)
+		// If the certificate does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF certificate")
 	}
 	return nil
 }

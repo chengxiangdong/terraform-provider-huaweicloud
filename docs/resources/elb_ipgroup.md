@@ -1,5 +1,8 @@
 ---
 subcategory: "Dedicated Load Balance (Dedicated ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_elb_ipgroup"
+description: ""
 ---
 
 # huaweicloud_elb_ipgroup
@@ -49,9 +52,15 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The uuid of the ip group.
 
+* `listener_ids` - The listener IDs which the ip group associated with.
+
+* `created_at` - The create time of the ip group.
+
+* `updated_at` - The update time of the ip group.
+
 ELB IP group can be imported using the IP group ID, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_elb_ipgroup.group_1 5c20fdad-7288-11eb-b817-0255ac10158b
 ```
 
@@ -61,7 +70,7 @@ It is generally recommended running `terraform plan` after importing a IP group.
 You can then decide if changes should be applied to the IP group, or the resource
 definition should be updated to align with the IP group. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_elb_ipgroup" "group_1" {
     ...
   lifecycle {

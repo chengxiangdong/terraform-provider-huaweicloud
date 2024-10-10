@@ -15,6 +15,7 @@
                       "bandwidth_name": "string",
                       "bandwidth_share_type": "string",
                       "bandwidth_size": "number",
+                      "created_at": "string",
                       "enterprise_project_id": "string",
                       "id": "string",
                       "ip_version": "number",
@@ -61,6 +62,13 @@
                 ],
                 "optional": true
               },
+              "private_ips": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
               "public_ips": {
                 "type": [
                   "list",
@@ -82,10 +90,10 @@
             }
           },
           "product": {
-            "short": "VPC",
-            "name": "Virtual Private Cloud",
+            "short": "EIP",
+            "name": "Elastic IP",
             "catalog": "Networking",
-            "name_cn": "虚拟私有云",
+            "name_cn": "弹性公网IP",
             "catalog_cn": "网络"
           }
         }

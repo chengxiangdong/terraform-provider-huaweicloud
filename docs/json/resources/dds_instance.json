@@ -12,8 +12,20 @@
               },
               "availability_zone": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
+              },
+              "balancer_active_begin": {
+                "type": "string",
+                "optional": true
+              },
+              "balancer_active_end": {
+                "type": "string",
+                "optional": true
+              },
+              "balancer_status": {
+                "type": "string",
+                "optional": true,
+                "computed": true
               },
               "charging_mode": {
                 "type": "string",
@@ -21,9 +33,24 @@
                 "computed": true,
                 "forcenew": true
               },
+              "client_network_ranges": {
+                "type": [
+                  "set",
+                  "string"
+                ],
+                "optional": true
+              },
+              "created_at": {
+                "type": "string",
+                "computed": true
+              },
               "db_username": {
                 "type": "string",
                 "computed": true
+              },
+              "description": {
+                "type": "string",
+                "optional": true
               },
               "disk_encryption_id": {
                 "type": "string",
@@ -33,11 +60,52 @@
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
+              },
+              "groups": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "id": "string",
+                      "name": "string",
+                      "nodes": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string",
+                            "name": "string",
+                            "private_ip": "string",
+                            "public_ip": "string",
+                            "role": "string",
+                            "status": "string",
+                            "type": "string"
+                          }
+                        ]
+                      ],
+                      "size": "string",
+                      "status": "string",
+                      "type": "string",
+                      "used": "string"
+                    }
+                  ]
+                ],
+                "computed": true
               },
               "id": {
                 "type": "string",
+                "computed": true
+              },
+              "maintain_begin": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "maintain_end": {
+                "type": "string",
+                "optional": true,
                 "computed": true
               },
               "mode": {
@@ -65,11 +133,12 @@
                     }
                   ]
                 ],
+                "description": "This field is deprecated.",
                 "computed": true
               },
               "password": {
                 "type": "string",
-                "required": true,
+                "optional": true,
                 "sensitive": true
               },
               "period": {
@@ -91,9 +160,24 @@
                 "type": "string",
                 "computed": true
               },
+              "replica_set_name": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "second_level_monitoring_enabled": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
+              },
               "security_group_id": {
                 "type": "string",
                 "required": true
+              },
+              "slow_log_desensitization": {
+                "type": "string",
+                "optional": true,
+                "computed": true
               },
               "ssl": {
                 "type": "bool",
@@ -116,6 +200,14 @@
                 ],
                 "optional": true
               },
+              "time_zone": {
+                "type": "string",
+                "computed": true
+              },
+              "updated_at": {
+                "type": "string",
+                "computed": true
+              },
               "vpc_id": {
                 "type": "string",
                 "required": true,
@@ -129,6 +221,11 @@
                     "keep_days": {
                       "type": "number",
                       "required": true
+                    },
+                    "period": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
                     },
                     "start_time": {
                       "type": "string",
@@ -144,8 +241,7 @@
                   "attributes": {
                     "id": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     },
                     "type": {
                       "type": "string",

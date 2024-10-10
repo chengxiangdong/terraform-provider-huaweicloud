@@ -20,6 +20,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CBR POST /v3/{project_id}/policies
+// @API CBR GET /v3/{project_id}/policies/{policy_id}
+// @API CBR PUT /v3/{project_id}/policies/{policy_id}
+// @API CBR DELETE /v3/{project_id}/policies/{policy_id}
 func ResourcePolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourcePolicyCreate,
@@ -152,9 +156,8 @@ func ResourcePolicy() *schema.Resource {
 							Description: "The latest backup of each year is saved in the long term.",
 						},
 						"full_backup_interval": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ValidateFunc: validation.IntBetween(-1, 100),
+							Type:     schema.TypeInt,
+							Optional: true,
 							Description: "How often (after how many incremental backups) a full backup is " +
 								"performed.",
 						},

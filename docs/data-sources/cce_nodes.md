@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_nodes"
+description: ""
 ---
 
 # huaweicloud_cce_nodes
@@ -32,6 +35,11 @@ The following arguments are supported:
 * `node_id` - (Optional, String) Specifies the ID of the node.
 
 * `status` - (Optional, String) Specifies the status of the node.
+
+* `ignore_details` - (Optional, String) Specifies which detail information of the nodes to ignore.
+  You can use this parameter to ignore some information you don't care about and make the query faster.
+  The value can be:
+  + **tags**: ignore the tags of the nodes.
 
 ## Attribute Reference
 
@@ -77,6 +85,11 @@ The `nodes` block supports:
 
 * `data_volumes` - The data related configuration. Structure is documented below.
 
+* `enterprise_project_id` - The enterprise project ID of the node.
+
+* `hostname_config` - The hostname config of the kubernetes node.
+  The [object](#hostname_config) structure is documented below.
+
 The `root_volume` and `data_volumes` blocks support:
 
 * `size` - Disk size in GB.
@@ -84,3 +97,8 @@ The `root_volume` and `data_volumes` blocks support:
 * `volumetype` - Disk type.
 
 * `extend_params` - Disk expansion parameters.
+
+<a name="hostname_config"></a>
+The `hostname_config` block supports:
+
+* `type` - The hostname type of the kubernetes node.

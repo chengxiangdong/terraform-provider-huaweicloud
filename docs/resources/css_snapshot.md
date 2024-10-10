@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Search Service (CSS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_css_snapshot"
+description: ""
 ---
 
 # huaweicloud_css_snapshot
@@ -61,6 +64,6 @@ This resource provides the following timeouts configuration options:
 
 This resource can be imported by specifying the CSS cluster ID and snapshot ID separated by a slash, e.g.:
 
-```
-$ terraform import huaweicloud_css_snapshot.snapshot_1 < cluster_id >/< snapshot_id >
+```bash
+$ terraform import huaweicloud_css_snapshot.snapshot_1 <cluster_id>/<snapshot_id>
 ```

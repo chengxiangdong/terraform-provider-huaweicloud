@@ -84,6 +84,10 @@ type Spec struct {
 	Partition string `json:"partition,omitempty"`
 	// The initialized conditions
 	InitializedConditions []string `json:"initializedConditions,omitempty"`
+	// The hostname config of k8s node
+	HostnameConfig *HostnameConfig `json:"hostnameConfig,omitempty"`
+	// The enterprise project ID
+	ServerEnterpriseProjectID string `json:"serverEnterpriseProjectID,omitempty"`
 }
 
 // Gives the Nic spec of the node
@@ -114,7 +118,7 @@ type ExtNic struct {
 // TaintSpec to created nodes to configure anti-affinity
 type TaintSpec struct {
 	Key   string `json:"key" required:"true"`
-	Value string `json:"value" required:"true"`
+	Value string `json:"value,omitempty"`
 	// Available options are NoSchedule, PreferNoSchedule, and NoExecute
 	Effect string `json:"effect" required:"true"`
 }
@@ -284,6 +288,10 @@ type LVMConfigSpec struct {
 type RuntimeConfigSpec struct {
 	// LVM write mode, values can be linear and striped
 	LvType string `json:"lvType" required:"true"`
+}
+
+type HostnameConfig struct {
+	Type string `json:"type" required:"true"`
 }
 
 // Describes the Job Structure

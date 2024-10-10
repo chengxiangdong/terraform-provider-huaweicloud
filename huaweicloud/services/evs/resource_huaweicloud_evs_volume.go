@@ -3,6 +3,7 @@ package evs
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	ecsjobs "github.com/chnsz/golangsdk/openstack/ecs/v1/jobs"
 	"github.com/chnsz/golangsdk/openstack/evs/v1/jobs"
 	"github.com/chnsz/golangsdk/openstack/evs/v2/cloudvolumes"
+	cloudvolumesv5 "github.com/chnsz/golangsdk/openstack/evs/v5/cloudvolumes"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
@@ -26,6 +28,21 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API EVS GET /v1/{project_id}/jobs/{job_id}
+// @API EVS POST /v2.1/{project_id}/cloudvolumes/{volume_id}/action
+// @API EVS POST /v2/{project_id}/cloudvolumes/{volume_id}/tags/action
+// @API EVS GET /v2/{project_id}/cloudvolumes/{volume_id}
+// @API EVS PUT /v2/{project_id}/cloudvolumes/{volume_id}
+// @API EVS DELETE /v2/{project_id}/cloudvolumes/{id}
+// @API EVS POST /v2.1/{project_id}/cloudvolumes
+// @API EVS PUT /v5/{project_id}/cloudvolumes/{volume_id}/qos
+// @API ECS DELETE /v1/{project_id}/cloudservers/{serverId}/detachvolume/{volumeId}
+// @API ECS GET /v1/{project_id}/jobs/{jobId}
+// @API BSS GET /v2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/suscriptions/resources/query
+// @API BSS POST /v2/orders/subscriptions/resources/autorenew/{resource_id}
+// @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{resource_id}
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
 func ResourceEvsVolume() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceEvsVolumeCreate,
@@ -60,16 +77,19 @@ func ResourceEvsVolume() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"server_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"iops": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 			"throughput": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 			"device_type": {
@@ -232,7 +252,8 @@ func buildEvsVolumeCreateOpts(d *schema.ResourceData, cfg *config.Config) cloudv
 	volumeOpts.Metadata = m
 
 	result := cloudvolumes.CreateOpts{
-		Volume: volumeOpts,
+		Volume:   volumeOpts,
+		ServerID: d.Get("server_id").(string),
 	}
 	if v, ok := d.GetOk("charging_mode"); ok && v == "prePaid" {
 		result.ChargeInfo = buildBssParamParams(d)
@@ -282,9 +303,9 @@ func resourceEvsVolumeCreate(ctx context.Context, d *schema.ResourceData, meta i
 		}
 		err = common.WaitOrderComplete(ctx, bssClient, job.OrderID, d.Timeout(schema.TimeoutCreate))
 		if err != nil {
-			return diag.Errorf("the order is not completed while creating EVS volume (%s): %#v", d.Id(), err)
+			return diag.Errorf("the order is not completed while creating EVS volume (%s): %v", d.Id(), err)
 		}
-		_, err = common.WaitOrderResourceComplete(ctx, bssClient, job.OrderID, d.Timeout(schema.TimeoutCreate))
+		_, err = common.WaitOrderAllResourceComplete(ctx, bssClient, job.OrderID, d.Timeout(schema.TimeoutCreate))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -303,10 +324,10 @@ func resourceEvsVolumeCreate(ctx context.Context, d *schema.ResourceData, meta i
 		}
 	}
 
-	log.Printf("[DEBUG] Waiting for the EVS volume to become available, the volume ID is %s.", d.Id())
+	log.Printf("[DEBUG] Waiting for the EVS volume to become available or in-use, the volume ID is %s.", d.Id())
 	stateConf := &resource.StateChangeConf{
 		Pending:                   []string{"creating"},
-		Target:                    []string{"available"},
+		Target:                    []string{"available", "in-use"},
 		Refresh:                   CloudVolumeRefreshFunc(evsV2Client, d.Id()),
 		Timeout:                   d.Timeout(schema.TimeoutCreate),
 		Delay:                     3 * time.Second,
@@ -396,6 +417,7 @@ func resourceEvsVolumeRead(_ context.Context, d *schema.ResourceData, meta inter
 
 	resp, err := cloudvolumes.Get(evsV2Client, d.Id()).Extract()
 	if err != nil {
+		// When the resource does not exist, calling the query API will return a `404` status code.
 		return common.CheckDeletedDiag(d, err, "EVS volume")
 	}
 
@@ -425,6 +447,67 @@ func resourceEvsVolumeRead(_ context.Context, d *schema.ResourceData, meta inter
 		return diag.Errorf("error setting volume fields: %s", err)
 	}
 
+	return nil
+}
+
+func modifyQoS(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, cfg config.Config) error {
+	// Interface constraints: QoS can be updated only when the volume status is available or in-use
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      refreshVolumeStatusFunc(client, d.Id()),
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		Delay:        3 * time.Second,
+		PollInterval: 5 * time.Second,
+	}
+	_, err := stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for EVS volume (%s) to become ready: %s", d.Id(), err)
+	}
+
+	evsV5Client, err := cfg.BlockStorageV5Client(cfg.GetRegion(d))
+	if err != nil {
+		return fmt.Errorf("error creating block storage v5 client: %s", err)
+	}
+
+	qoSModifyOpts := cloudvolumesv5.QoSModifyOpts{}
+	qoSModifyOpts.IopsAndThroughputOpts = cloudvolumesv5.IopsAndThroughputOpts{
+		Iops:       d.Get("iops").(int),
+		Throughput: d.Get("throughput").(int),
+	}
+
+	// PUT /v5/{project_id}/cloudvolumes/{volume_id}/qos
+	job, err := cloudvolumesv5.ModifyQoS(evsV5Client, d.Id(), qoSModifyOpts).Extract()
+	if err != nil {
+		return fmt.Errorf("error updating EVS volume (%s) QoS: %s", d.Id(), err)
+	}
+
+	if jobId := job.JobID; jobId != "" {
+		// The v1 client is used to query the EVS job detail.
+		evsV1Client, err := cfg.BlockStorageV1Client(cfg.GetRegion(d))
+		if err != nil {
+			return fmt.Errorf("error creating EVS v1 client: %s", err)
+		}
+
+		if err = waitEvsJobSuccess(ctx, evsV1Client, jobId, d.Timeout(schema.TimeoutUpdate)); err != nil {
+			return fmt.Errorf("the job (%s) is not SUCCESS while modifying QoS of EVS volume (%s): %s", jobId,
+				d.Id(), err)
+		}
+	}
+	log.Printf("[DEBUG] Waiting for the EVS volume to become available or in-use, the volume ID is %s.", d.Id())
+
+	stateConf = &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      refreshVolumeStatusFunc(client, d.Id()),
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		Delay:        3 * time.Second,
+		PollInterval: 5 * time.Second,
+	}
+	_, err = stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for modifying QoS of EVS volume (%s) to complete: %s", d.Id(), err)
+	}
 	return nil
 }
 
@@ -484,7 +567,7 @@ func resourceEvsVolumeUpdate(ctx context.Context, d *schema.ResourceData, meta i
 			}
 			err = common.WaitOrderComplete(ctx, bssClient, resp.OrderID, d.Timeout(schema.TimeoutUpdate))
 			if err != nil {
-				return diag.Errorf("the order (%s) is not completed while extending EVS volume (%s) size: %#v",
+				return diag.Errorf("the order (%s) is not completed while extending EVS volume (%s) size: %v",
 					resp.OrderID, d.Id(), err)
 			}
 		}
@@ -514,6 +597,11 @@ func resourceEvsVolumeUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		if err != nil {
 			return diag.Errorf("error waiting for EVS volume (%s) to become ready: %s", d.Id(), err)
 		}
+	}
+
+	if d.HasChanges("iops", "throughput") {
+		err := modifyQoS(ctx, evsV2Client, d, *cfg)
+		return diag.FromErr(err)
 	}
 
 	if d.HasChange("auto_renew") {
@@ -547,6 +635,9 @@ func resourceEvsVolumeDelete(ctx context.Context, d *schema.ResourceData, meta i
 
 	v, err := cloudvolumes.Get(evsV2Client, d.Id()).Extract()
 	if err != nil {
+		// Before deleting a resource, check if the resource exists first,
+		// if resource does not exist, perform checkDeleted processing.
+		// When the resource does not exist, calling the query API will return a `404` status code.
 		return common.CheckDeletedDiag(d, err, "EVS volume")
 	}
 
@@ -562,7 +653,7 @@ func resourceEvsVolumeDelete(ctx context.Context, d *schema.ResourceData, meta i
 			opts := block_devices.DetachOpts{
 				ServerId: attachment.ServerID,
 			}
-			job, err := block_devices.Detach(computeClient, attachment.AttachmentID, opts)
+			job, err := block_devices.Detach(computeClient, attachment.VolumeID, opts)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -647,5 +738,32 @@ func CloudVolumeRefreshFunc(c *golangsdk.ServiceClient, volumeId string) resourc
 			return response, response.Status, nil
 		}
 		return response, "ERROR", nil
+	}
+}
+
+func refreshVolumeStatusFunc(c *golangsdk.ServiceClient, volumeId string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		response, err := cloudvolumes.Get(c, volumeId).Extract()
+		if err != nil {
+			var errDefault404 golangsdk.ErrDefault404
+			if errors.As(err, &errDefault404) {
+				return response, "deleted", nil
+			}
+			return response, "ERROR", err
+		}
+		if response == nil {
+			return response, "ERROR", nil
+		}
+
+		errorStatus := []string{"error", "error_restoring", "error_extending", "error_deleting", "error_rollbacking"}
+		status := response.Status
+		if utils.StrSliceContains(errorStatus, status) {
+			return response, status, fmt.Errorf("unexpect status (%s)", status)
+		}
+
+		if utils.StrSliceContains([]string{"available", "in_use"}, status) {
+			return response, "COMPLETED", nil
+		}
+		return response, "PENDING", nil
 	}
 }

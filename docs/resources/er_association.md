@@ -1,5 +1,8 @@
 ---
 subcategory: "Enterprise Router (ER)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_er_association"
+description: ""
 ---
 
 # huaweicloud_er_association
@@ -64,6 +67,6 @@ This resource provides the following timeouts configuration options:
 Associations can be imported using their `id` and the related `instance_id` and `route_table_id`, separated by
 slashes (/), e.g.
 
-```
-$ terraform import huaweicloud_er_association.test &ltinstance_id&gt/&ltroute_table_id&gt/&ltid&gt
+```bash
+$ terraform import huaweicloud_er_association.test <instance_id>/<route_table_id>/<id>
 ```

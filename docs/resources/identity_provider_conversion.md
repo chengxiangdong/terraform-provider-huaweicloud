@@ -1,5 +1,8 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_identity_provider_conversion"
+description: ""
 ---
 
 # huaweicloud_identity_provider_conversion
@@ -91,6 +94,6 @@ In addition to all arguments above, the following attributes are exported:
 
 Identity provider conversion rules are imported using the `provider_id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_identity_provider_conversion.conversion example_com_provider_oidc
 ```

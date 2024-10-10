@@ -1,5 +1,8 @@
 ---
 subcategory: "Host Security Service (HSS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_hss_host_group"
+description: ""
 ---
 
 # huaweicloud_hss_host_group
@@ -30,10 +33,9 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `name` - (Required, String) Specifies the name of the host group.  
-  The valid length is limited from `1` to `64`, only Chinese and English letters, digits, hyphens (-), underscores (_)
-  dots (.), plusses (+) and asterisks (*) are allowed.  
-  The Chinese characters must be in **UTF-8** or **Unicode**
-  format.
+  The valid length is limited from `1` to `64`, only Chinese characters, English letters, digits, hyphens (-),
+  underscores (_), dots (.), pluses (+) and asterisks (*) are allowed.  
+  The Chinese characters must be in **UTF-8** or **Unicode** format.
 
 * `host_ids` - (Required, List) Specifies the list of host IDs.
 
@@ -60,8 +62,16 @@ This resource provides the following timeouts configuration options:
 
 ## Import
 
-Host groups instance can be imported using their `id`, e.g.
+The host group resource can be imported using `enterprise_project_id` and `id`, separated by a slash, e.g.
 
+### Import resource under the default enterprise project
+
+```bash
+$ terraform import huaweicloud_hss_host_group.test 0/<id>
 ```
-$ terraform import huaweicloud_hss_host_group.test 69daa15a-3a6b-47ae-a2be-62b488c4e099
+
+### Import resource from non default enterprise project
+
+```bash
+$ terraform import huaweicloud_hss_host_group.test <enterprise_project_id>/<id>
 ```

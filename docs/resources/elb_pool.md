@@ -1,5 +1,8 @@
 ---
 subcategory: "Dedicated Load Balance (Dedicated ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_elb_pool"
+description: ""
 ---
 
 # huaweicloud_elb_pool
@@ -89,13 +92,17 @@ The following arguments are supported:
   provider-level region will be used. Changing this creates a new pool.
 
 * `protocol` - (Required, String, ForceNew) Specifies the protocol used by the backend server group to receive requests.
-  Value options: **TCP**, **UDP**, **HTTP**, **HTTPS** or **QUIC**.
+  Value options: **TCP**, **UDP**, **HTTP**, **HTTPS**, **QUIC**, **GRPC** or **TLS**.
   + If the listener's protocol is **UDP**, the value must be **UDP** or **QUIC**.
   + If the listener's protocol is **TCP**, the value must be **TCP**.
+  + If the listener's protocol is **IP**, the value must be **IP**.
   + If the listener's protocol is **HTTP**, the value must be **HTTP**.
   + If the listener's protocol is **HTTPS**, the value must be **HTTP** or **HTTPS**.
   + If the listener's protocol is **TERMINATED_HTTPS**, the value must be **HTTP**.
+  + If the listener's protocol is **QUIC**, the value must be **HTTP**、**HTTPS** or **GRPC**.
+  + If the listener's protocol is **TLS**, the value must be **TLS** or **TCP**.
   + If the value is **QUIC**, sticky session must be enabled with `type` set to **SOURCE_IP**.
+  + If the value is **GRPC**, the value of `http2_enable` of the associated listener must be **true**.
 
   Changing this creates a new pool.
 
@@ -105,11 +112,14 @@ The following arguments are supported:
   + **LEAST_CONNECTIONS**: weighted least connections.
   + **SOURCE_IP**: source IP hash.
   + **QUIC_CID**: connection ID.
+  + **2_TUPLE_HASH**: 2-tuple hash that is only available for IP backend server groups.
+  + **3_TUPLE_HASH**: 3-tuple hash that is only available for IP backend server groups.
+  + **5_TUPLE_HASH**: 5-tuple hash that is only available for IP backend server groups Note.
 
   -> **NOTE:** 1. If the value is **SOURCE_IP**, the weight parameter will not take effect for backend servers.
   <br/> 2. **QUIC_CID** is supported only when the protocol of the backend server group is **QUIC**.
 
-* `persistence` - (Optional, List, ForceNew) Specifies the sticky session. Changing this creates a new pool.
+* `persistence` - (Optional, List) Specifies the sticky session.
   The [object](#persistence) structure is documented below.
 
 * `type` - (Optional, String) Specifies the type of the backend server group. Value options:
@@ -126,6 +136,16 @@ The following arguments are supported:
   associated. Changing this creates a new pool.
 
   -> **NOTE:** At least one of `loadbalancer_id`, `listener_id`, `type` must be specified.
+
+* `ip_version` - (Optional, String, ForceNew) Specifies the IP address version supported by the backend server group.
+  The value can be **dualstack**, **v6**, or **v4**. If the protocol of the backend server group is HTTP, the value is **v4**.
+  Changing this creates a new pool.
+
+* `any_port_enable` - (Optional, Bool, ForceNew) Specifies whether to enable transparent port transmission on the backend.
+  If enable, the port of the backend server will be same as the port of the listener.
+  Changing this creates a new pool.
+
+* `deletion_protection_enable` - (Optional, Bool) Specifies whether to enable deletion protection.
 
 * `name` - (Optional, String) Specifies the backend server group name.
 
@@ -155,13 +175,28 @@ The following arguments are supported:
   -> **NOTE:** This parameter can be set to **true** when the `protocol` is set to **HTTP** or **HTTPS**, or an error
   will be returned.
 
-* `slow_start_duration` - (Optional, Int) Specifies the slow start duration, in seconds. Value ranges from **30**
-  to **1200**. Defaults to **30**.
+* `slow_start_duration` - (Optional, Int) Specifies the slow start duration, in seconds.  
+  Value ranges from `30` to `1,200`. Defaults to `30`.
+
+* `connection_drain_enabled` - (Optional, Bool) Specifies whether to enable delayed logout. This parameter can be set to
+  **true** when the `protocol` is set to **TCP**, **UDP** or **QUIC**, and the value of `protocol` of the associated
+  listener must be **TCP** or **UDP**. It will be triggered for the following scenes:
+  + The pool member is removed from the pool.
+  + The health monitor status is abnormal.
+  + The pool member weight is changed to `0`.
+
+* `connection_drain_timeout` - (Optional, Int) Specifies the timeout of the delayed logout in seconds.  
+  Value ranges from `10` to `4000`.
+
+* `minimum_healthy_member_count` - (Optional, Int) Specifies the minimum healthy member count. When the number of online
+  members in the health check is less than this number, the status of the pool is determined to be unhealthy. Value options:
+  + **0** (default value): Not take effect.
+  + **1**: Take effect when all member offline.
 
 <a name="persistence"></a>
 The `persistence` block supports:
 
-* `type` - (Required, String, ForceNew) Specifies the sticky session type. Value options: **SOURCE_IP**,
+* `type` - (Required, String) Specifies the sticky session type. Value options: **SOURCE_IP**,
   **HTTP_COOKIE**, and **APP_COOKIE**.
 
   -> **NOTE:** 1. If the protocol of the backend server group is **TCP** or **UDP**, only **SOURCE_IP** takes effect.
@@ -169,16 +204,16 @@ The `persistence` block supports:
   <br/> 3. If the backend server group protocol is **QUIC**, sticky session must be enabled with type set to
   **SOURCE_IP**.
 
-* `cookie_name` - (Optional, String, ForceNew) Specifies the cookie name. The value can contain only letters, digits,
+* `cookie_name` - (Optional, String) Specifies the cookie name. The value can contain only letters, digits,
   hyphens (-), underscores (_), and periods (.). It is required if `type` of `persistence` is set to **APP_COOKIE**.
 
-* `timeout` - (Optional, Int, ForceNew) Specifies the sticky session timeout duration in minutes. This parameter is
+* `timeout` - (Optional, Int) Specifies the sticky session timeout duration in minutes. This parameter is
   invalid when `type` is set to **APP_COOKIE**. The value range varies depending on the protocol of the backend server
   group:
-  + When the protocol of the backend server group is **TCP** or **UDP**, the value ranges from **1** to **60**, and
-    defaults to **1**.
-  + When the protocol of the backend server group is **HTTP** or **HTTPS**, the value ranges from **1** to **1440**,
-    and defaults to **1440**.
+  + When the protocol of the backend server group is **TCP** or **UDP**, the value ranges from `1` to `60`, and
+    defaults to `1`.
+  + When the protocol of the backend server group is **HTTP** or **HTTPS**, the value ranges from `1` to `1,440`,
+    and defaults to `1,440`.
 
 ## Attribute Reference
 
@@ -186,7 +221,11 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The unique ID for the pool.
 
-* `ip_version` - The IP address version supported by the backend server group.
+* `monitor_id` - The ID of the health check configured for the backend server group.
+
+* `created_at` - The create time of the pool.
+
+* `updated_at` - The update time of the pool.
 
 ## Timeouts
 
@@ -202,4 +241,22 @@ ELB pool can be imported using the pool `id`, e.g.
 
 ```bash
 $ terraform import huaweicloud_elb_pool.pool_1 <id>
+```
+
+Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
+API response, security or some other reason. The missing attributes include: `deletion_protection_enable`. It is
+generally recommended running **terraform plan** after importing a pool. You can then decide if changes should be
+applied to the pool, or the resource definition should be updated to align with the pool. Also you can ignore changes
+as below.
+
+```hcl
+resource "huaweicloud_elb_pool" "test" {
+    ...
+
+  lifecycle {
+    ignore_changes = [
+      deletion_protection_enable,
+    ]
+  }
+}
 ```

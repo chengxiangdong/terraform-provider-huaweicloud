@@ -21,6 +21,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API SWR DELETE /v2/manage/namespaces/{namespace}/repos/{repository}/sync_repo
+// @API SWR GET /v2/manage/namespaces/{namespace}/repos/{repository}/sync_repo
+// @API SWR POST /v2/manage/namespaces/{namespace}/repos/{repository}/sync_repo
 func ResourceSwrImageAutoSync() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceSwrImageAutoSyncCreate,
@@ -93,7 +96,7 @@ func resourceSwrImageAutoSyncCreate(ctx context.Context, d *schema.ResourceData,
 	)
 	createSwrImageAutoSyncClient, err := cfg.NewServiceClient(createSwrImageAutoSyncProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SWR Client: %s", err)
+		return diag.Errorf("error creating SWR client: %s", err)
 	}
 
 	organization := d.Get("organization").(string)
@@ -125,10 +128,10 @@ func resourceSwrImageAutoSyncCreate(ctx context.Context, d *schema.ResourceData,
 
 func buildCreateSwrImageAutoSyncBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"remoteRegionId":  utils.ValueIngoreEmpty(d.Get("target_region")),
-		"remoteNamespace": utils.ValueIngoreEmpty(d.Get("target_organization")),
+		"remoteRegionId":  utils.ValueIgnoreEmpty(d.Get("target_region")),
+		"remoteNamespace": utils.ValueIgnoreEmpty(d.Get("target_organization")),
 		"syncAuto":        true,
-		"override":        utils.ValueIngoreEmpty(d.Get("override")),
+		"override":        utils.ValueIgnoreEmpty(d.Get("override")),
 	}
 	return bodyParams
 }
@@ -146,7 +149,7 @@ func resourceSwrImageAutoSyncRead(_ context.Context, d *schema.ResourceData, met
 	)
 	getSwrImageAutoSyncClient, err := cfg.NewServiceClient(getSwrImageAutoSyncProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SWR Client: %s", err)
+		return diag.Errorf("error creating SWR client: %s", err)
 	}
 
 	parts := strings.SplitN(d.Id(), "/", 4)
@@ -214,7 +217,7 @@ func resourceSwrImageAutoSyncDelete(_ context.Context, d *schema.ResourceData, m
 	)
 	deleteSwrImageAutoSyncClient, err := cfg.NewServiceClient(deleteSwrImageAutoSyncProduct, region)
 	if err != nil {
-		return diag.Errorf("error creating SWR Client: %s", err)
+		return diag.Errorf("error creating SWR client: %s", err)
 	}
 
 	deleteSwrImageAutoSyncPath := deleteSwrImageAutoSyncClient.Endpoint + deleteSwrImageAutoSyncHttpUrl
@@ -233,7 +236,9 @@ func resourceSwrImageAutoSyncDelete(_ context.Context, d *schema.ResourceData, m
 	_, err = deleteSwrImageAutoSyncClient.Request("DELETE", deleteSwrImageAutoSyncPath,
 		&deleteSwrImageAutoSyncOpt)
 	if err != nil {
-		return diag.Errorf("error deleting SWR image auto sync: %s", err)
+		return common.CheckDeletedDiag(d,
+			common.ConvertExpected400ErrInto404Err(err, "errors|[0].errorCode", "SVCSTG.SWR.4001158"),
+			"error deleting SWR image auto sync")
 	}
 
 	return nil
@@ -241,8 +246,8 @@ func resourceSwrImageAutoSyncDelete(_ context.Context, d *schema.ResourceData, m
 
 func buildDeleteSwrImageAutoSyncBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"remoteRegionId":  utils.ValueIngoreEmpty(d.Get("target_region")),
-		"remoteNamespace": utils.ValueIngoreEmpty(d.Get("target_organization")),
+		"remoteRegionId":  utils.ValueIgnoreEmpty(d.Get("target_region")),
+		"remoteNamespace": utils.ValueIgnoreEmpty(d.Get("target_organization")),
 	}
 	return bodyParams
 }

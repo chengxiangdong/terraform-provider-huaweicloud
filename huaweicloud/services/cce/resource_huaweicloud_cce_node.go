@@ -23,6 +23,25 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{cluster_id}
+// @API CCE POST /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes
+// @API BSS GET /V2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/suscriptions/resources/query
+// @API CCE GET /api/v3/projects/{project_id}/jobs/{job_id}
+// @API CCE GET /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/{node_id}
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}
+// @API ECS GET /v1/{project_id}/cloudservers/{server_id}/tags
+// @API CCE PUT /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/{node_id}
+// @API ECS POST /v1/{project_id}/cloudservers/{id}/tags/action
+// @API KMS POST /v3/{project_id}/keypairs/associate
+// @API KMS POST /v3/{project_id}/keypairs/disassociate
+// @API ECS PUT /v1/{project_id}/cloudservers/{id}/os-reset-password
+// @API BSS POST /v2/orders/subscriptions/resources/autorenew/{id}
+// @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{id}
+// @API CCE DELETE /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/{node_id}
+// @API CCE PUT /api/v3/projects/{project_id}/clusters/{cluster_id}/nodes/operation/remove
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
+
 func ResourceNode() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceNodeCreate,
@@ -104,7 +123,7 @@ func ResourceNode() *schema.Resource {
 						},
 						"value": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 							ForceNew: true,
 						},
 						"effect": {
@@ -281,6 +300,28 @@ func ResourceNode() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "schema: Internal",
+			},
+			"hostname_config": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+			"enterprise_project_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
 			},
 			"private_ip": {
 				Type:     schema.TypeString,
@@ -459,6 +500,18 @@ func buildResourceNodeLoginSpec(d *schema.ResourceData) (nodes.LoginSpec, error)
 	return loginSpec, nil
 }
 
+func buildResourceNodeHostnameConfig(d *schema.ResourceData) *nodes.HostnameConfig {
+	if v, ok := d.GetOk("hostname_config"); ok {
+		res := nodes.HostnameConfig{
+			Type: utils.PathSearch("[0].type", v, "").(string),
+		}
+
+		return &res
+	}
+
+	return nil
+}
+
 func resourceNodeCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -499,23 +552,25 @@ func resourceNodeCreate(ctx context.Context, d *schema.ResourceData, meta interf
 			Annotations: buildResourceNodeAnnotations(d),
 		},
 		Spec: nodes.Spec{
-			Flavor:                d.Get("flavor_id").(string),
-			Az:                    d.Get("availability_zone").(string),
-			Os:                    d.Get("os").(string),
-			RootVolume:            buildResourceNodeRootVolume(d),
-			DataVolumes:           buildResourceNodeDataVolume(d),
-			Storage:               buildResourceNodeStorage(d),
-			PublicIP:              buildResourceNodePublicIP(d),
-			BillingMode:           billingMode,
-			Count:                 1,
-			NodeNicSpec:           buildResourceNodeNicSpec(d),
-			EcsGroupID:            d.Get("ecs_group_id").(string),
-			ExtendParam:           buildExtendParams(d),
-			Taints:                buildResourceNodeTaint(d),
-			K8sTags:               buildResourceNodeK8sTags(d),
-			UserTags:              buildResourceNodeTags(d),
-			DedicatedHostID:       d.Get("dedicated_host_id").(string),
-			InitializedConditions: utils.ExpandToStringList(d.Get("initialized_conditions").([]interface{})),
+			Flavor:                    d.Get("flavor_id").(string),
+			Az:                        d.Get("availability_zone").(string),
+			Os:                        d.Get("os").(string),
+			RootVolume:                buildResourceNodeRootVolume(d),
+			DataVolumes:               buildResourceNodeDataVolume(d),
+			Storage:                   buildResourceNodeStorage(d),
+			PublicIP:                  buildResourceNodePublicIP(d),
+			BillingMode:               billingMode,
+			Count:                     1,
+			NodeNicSpec:               buildResourceNodeNicSpec(d),
+			EcsGroupID:                d.Get("ecs_group_id").(string),
+			ExtendParam:               buildExtendParams(d),
+			Taints:                    buildResourceNodeTaint(d),
+			K8sTags:                   buildResourceNodeK8sTags(d),
+			UserTags:                  buildResourceNodeTags(d),
+			DedicatedHostID:           d.Get("dedicated_host_id").(string),
+			InitializedConditions:     utils.ExpandToStringList(d.Get("initialized_conditions").([]interface{})),
+			HostnameConfig:            buildResourceNodeHostnameConfig(d),
+			ServerEnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 		},
 	}
 
@@ -561,7 +616,7 @@ func resourceNodeCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 	// The completion of the creation of the underlying resource (ECS) corresponding to the CCE node does not mean that
 	// the creation of the CCE node is completed.
-	nodeID, err := getResourceIDFromJob(ctx, nodeClient, s.Status.JobID, "CreateNode", "CreateNodeVM",
+	nodeID, err := getResourceIDFromJob(ctx, nodeClient, s.Status.JobID, "CreateNode", "InstallNode",
 		d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		return diag.FromErr(err)
@@ -619,6 +674,8 @@ func resourceNodeRead(_ context.Context, d *schema.ResourceData, meta interface{
 		d.Set("root_volume", flattenResourceNodeRootVolume(d, s.Spec.RootVolume)),
 		d.Set("data_volumes", flattenResourceNodeDataVolume(d, s.Spec.DataVolumes)),
 		d.Set("initialized_conditions", s.Spec.InitializedConditions),
+		d.Set("hostname_config", flattenResourceNodeHostnameConfig(s.Spec.HostnameConfig)),
+		d.Set("enterprise_project_id", s.Spec.ServerEnterpriseProjectID),
 	)
 
 	if s.Spec.BillingMode != 0 {
@@ -653,6 +710,20 @@ func resourceNodeRead(_ context.Context, d *schema.ResourceData, meta interface{
 		return diag.Errorf("error setting CCE Node fields: %s", err)
 	}
 	return nil
+}
+
+func flattenResourceNodeHostnameConfig(hostNameConfig *nodes.HostnameConfig) []map[string]interface{} {
+	if hostNameConfig == nil {
+		return nil
+	}
+
+	res := []map[string]interface{}{
+		{
+			"type": hostNameConfig.Type,
+		},
+	}
+
+	return res
 }
 
 func resourceNodeUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

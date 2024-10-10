@@ -1,5 +1,8 @@
 ---
 subcategory: "CodeArts"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_codearts_repository"
+description: ""
 ---
 
 # huaweicloud_codearts_repository
@@ -44,7 +47,7 @@ The following arguments are supported:
   + **0**: Private.
   + **20**: Public read-only.
 
-  Defaults to **0**. Changing this parameter will create a new resource.
+  Defaults to `0`. Changing this parameter will create a new resource.
 
 * `description` - (Optional, String, ForceNew) The repository description.
   Changing this parameter will create a new resource.
@@ -63,27 +66,27 @@ The following arguments are supported:
   + **5**: Eclipse Public License v1.0
   + **6**: GNU General Public License v2.0
   + **7**: GNU General Public License v3.0
-  + **8**: GNU Affero General Public License v3.0
+  + **8**: GNU Afferent General Public License v3.0
   + **9**: GNU Lesser General Public License v2.1
   + **10**: GNU Lesser General Public License v3.0
   + **11**: Mozilla Public License v2.0
   + **12**: The Unlicense
 
-  Defaults to **1**. Changing this parameter will create a new resource.
+  Defaults to `1`. Changing this parameter will create a new resource.
 
 * `enable_readme` - (Optional, Int, ForceNew) Whether to generate the `README.md` file.  
   The valid values are as follows:
   + **0**: Disable.
   + **1**: Enable.
 
-  Defaults to **1**. Changing this parameter will create a new resource.
+  Defaults to `1`. Changing this parameter will create a new resource.
 
 * `import_members` - (Optional, Int, ForceNew) Whether to import the project members.  
   The valid values are as follows:
   + **0**: Do not import members.
   + **1**: Import members.
 
-  Defaults to **1**. Changing this parameter will create a new resource.
+  Defaults to `1`. Changing this parameter will create a new resource.
 
 ## Attribute Reference
 
@@ -104,7 +107,7 @@ In addition to all arguments above, the following attributes are exported:
 * `status` - The repository status.  
   The valid values are as follows:
   + **0**: Normal.
-  + **3**: Frezon.
+  + **3**: Frozen.
   + **4**: Closed.
 
 * `create_at` - The creation time.
@@ -115,7 +118,7 @@ In addition to all arguments above, the following attributes are exported:
 
 The repository can be imported using the `id`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_codearts_repository.test 0ce123456a00f2591fabc00385ff1234
 ```
 
@@ -125,7 +128,7 @@ API response. The missing attributes include: `name`, `description`, `gitignore_
 You can then decide if changes should be applied to the repository, or the resource definition should be updated to
 align with the repository. Also you can ignore changes as below.
 
-```
+```hcl
 resource "huaweicloud_codearts_repository" "test" {
   ...
 

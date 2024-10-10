@@ -20,8 +20,13 @@ import (
 
 func getDNSRecordsetResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	region := acceptance.HW_REGION_NAME
+	dnsProduct := "dns"
+	if state.Primary.Attributes["zone_type"] != "public" {
+		dnsProduct = "dns_region"
+	}
+
 	// getDNSRecordset: Query DNS recordset
-	getDNSRecordsetClient, err := cfg.NewServiceClient("dns_region", region)
+	getDNSRecordsetClient, err := cfg.NewServiceClient(dnsProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating DNS Client: %s", err)
 	}
@@ -92,6 +97,7 @@ func TestAccDNSRecordset_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "weight", "3"),
 					resource.TestCheckResourceAttr(rName, "tags.key1", "value1"),
 					resource.TestCheckResourceAttr(rName, "tags.key2", "value2"),
+					resource.TestCheckResourceAttr(rName, "zone_type", "public"),
 					resource.TestCheckResourceAttrSet(rName, "zone_name"),
 				),
 			},
@@ -148,6 +154,7 @@ func TestAccDNSRecordset_publicZone(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "records.0", "10.1.0.0"),
 					resource.TestCheckResourceAttr(rName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(rName, "tags.key", "value"),
+					resource.TestCheckResourceAttr(rName, "zone_type", "public"),
 					resource.TestCheckResourceAttrSet(rName, "zone_name"),
 				),
 			},
@@ -198,6 +205,7 @@ func TestAccDNSRecordset_privateZone(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "records.0", "10.1.0.3"),
 					resource.TestCheckResourceAttr(rName, "tags.foo", "bar_private"),
 					resource.TestCheckResourceAttr(rName, "tags.key", "value_private"),
+					resource.TestCheckResourceAttr(rName, "zone_type", "private"),
 					resource.TestCheckResourceAttrSet(rName, "zone_name"),
 				),
 			},
@@ -227,12 +235,22 @@ func TestAccDNSRecordset_privateZone(t *testing.T) {
 	})
 }
 
+func testAccRecordset_base(name string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_dns_zone" "test" {
+  name        = "%s"
+  description = "Created by terraform script"
+  ttl         = 300
+}
+`, name)
+}
+
 func testDNSRecordset_basic(name string) string {
 	return fmt.Sprintf(`
 %s
 
 resource "huaweicloud_dns_recordset" "test" {
-  zone_id     = huaweicloud_dns_zone.zone_1.id
+  zone_id     = huaweicloud_dns_zone.test.id
   name        = "%s"
   type        = "A"
   description = "a recordset description"
@@ -247,7 +265,7 @@ resource "huaweicloud_dns_recordset" "test" {
     key2 = "value2"
   }
 }
-`, testAccDNSZone_basic(name), name)
+`, testAccRecordset_base(name), name)
 }
 
 func testDNSRecordset_basic_update(name string) string {
@@ -255,7 +273,7 @@ func testDNSRecordset_basic_update(name string) string {
 %s
 
 resource "huaweicloud_dns_recordset" "test" {
-  zone_id     = huaweicloud_dns_zone.zone_1.id
+  zone_id     = huaweicloud_dns_zone.test.id
   name        = "update.%s"
   type        = "TXT"
   description = "a recordset description update"
@@ -270,7 +288,7 @@ resource "huaweicloud_dns_recordset" "test" {
     key2 = "value2_update"
   }
 }
-`, testAccDNSZone_basic(name), name)
+`, testAccRecordset_base(name), name)
 }
 
 func testDNSRecordset_publicZone(name string) string {
@@ -278,7 +296,7 @@ func testDNSRecordset_publicZone(name string) string {
 %s
 
 resource "huaweicloud_dns_recordset" "test" {
-  zone_id     = huaweicloud_dns_zone.zone_1.id
+  zone_id     = huaweicloud_dns_zone.test.id
   name        = "%s"
   type        = "A"
   description = "a record set"
@@ -291,7 +309,7 @@ resource "huaweicloud_dns_recordset" "test" {
     key = "value"
   }
 }
-`, testAccDNSZone_basic(name), name)
+`, testAccRecordset_base(name), name)
 }
 
 func testDNSRecordset_publicZone_update(name string) string {
@@ -299,7 +317,7 @@ func testDNSRecordset_publicZone_update(name string) string {
 %s
 
 resource "huaweicloud_dns_recordset" "test" {
-  zone_id     = huaweicloud_dns_zone.zone_1.id
+  zone_id     = huaweicloud_dns_zone.test.id
   name        = "update.%s"
   type        = "TXT"
   description = "an updated record set"
@@ -312,7 +330,7 @@ resource "huaweicloud_dns_recordset" "test" {
     key = "value_updated"
   }
 }
-`, testAccDNSZone_basic(name), name)
+`, testAccRecordset_base(name), name)
 }
 
 func testDNSRecordset_privateZone(name string) string {

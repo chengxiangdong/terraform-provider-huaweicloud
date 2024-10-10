@@ -1,5 +1,8 @@
 ---
 subcategory: "Data Lake Insight (DLI)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_dli_spark_job"
+description: ""
 ---
 
 # huaweicloud_dli_spark_job
@@ -124,7 +127,8 @@ The following arguments are supported:
 
 The `dependent_packages` block supports:
 
-* `group_name` - (Required, String, ForceNew) Specifies the user group name.
+* `group_name` - (Required, String, ForceNew) Specifies the user group name.  
+  Only letters, digits, dots (.), hyphens (-) and underscores (_) are allowed.  
   Changing this parameter will submit a new spark job.
 
 * `packages` - (Required, List, ForceNew) Specifies the user group resource for details.

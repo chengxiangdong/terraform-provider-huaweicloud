@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Trace Service (CTS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cts_data_tracker"
+description: ""
 ---
 
 # huaweicloud_cts_data_tracker
@@ -40,11 +43,17 @@ The following arguments are supported:
 * `bucket_name` - (Optional, String) Specifies the OBS bucket to which traces will be transferred.
 
 * `file_prefix` - (Optional, String) Specifies the file name prefix to mark trace files that need to be stored
-  in an OBS bucket. The value contains 0 to 64 characters. Only letters, numbers, hyphens (-), underscores (_),
+  in an OBS bucket. The value contains `0` to `64` characters. Only letters, numbers, hyphens (-), underscores (_),
   and periods (.) are allowed.
 
 * `obs_retention_period` - (Optional, Int) Specifies the retention period that traces are stored in `bucket_name`,
-  the value can be **0**(permanent), **30**, **60**, **90**, **180** or **1095**.
+  the value can be `0`(permanent), `30`, `60`, `90`, `180` or `1,095`.
+
+* `compress_type` - (Optional, String) Specifies the compression type of trace files. The value can be **gzip**
+  or **json**. The default value is **gzip**.
+
+* `is_sort_by_service` - (Optional, Bool) Specifies whether to divide the path of the trace file by cloud service.
+  The default value is **true**.
 
 * `lts_enabled` - (Optional, Bool) Specifies whether trace analysis is enabled.
 
@@ -52,14 +61,17 @@ The following arguments are supported:
 
 * `enabled` - (Optional, Bool) Specifies whether tracker is enabled.
 
+* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the CTS data tracker.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID which equals the tracker name.
+* `id` - The resource ID in UUID format.
 * `type` - The tracker type, only **data** is available.
 * `transfer_enabled` - Whether traces will be transferred.
 * `status` - The tracker status, the value can be **enabled**, **disabled** or **error**.
+* `agency_name` - The cloud service delegation name.
 
 ## Timeouts
 
@@ -72,6 +84,23 @@ This resource provides the following timeouts configuration options:
 
 CTS data tracker can be imported using `name`, e.g.:
 
-```
+```bash
 $ terraform import huaweicloud_cts_data_tracker.tracker your_tracker_name
+```
+
+Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
+API response, security or some other reason. The missing attribute is `tags`.
+
+It is generally recommended running `terraform plan` after importing the resource.
+You can then decide if changes should be applied to the instance, or the resource definition should be updated to
+align with the resource. Also you can ignore changes as below.
+
+```hcl
+resource "huaweicloud_cts_data_tracker" "test" {
+    ...
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+}
 ```

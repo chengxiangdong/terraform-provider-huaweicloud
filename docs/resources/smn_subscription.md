@@ -1,5 +1,8 @@
 ---
 subcategory: "Simple Message Notification (SMN)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_smn_subscription"
+description: ""
 ---
 
 # huaweicloud_smn_subscription
@@ -102,10 +105,20 @@ In addition to all arguments above, the following attributes are exported:
   + **1**: indicates that the subscription is confirmed.
   + **3**: indicates that the subscription is canceled.
 
+* `filter_policies` - The message filter policies of a subscriber.
+  The [filter_policies](#smn_subscription_filter_policies_attr) structure is documented below.
+
+<a name="smn_subscription_filter_policies_attr"></a>
+The `filter_policies` block supports:
+
+* `name` - The filter policy name.
+
+* `string_equals` - The string array for exact match.
+
 ## Import
 
 SMN subscription can be imported using the `id` (subscription urn), e.g.
 
-```
+```bash
 $ terraform import huaweicloud_smn_subscription.subscription_1 urn:smn:cn-north-4:0970dd7a1300f5672ff2c003c60ae115:topic_1:a2aa5a1f66df494184f4e108398de1a6
 ```

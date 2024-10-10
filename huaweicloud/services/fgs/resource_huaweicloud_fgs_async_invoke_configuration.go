@@ -16,6 +16,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/async-invoke-config
+// @API FunctionGraph GET /v2/{project_id}/fgs/functions/{function_urn}/async-invoke-config
+// @API FunctionGraph DELETE /v2/{project_id}/fgs/functions/{function_urn}/async-invoke-config
 func ResourceAsyncInvokeConfiguration() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceAsyncInvokeConfigurationCreate,
@@ -71,6 +74,16 @@ func ResourceAsyncInvokeConfiguration() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Whether to enable asynchronous invocation status persistence.",
+			},
+			"created_at": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The creation time of the asynchronous invocation.",
+			},
+			"updated_at": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The latest update time of the asynchronous invocation.",
 			},
 		},
 	}
@@ -176,6 +189,8 @@ func resourceAsyncInvokeConfigurationRead(_ context.Context, d *schema.ResourceD
 		d.Set("on_success", flattenDestinationConfig(resp.DestinationConfig.OnSuccess)),
 		d.Set("on_failure", flattenDestinationConfig(resp.DestinationConfig.OnFailure)),
 		d.Set("enable_async_status_log", resp.EnableAsyncStatusLog),
+		d.Set("created_at", resp.CreatedAt),
+		d.Set("updated_at", resp.UpdatedAt),
 	)
 	if mErr.ErrorOrNil() != nil {
 		return diag.Errorf("error saving asynchronous invocation configuration fields: %s", mErr)
@@ -210,7 +225,7 @@ func resourceAsyncInvokeConfigurationDelete(_ context.Context, d *schema.Resourc
 
 	err = function.DeleteAsyncInvokeConfig(client, d.Id())
 	if err != nil {
-		return diag.Errorf("error deleting the configuration of the asynchronous invocation: %s", err)
+		return common.CheckDeletedDiag(d, err, "error deleting the configuration of the asynchronous invocation")
 	}
 	return nil
 }

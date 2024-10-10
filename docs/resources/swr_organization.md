@@ -1,5 +1,8 @@
 ---
 subcategory: "Software Repository for Container (SWR)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_swr_organization"
+description: ""
 ---
 
 # huaweicloud_swr_organization
@@ -47,6 +50,6 @@ This resource provides the following timeouts configuration options:
 
 Organizations can be imported using the `name`, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_swr_organization.test org-name
 ```

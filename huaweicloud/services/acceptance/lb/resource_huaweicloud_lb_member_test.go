@@ -32,6 +32,7 @@ func TestAccLBV2Member_basic(t *testing.T) {
 	resourceName1 := "huaweicloud_lb_member.member_1"
 	resourceName2 := "huaweicloud_lb_member.member_2"
 	rName := acceptance.RandomAccResourceNameWithDash()
+	rUpdateName := acceptance.RandomAccResourceNameWithDash()
 
 	rc1 := acceptance.InitResourceCheck(
 		resourceName1,
@@ -50,26 +51,25 @@ func TestAccLBV2Member_basic(t *testing.T) {
 		CheckDestroy:      testAccCheckLBV2MemberDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:             testAccLBV2MemberConfig_basic(rName),
-				ExpectNonEmptyPlan: true, // Because admin_state_up remains false.
+				Config: testAccLBV2MemberConfig_basic(rName),
 				Check: resource.ComposeTestCheckFunc(
 					rc1.CheckResourceExists(),
 					rc2.CheckResourceExists(),
 				),
 			},
 			{
-				Config:             testAccLBV2MemberConfig_update(rName),
-				ExpectNonEmptyPlan: true, // Because admin_state_up remains false.
+				Config: testAccLBV2MemberConfig_update(rName, rUpdateName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("huaweicloud_lb_member.member_1", "weight", "10"),
 					resource.TestCheckResourceAttr("huaweicloud_lb_member.member_2", "weight", "15"),
 				),
 			},
 			{
-				ResourceName:      "huaweicloud_lb_member.member_1",
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testAccLBMemberImportStateIdFunc(),
+				ResourceName:            "huaweicloud_lb_member.member_1",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"admin_state_up"},
+				ImportStateIdFunc:       testAccLBMemberImportStateIdFunc(),
 			},
 		},
 	})
@@ -168,38 +168,38 @@ resource "huaweicloud_lb_member" "member_2" {
 `, rName, rName, rName)
 }
 
-func testAccLBV2MemberConfig_update(rName string) string {
+func testAccLBV2MemberConfig_update(rName, rUpdateName string) string {
 	return fmt.Sprintf(`
 data "huaweicloud_vpc_subnet" "test" {
   name = "subnet-default"
 }
 
 resource "huaweicloud_lb_loadbalancer" "loadbalancer_1" {
-  name          = "%s"
+  name          = "%[1]s"
   vip_subnet_id = data.huaweicloud_vpc_subnet.test.ipv4_subnet_id
 }
 
 resource "huaweicloud_lb_listener" "listener_1" {
-  name            = "%s"
+  name            = "%[1]s"
   protocol        = "HTTP"
   protocol_port   = 8080
   loadbalancer_id = huaweicloud_lb_loadbalancer.loadbalancer_1.id
 }
 
 resource "huaweicloud_lb_pool" "pool_1" {
-  name        = "%s"
+  name        = "%[1]s"
   protocol    = "HTTP"
   lb_method   = "ROUND_ROBIN"
   listener_id = huaweicloud_lb_listener.listener_1.id
 }
 
 resource "huaweicloud_lb_member" "member_1" {
-  address        = "192.168.0.10"
-  protocol_port  = 8080
-  weight         = 10
-  admin_state_up = "true"
-  pool_id        = huaweicloud_lb_pool.pool_1.id
-  subnet_id      = data.huaweicloud_vpc_subnet.test.ipv4_subnet_id
+  name          = "%[2]s"
+  address       = "192.168.0.10"
+  protocol_port = 8080
+  weight        = 10
+  pool_id       = huaweicloud_lb_pool.pool_1.id
+  subnet_id     = data.huaweicloud_vpc_subnet.test.ipv4_subnet_id
 
   timeouts {
     create = "5m"
@@ -209,10 +209,10 @@ resource "huaweicloud_lb_member" "member_1" {
 }
 
 resource "huaweicloud_lb_member" "member_2" {
+  name           = "%[2]s"
   address        = "192.168.0.11"
   protocol_port  = 8080
   weight         = 15
-  admin_state_up = "true"
   pool_id        = huaweicloud_lb_pool.pool_1.id
   subnet_id      = data.huaweicloud_vpc_subnet.test.ipv4_subnet_id
 
@@ -222,5 +222,5 @@ resource "huaweicloud_lb_member" "member_2" {
     delete = "5m"
   }
 }
-`, rName, rName, rName)
+`, rName, rUpdateName)
 }

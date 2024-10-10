@@ -1,5 +1,8 @@
 ---
 subcategory: "Cloud Container Engine (CCE)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_cce_node_pool"
+description: ""
 ---
 
 # huaweicloud_cce_node_pool
@@ -37,7 +40,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID in UUID format.
+* `id` - The data source ID in UUID format.
 
 * `initial_node_count` - Initial number of nodes in the node pool.
 
@@ -77,6 +80,11 @@ In addition to all arguments above, the following attributes are exported:
 
 * `data_volumes` - Represents the data disk to be created. Structure is documented below.
 
+* `enterprise_project_id` - The enterprise project ID of the node pool.
+
+* `hostname_config` - The hostname config of the kubernetes node.
+  The [object](#hostname_config) structure is documented below.
+
 The `root_volume` and `data_volumes` blocks support:
 
 * `size` - Disk size in GB.
@@ -84,3 +92,8 @@ The `root_volume` and `data_volumes` blocks support:
 * `volumetype` - Disk type.
 
 * `extend_params` - Disk expansion parameters.
+
+<a name="hostname_config"></a>
+The `hostname_config` block supports:
+
+* `type` - The hostname type of the kubernetes node.

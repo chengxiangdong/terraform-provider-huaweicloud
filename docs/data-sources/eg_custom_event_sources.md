@@ -1,10 +1,13 @@
 ---
 subcategory: "EventGrid (EG)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_eg_custom_event_sources"
+description: ""
 ---
 
 # huaweicloud_eg_custom_event_sources
 
-Use this data source to filter EG custom event sources within Huaweicloud.
+Use this data source to filter EG custom event sources within HuaweiCloud.
 
 ## Example Usage
 
@@ -55,6 +58,9 @@ The `sources` block supports:
 * `description` - The description of the custom event source.
 
 * `status` - The status of the custom event source.
+  + **CREATE_FAILED**
+  + **RUNNING**
+  + **ERROR**
 
 * `created_at` - The creation time of the custom event source.
 

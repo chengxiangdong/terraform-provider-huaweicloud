@@ -46,6 +46,14 @@ const (
 	resourceSizeMeasureIdDB  = 30
 )
 
+// @API DSC POST /v1/{project_id}/period/order
+// @API DSC GET /v1/{project_id}/period/product/specification
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
+// @API BSS POST /v3/orders/customer-orders/pay
+// @API BSS POST /v2/bills/ratings/period-resources/subscribe-rate
+// @API BSS POST /v2/orders/suscriptions/resources/query
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
+// @API BSS GET /v2/orders/customer-orders/details/{order_id}
 func ResourceDscInstance() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceDscInstanceCreate,
@@ -90,11 +98,10 @@ func ResourceDscInstance() *schema.Resource {
 				}, false),
 			},
 			"period": {
-				Type:         schema.TypeInt,
-				Required:     true,
-				ForceNew:     true,
-				Description:  `The charging period.`,
-				ValidateFunc: validation.IntBetween(1, 9),
+				Type:        schema.TypeInt,
+				Required:    true,
+				ForceNew:    true,
+				Description: `The charging period.`,
 			},
 			"auto_renew": {
 				Type:        schema.TypeString,
@@ -215,7 +222,7 @@ func buildCreateDscInstanceBodyParams(d *schema.ResourceData, cfg *config.Config
 	bodyParams := map[string]interface{}{
 		"regionId":         cfg.GetRegion(d),
 		"cloudServiceType": cloudServiceType,
-		"periodNum":        utils.ValueIngoreEmpty(d.Get("period")),
+		"periodNum":        utils.ValueIgnoreEmpty(d.Get("period")),
 		"productInfos":     productInfos,
 	}
 
@@ -257,7 +264,7 @@ func buildCreateDscInstanceRequestBodyProductInfos(d *schema.ResourceData, cfg *
 				"cloudServiceType":      cloudServiceType,
 				"resourceType":          resourceTypeObs,
 				"resourceSpecCode":      resourceSpecCodeStandardObs,
-				"resourceSize":          utils.ValueIngoreEmpty(size),
+				"resourceSize":          utils.ValueIgnoreEmpty(size),
 				"resourceSizeMeasureId": resourceSizeMeasureIdObs,
 			})
 		}
@@ -267,7 +274,7 @@ func buildCreateDscInstanceRequestBodyProductInfos(d *schema.ResourceData, cfg *
 				"cloudServiceType":      cloudServiceType,
 				"resourceType":          resourceTypeDB,
 				"resourceSpecCode":      resourceSpecCodeStandardDB,
-				"resourceSize":          utils.ValueIngoreEmpty(size),
+				"resourceSize":          utils.ValueIgnoreEmpty(size),
 				"resourceSizeMeasureId": resourceSizeMeasureIdDB,
 			})
 		}
@@ -283,7 +290,7 @@ func buildCreateDscInstanceRequestBodyProductInfos(d *schema.ResourceData, cfg *
 				"cloudServiceType":      cloudServiceType,
 				"resourceType":          resourceTypeObs,
 				"resourceSpecCode":      resourceSpecCodeProObs,
-				"resourceSize":          utils.ValueIngoreEmpty(size),
+				"resourceSize":          utils.ValueIgnoreEmpty(size),
 				"resourceSizeMeasureId": resourceSizeMeasureIdObs,
 			})
 		}
@@ -293,7 +300,7 @@ func buildCreateDscInstanceRequestBodyProductInfos(d *schema.ResourceData, cfg *
 				"cloudServiceType":      cloudServiceType,
 				"resourceType":          resourceTypeDB,
 				"resourceSpecCode":      resourceSpecCodeProDB,
-				"resourceSize":          utils.ValueIngoreEmpty(size),
+				"resourceSize":          utils.ValueIgnoreEmpty(size),
 				"resourceSizeMeasureId": resourceSizeMeasureIdDB,
 			})
 		}

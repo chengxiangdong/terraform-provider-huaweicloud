@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -23,6 +22,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API Config PUT /v1/resource-manager/domains/{domain_id}/tracker-config
+// @API Config GET /v1/resource-manager/domains/{domain_id}/tracker-config
+// @API Config DELETE /v1/resource-manager/domains/{domain_id}/tracker-config
 func ResourceRecorder() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRecorderUpdate,
@@ -166,8 +168,8 @@ func buildRecorderChannelConfigRequest(d *schema.ResourceData) (map[string]inter
 	}
 
 	bodyParams := map[string]interface{}{
-		"obs": utils.ValueIngoreEmpty(obsOpts),
-		"smn": utils.ValueIngoreEmpty(smnOpts),
+		"obs": utils.ValueIgnoreEmpty(obsOpts),
+		"smn": utils.ValueIgnoreEmpty(smnOpts),
 	}
 	return bodyParams, nil
 }
@@ -303,15 +305,12 @@ func flattenRecorderSelectorConfig(resp interface{}) []interface{} {
 }
 
 func flattenRecorderOBSChannelConfig(resp interface{}) []interface{} {
-	curJson, err := jmespath.Search("channel.obs", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing channel.obs from response: %s", err)
+	curJson := utils.PathSearch("channel.obs", resp, nil)
+	if curJson == nil {
+		log.Printf("[ERROR] error parsing channel.obs from response")
 		return nil
 	}
 
-	if curJson == nil {
-		return nil
-	}
 	return []interface{}{
 		map[string]interface{}{
 			"bucket": utils.PathSearch("bucket_name", curJson, nil),
@@ -321,15 +320,12 @@ func flattenRecorderOBSChannelConfig(resp interface{}) []interface{} {
 }
 
 func flattenRecorderSMNChannelConfig(resp interface{}) []interface{} {
-	curJson, err := jmespath.Search("channel.smn", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing channel.smn from response: %s", err)
+	curJson := utils.PathSearch("channel.smn", resp, nil)
+	if curJson == nil {
+		log.Printf("[ERROR] error parsing channel.smn from response")
 		return nil
 	}
 
-	if curJson == nil {
-		return nil
-	}
 	return []interface{}{
 		map[string]interface{}{
 			"topic_urn":  utils.PathSearch("topic_urn", curJson, nil),

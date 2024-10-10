@@ -35,6 +35,11 @@ type CreateJobReq struct {
 	MultiWrite       *bool              `json:"multi_write,omitempty"`
 	Tags             []tags.ResourceTag `json:"tags,omitempty"`
 	SysTags          []tags.ResourceTag `json:"sys_tags,omitempty"`
+	MasterAz         string             `json:"master_az,omitempty"`
+	SlaveAz          string             `json:"slave_az,omitempty"`
+	ChargingMode     string             `json:"charging_mode,omitempty"`
+	PeriodOrder      *PeriodOrder       `json:"period_order,omitempty"`
+	PublciIpList     []PublciIpList     `json:"public_ip_list,omitempty"`
 }
 
 type Endpoint struct {
@@ -64,6 +69,36 @@ type Endpoint struct {
 	MongoHaMode string `json:"mongo_ha_mode,omitempty"`
 	Topic       string `json:"topic,omitempty"`
 	ClusterMode string `json:"cluster_mode,omitempty"`
+
+	KafkaSecurityConfig *KafkaSecurityConfig `json:"kafka_security_config,omitempty"`
+}
+
+type PeriodOrder struct {
+	PeriodType  int `json:"period_type,omitempty"`
+	PeriodNum   int `json:"period_num,omitempty"`
+	IsAutoRenew int `json:"is_auto_renew,omitempty"`
+}
+
+type PublciIpList struct {
+	Id       string `json:"id" required:"true"`
+	PublicIp string `json:"public_ip" required:"true"`
+	Type     string `json:"type" required:"true"`
+}
+
+type KafkaSecurityConfig struct {
+	Type                  string `json:"type,omitempty"`
+	SaslMechanism         string `json:"sasl_mechanism,omitempty"`
+	TrustStoreKeyName     string `json:"trust_store_key_name,omitempty"`
+	TrustStoreKey         string `json:"trust_store_key,omitempty"`
+	TrustStorePassword    string `json:"trust_store_password,omitempty"`
+	EndpointAlgorithm     string `json:"endpoint_algorithm,omitempty"`
+	DelegationTokens      bool   `json:"delegation_tokens,omitempty"`
+	EnableKeyStore        bool   `json:"enable_key_store,omitempty"`
+	KeyStoreKeyName       string `json:"key_store_key_name,omitempty"`
+	KeyStoreKey           string `json:"key_store_key,omitempty"`
+	KeyStorePassword      string `json:"key_store_password,omitempty"`
+	SetPrivateKeyPassword bool   `json:"set_private_key_password,omitempty"`
+	KeyPassword           string `json:"key_password,omitempty"`
 }
 
 type QueryJobReq struct {
@@ -97,8 +132,8 @@ type TestEndPoint struct {
 
 	DbType     string `json:"db_type" required:"true"`
 	Ip         string `json:"ip" required:"true"`
-	DbUser     string `json:"db_user" required:"true"`
-	DbPassword string `json:"db_password" required:"true"`
+	DbUser     string `json:"db_user,omitempty"`
+	DbPassword string `json:"db_password,omitempty"`
 	//when type is Mongo、DDS, must be `0`
 	DbPort *int   `json:"db_port,omitempty"`
 	DbName string `json:"db_name,omitempty"`
@@ -114,6 +149,39 @@ type TestEndPoint struct {
 	SslCertName     string `json:"ssl_cert_name,omitempty"`
 	SslCertCheckSum string `json:"ssl_cert_check_sum,omitempty"`
 	SslCertPassword string `json:"ssl_cert_password,omitempty"`
+
+	KafkaSecurityConfig *KafkaSecurityConfig `json:"kafka_security_config,omitempty"`
+}
+
+type TestClusterConnectionsReq struct {
+	Jobs []TestJob `json:"jobs" required:"true"`
+}
+
+type TestJob struct {
+	Action   string `json:"action" required:"true"`
+	JobId    string `json:"job_id" required:"true"`
+	Property string `json:"property" required:"true"`
+}
+
+type PropertyParam struct {
+	NetType             string               `json:"nettype" required:"true"`
+	EndPointType        string               `json:"endpointtype" required:"true"`
+	DbType              string               `json:"dbtype" required:"true"`
+	Ip                  string               `json:"ip" required:"true"`
+	DbUser              string               `json:"dbuser,omitempty"`
+	DbPassword          string               `json:"dbpassword,omitempty"`
+	DbPort              *int                 `json:"dbport,omitempty"`
+	DbName              string               `json:"dbName,omitempty"`
+	Region              string               `json:"region,omitempty"`
+	ProjectId           string               `json:"projectId,omitempty"`
+	InstId              string               `json:"instid,omitempty"`
+	VpcId               string               `json:"vpcId,omitempty"`
+	SubnetId            string               `json:"subnetId,omitempty"`
+	SslLink             *bool                `json:"ssllink,omitempty"`
+	SslCertKey          string               `json:"sslcertkey,omitempty"`
+	SslCertName         string               `json:"sslcertname,omitempty"`
+	SslCertCheckSum     string               `json:"sslcertchecksum,omitempty"`
+	KafkaSecurityConfig *KafkaSecurityConfig `json:"kafka_security_config,omitempty"`
 }
 
 type BatchDeleteJobReq struct {
@@ -268,6 +336,19 @@ func TestConnections(c *golangsdk.ServiceClient, opts TestConnectionsReq) (*Acti
 	return &rst, err
 }
 
+func TestClusterConnections(c *golangsdk.ServiceClient, opts TestClusterConnectionsReq) (*ActionResp, error) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var rst ActionResp
+	_, err = c.Post(testClusterConnectionsURL(c), b, &rst, &golangsdk.RequestOpts{
+		MoreHeaders: RequestOpts.MoreHeaders,
+	})
+	return &rst, err
+}
+
 func Update(c *golangsdk.ServiceClient, opts UpdateReq) (*golangsdk.Result, error) {
 	b, err := golangsdk.BuildRequestBody(opts, "")
 	if err != nil {
@@ -357,6 +438,20 @@ func Status(c *golangsdk.ServiceClient, opts QueryJobReq) (*StatusResp, error) {
 
 	var rst StatusResp
 	_, err = c.Post(statusURL(c), b, &rst, &golangsdk.RequestOpts{
+		MoreHeaders: RequestOpts.MoreHeaders,
+	})
+
+	return &rst, err
+}
+
+func Progress(c *golangsdk.ServiceClient, opts QueryJobReq) (*ProgressResp, error) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var rst ProgressResp
+	_, err = c.Post(progressURL(c), b, &rst, &golangsdk.RequestOpts{
 		MoreHeaders: RequestOpts.MoreHeaders,
 	})
 

@@ -2,6 +2,7 @@ package as
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -14,27 +15,51 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
 )
 
+func getASGroupResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+	asClient, err := cfg.AutoscalingV1Client(acceptance.HW_REGION_NAME)
+	if err != nil {
+		return nil, fmt.Errorf("error creating autoscaling client: %s", err)
+	}
+
+	return groups.Get(asClient, state.Primary.ID).Extract()
+}
+
 func TestAccASGroup_basic(t *testing.T) {
-	var asGroup groups.Group
-	rName := acceptance.RandomAccResourceName()
-	updateName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_as_group.acc_as_group"
+	var (
+		obj          interface{}
+		rName        = acceptance.RandomAccResourceName()
+		updateName   = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_as_group.acc_as_group"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&obj,
+		getASGroupResourceFunc,
+	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      testAccCheckASGroupDestroy,
+		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testASGroup_basic(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckASGroupExists(resourceName, &asGroup),
+					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "scaling_group_name", rName),
 					resource.TestCheckResourceAttr(resourceName, "description", "this is a basic AS group"),
 					resource.TestCheckResourceAttr(resourceName, "desire_instance_number", "0"),
 					resource.TestCheckResourceAttr(resourceName, "min_instance_number", "0"),
 					resource.TestCheckResourceAttr(resourceName, "max_instance_number", "5"),
-					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.protocol_port", "8080"),
+					resource.TestCheckResourceAttr(resourceName, "delete_publicip", "false"),
+					resource.TestCheckResourceAttr(resourceName, "delete_volume", "true"),
+					resource.TestCheckResourceAttrPair(resourceName, "lbaas_listeners.0.pool_id",
+						"huaweicloud_lb_pool.pool_1", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "lbaas_listeners.0.protocol_port",
+						"huaweicloud_lb_listener.listener_1", "protocol_port"),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.weight", "20"),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.protocol_version", "ipv4"),
 					resource.TestCheckResourceAttr(resourceName, "networks.0.source_dest_check", "true"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
@@ -53,6 +78,14 @@ func TestAccASGroup_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "description", "this is an updated AS group"),
 					resource.TestCheckResourceAttr(resourceName, "min_instance_number", "0"),
 					resource.TestCheckResourceAttr(resourceName, "max_instance_number", "5"),
+					resource.TestCheckResourceAttr(resourceName, "delete_publicip", "true"),
+					resource.TestCheckResourceAttr(resourceName, "delete_volume", "false"),
+					resource.TestCheckResourceAttrPair(resourceName, "lbaas_listeners.0.pool_id",
+						"huaweicloud_lb_pool.pool_1", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "lbaas_listeners.0.protocol_port",
+						"huaweicloud_lb_listener.listener_1", "protocol_port"),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.weight", "30"),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.protocol_version", "ipv4"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "agency_name", "ims_admin"),
@@ -70,14 +103,15 @@ func TestAccASGroup_basic(t *testing.T) {
 			{
 				Config: testASGroup_basic_disable(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckASGroupExists(resourceName, &asGroup),
+					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "status", "PAUSED"),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.weight", "1"),
 				),
 			},
 			{
 				Config: testASGroup_basic_enable(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckASGroupExists(resourceName, &asGroup),
+					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "multi_az_scaling_policy", "PICK_FIRST"),
 					resource.TestCheckResourceAttr(resourceName, "cool_down_time", "600"),
 					resource.TestCheckResourceAttr(resourceName, "health_periodic_audit_time", "15"),
@@ -90,20 +124,33 @@ func TestAccASGroup_basic(t *testing.T) {
 }
 
 func TestAccASGroup_withEpsId(t *testing.T) {
-	var asGroup groups.Group
-	rName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_as_group.acc_as_group"
+	var (
+		obj          interface{}
+		rName        = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_as_group.acc_as_group"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&obj,
+		getASGroupResourceFunc,
+	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheckEpsID(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      testAccCheckASGroupDestroy,
+		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testASGroup_withEpsId(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckASGroupExists(resourceName, &asGroup),
+					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.weight", "1"),
+					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.protocol_version", "ipv4"),
 				),
 			},
 		},
@@ -111,24 +158,34 @@ func TestAccASGroup_withEpsId(t *testing.T) {
 }
 
 func TestAccASGroup_forceDelete(t *testing.T) {
-	var asGroup groups.Group
-	rName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_as_group.acc_as_group"
+	var (
+		obj          interface{}
+		rName        = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_as_group.acc_as_group"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&obj,
+		getASGroupResourceFunc,
+	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      testAccCheckASGroupDestroy,
+		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testASGroup_forceDelete(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckASGroupExists(resourceName, &asGroup),
+					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "desire_instance_number", "2"),
 					resource.TestCheckResourceAttr(resourceName, "min_instance_number", "2"),
 					resource.TestCheckResourceAttr(resourceName, "max_instance_number", "5"),
 					resource.TestCheckResourceAttr(resourceName, "instances.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "status", "INSERVICE"),
+					resource.TestCheckResourceAttr(resourceName, "delete_publicip", "true"),
+					resource.TestCheckResourceAttr(resourceName, "delete_volume", "true"),
 				),
 			},
 		},
@@ -136,77 +193,38 @@ func TestAccASGroup_forceDelete(t *testing.T) {
 }
 
 func TestAccASGroup_sourceDestCheck(t *testing.T) {
-	var asGroup groups.Group
-	rName := acceptance.RandomAccResourceName()
-	resourceName := "huaweicloud_as_group.acc_as_group"
+	var (
+		obj          interface{}
+		rName        = acceptance.RandomAccResourceName()
+		resourceName = "huaweicloud_as_group.acc_as_group"
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&obj,
+		getASGroupResourceFunc,
+	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      testAccCheckASGroupDestroy,
+		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testASGroup_sourceDestCheck(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckASGroupExists(resourceName, &asGroup),
+					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "networks.0.source_dest_check", "false"),
 					resource.TestCheckResourceAttr(resourceName, "status", "INSERVICE"),
 				),
 			},
+			{
+				Config: testASGroup_sourceDestErrorCheck(rName),
+				ExpectError: regexp.MustCompile("invalid parameters: it should be min_instance_number <=" +
+					" desire_instance_number <= max_instance_number"),
+			},
 		},
 	})
-}
-
-func testAccCheckASGroupDestroy(s *terraform.State) error {
-	conf := acceptance.TestAccProvider.Meta().(*config.Config)
-	asClient, err := conf.AutoscalingV1Client(acceptance.HW_REGION_NAME)
-	if err != nil {
-		return fmt.Errorf("error creating autoscaling client: %s", err)
-	}
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "huaweicloud_as_group" {
-			continue
-		}
-
-		_, err := groups.Get(asClient, rs.Primary.ID).Extract()
-		if err == nil {
-			return fmt.Errorf("AS group still exists")
-		}
-	}
-
-	return nil
-}
-
-func testAccCheckASGroupExists(n string, group *groups.Group) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[n]
-		if !ok {
-			return fmt.Errorf("Not found: %s", n)
-		}
-
-		if rs.Primary.ID == "" {
-			return fmt.Errorf("No ID is set")
-		}
-
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		asClient, err := config.AutoscalingV1Client(acceptance.HW_REGION_NAME)
-		if err != nil {
-			return fmt.Errorf("error creating autoscaling client: %s", err)
-		}
-
-		found, err := groups.Get(asClient, rs.Primary.ID).Extract()
-		if err != nil {
-			return err
-		}
-
-		if found.ID != rs.Primary.ID {
-			return fmt.Errorf("Autoscaling Group not found")
-		}
-
-		group = &found
-		return nil
-	}
 }
 
 //nolint:revive
@@ -214,7 +232,7 @@ func testASGroup_Base(rName string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_compute_keypair" "acc_key" {
+resource "huaweicloud_kps_keypair" "acc_key" {
   name       = "%[2]s"
   public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDAjpC1hwiOCCmKEWxJ4qzTTsJbKzndLo1BCz5PcwtUnflmU+gHJtWMZKpuEGVi29h0A/+ydKek1O18k10Ff+4tyFjiHDQAT9+OfgWf7+b1yK+qDip3X1C0UPMbwHlTfSGWLGZquwhvEFx9k3h/M+VtMvwR1lJ9LUyTAImnNjWG7TAIPmui30HvM2UiFEmqkr4ijq45MyX2+fLIePLRIFuu1p4whjHAQYufqyno3BS48icQb4p6iVEZPo4AE2o9oIyQvj2mx4dk5Y8CgSETOZTYDOR3rU2fZTRDRgPJDH9FWvQjF5tA0p3d9CoWWd2s6GKKbfoUIi8R/Db1BSPJwkqB jrp-hp-pc"
 }
@@ -243,7 +261,7 @@ resource "huaweicloud_as_configuration" "acc_as_config"{
   instance_config {
 	image    = data.huaweicloud_images_image.test.id
 	flavor   = data.huaweicloud_compute_flavors.test.ids[0]
-    key_name = huaweicloud_compute_keypair.acc_key.id
+    key_name = huaweicloud_kps_keypair.acc_key.id
     disk {
       size        = 40
       volume_type = "SSD"
@@ -263,6 +281,8 @@ resource "huaweicloud_as_group" "acc_as_group"{
   vpc_id                   = huaweicloud_vpc.test.id
   max_instance_number      = 5
   description              = "this is a basic AS group"
+  delete_publicip          = false
+  delete_volume            = true
 
   networks {
     id = huaweicloud_vpc_subnet.test.id
@@ -271,8 +291,10 @@ resource "huaweicloud_as_group" "acc_as_group"{
     id = huaweicloud_networking_secgroup.test.id
   }
   lbaas_listeners {
-    pool_id       = huaweicloud_lb_pool.pool_1.id
-    protocol_port = huaweicloud_lb_listener.listener_1.protocol_port
+    pool_id          = huaweicloud_lb_pool.pool_1.id
+    protocol_port    = huaweicloud_lb_listener.listener_1.protocol_port
+    weight           = 20
+    protocol_version = "ipv4"
   }
   tags = {
     foo = "bar"
@@ -295,6 +317,8 @@ resource "huaweicloud_as_group" "acc_as_group"{
   max_instance_number      = 5
   description              = "this is an updated AS group"
   agency_name              = "ims_admin"
+  delete_publicip          = true
+  delete_volume            = false
 
   networks {
     id = huaweicloud_vpc_subnet.test.id
@@ -303,8 +327,10 @@ resource "huaweicloud_as_group" "acc_as_group"{
     id = huaweicloud_networking_secgroup.test.id
   }
   lbaas_listeners {
-    pool_id       = huaweicloud_lb_pool.pool_1.id
-    protocol_port = huaweicloud_lb_listener.listener_1.protocol_port
+    pool_id          = huaweicloud_lb_pool.pool_1.id
+    protocol_port    = huaweicloud_lb_listener.listener_1.protocol_port
+    weight           = 30
+    protocol_version = "ipv4"
   }
   tags = {
     foo   = "bar"
@@ -416,6 +442,8 @@ resource "huaweicloud_as_group" "acc_as_group"{
   max_instance_number      = 5
   force_delete             = true
   vpc_id                   = huaweicloud_vpc.test.id
+  delete_publicip          = true
+  delete_volume            = true
 
   networks {
     id = huaweicloud_vpc_subnet.test.id
@@ -434,7 +462,35 @@ func testASGroup_sourceDestCheck(rName string) string {
 resource "huaweicloud_as_group" "acc_as_group"{
   scaling_group_name       = "%s"
   scaling_configuration_id = huaweicloud_as_configuration.acc_as_config.id
+  min_instance_number      = 0
+  max_instance_number      = 2
+  desire_instance_number   = 2
   vpc_id                   = huaweicloud_vpc.test.id
+  delete_instances         = "yes"
+
+  networks {
+    id                = huaweicloud_vpc_subnet.test.id
+    source_dest_check = false
+  }
+  security_groups {
+    id = huaweicloud_networking_secgroup.test.id
+  }
+}
+`, testASGroup_Base(rName), rName)
+}
+
+func testASGroup_sourceDestErrorCheck(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_as_group" "acc_as_group"{
+  scaling_group_name       = "%s"
+  scaling_configuration_id = huaweicloud_as_configuration.acc_as_config.id
+  min_instance_number      = 0
+  max_instance_number      = 0
+  desire_instance_number   = 2
+  vpc_id                   = huaweicloud_vpc.test.id
+  delete_instances         = "yes"
 
   networks {
     id                = huaweicloud_vpc_subnet.test.id

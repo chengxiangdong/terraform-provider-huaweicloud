@@ -17,6 +17,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API NAT POST /v3/{project_id}/private-nat/dnat-rules
+// @API NAT GET /v3/{project_id}/private-nat/dnat-rules/{dnat_rule_id}
+// @API NAT PUT /v3/{project_id}/private-nat/dnat-rules/{dnat_rule_id}
+// @API NAT DELETE /v3/{project_id}/private-nat/dnat-rules/{dnat_rule_id}
 func ResourcePrivateDnatRule() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourcePrivateDnatRuleCreate,
@@ -96,6 +100,11 @@ func ResourcePrivateDnatRule() *schema.Resource {
 				Computed:    true,
 				Description: "The latest update time of the DNAT rule.",
 			},
+			"enterprise_project_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The ID of the enterprise project to which the private DNAT rule belongs.",
+			},
 		},
 	}
 }
@@ -138,7 +147,8 @@ func resourcePrivateDnatRuleRead(_ context.Context, d *schema.ResourceData, meta
 
 	resp, err := dnats.Get(client, d.Id())
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "Private DNAT rule")
+		// If the private DNAT rule does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error retrieving private DNAT rule")
 	}
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
@@ -151,6 +161,7 @@ func resourcePrivateDnatRuleRead(_ context.Context, d *schema.ResourceData, meta
 		d.Set("backend_type", resp.Type),
 		d.Set("created_at", resp.CreatedAt),
 		d.Set("updated_at", resp.UpdatedAt),
+		d.Set("enterprise_project_id", resp.EnterpriseProjectId),
 	)
 
 	// Parse the internal service port
@@ -215,7 +226,8 @@ func resourcePrivateDnatRuleDelete(_ context.Context, d *schema.ResourceData, me
 	ruleId := d.Id()
 	err = dnats.Delete(client, ruleId)
 	if err != nil {
-		return diag.Errorf("error deleting DNAT rule (Private NAT) (%s): %s", ruleId, err)
+		// If the private DNAT rule does not exist, the response HTTP status code of the details API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting private DNAT rule")
 	}
 
 	return nil

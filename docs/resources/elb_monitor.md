@@ -1,5 +1,8 @@
 ---
 subcategory: "Dedicated Load Balance (Dedicated ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_elb_monitor"
+description: ""
 ---
 
 # huaweicloud_elb_monitor
@@ -35,22 +38,29 @@ The following arguments are supported:
   configured. Changing this creates a new monitor.
 
 * `protocol` - (Required, String) Specifies the health check protocol. Value options: **TCP**, **UDP_CONNECT**,
-  **HTTP**, or **HTTPS**.
+  **HTTP**, **HTTPS**, **GRPC** or **TLS**.
   + If the protocol of the backend server is **QUIC**, the value can only be **UDP_CONNECT**.
   + If the protocol of the backend server is **UDP**, the value can only be **UDP_CONNECT**.
-  + If the protocol of the backend server is **TCP**, the value can only be **TCP**, **HTTP**, or **HTTPS**.
-  + If the protocol of the backend server is **HTTP**, the value can only be **TCP**, **HTTP**, or **HTTPS**.
-  + If the protocol of the backend server is **HTTPS**, the value can only be **TCP**, **HTTP**, or **HTTPS**.
+  + If the protocol of the backend server is **TCP**, the value can only be **TCP**, **HTTP** or **HTTPS**.
+  + If the protocol of the backend server is **HTTP**, the value can only be **TCP**, **HTTP**, **HTTPS**, **TLS** or **GRPC**.
+  + If the protocol of the backend server is **HTTPS**, the value can only be **TCP**, **HTTP**, **HTTPS**, **TLS** or **GRPC**.
+  + If the protocol of the backend server is **GRPC**, the value can only be **TCP**, **HTTP**, **HTTPS**, **TLS** or **GRPC**.
+  + If the protocol of the backend server is **TLS**, the value can only be **TCP**, **HTTP**, **HTTPS**, **TLS** or **GRPC**.
 
 * `interval` - (Required, Int) Specifies the interval between health checks, in seconds.
-  Value ranges from **1** to **50**.
+  Value ranges from `1` to `50`.
 
 * `timeout` - (Required, Int) Specifies the maximum time required for waiting for a response from the health check,
-  in seconds. Value ranges from **1** to **50**. It is recommended that you set the value less than that of
+  in seconds. Value ranges from `1` to `50`. It is recommended that you set the value less than that of
   parameter `interval`.
 
 * `max_retries` - (Required, Int) Specifies the number of consecutive health checks when the health check result of
-  a backend server changes from OFFLINE to ONLINE. Value ranges from **1** to **50**.
+  a backend server changes from OFFLINE to ONLINE. Value ranges from `1` to `10`.
+
+* `max_retries_down` - (Optional, Int) Specifies the number of consecutive health checks when the health check result of
+  a backend server changes from ONLINE to OFFLINE. The value ranges from `1` to `10`, and the default value is `3`.
+
+* `name` - (Optional, String) Specifies the health check name.
 
 * `domain_name` - (Optional, String) Specifies the domain name that HTTP requests are sent to during the health check.
   The domain name consists of 1 to 100 characters, can contain only digits, letters, hyphens (-), and periods (.) and
@@ -59,7 +69,8 @@ The following arguments are supported:
   is set to **HTTP** or **HTTPS**.
 
 * `port` - (Optional, Int) Specifies the port used for the health check. If this parameter is left blank, a port of
-  the backend server will be used by default.  Value ranges from **1** to **65535**.
+  the backend server will be used by default. It is mandatory when the `protocol` of the backend server group is **IP**.
+  Value ranges from `1` to `65,535`.
 
 * `url_path` - (Optional, String) Specifies the HTTP request path for the health check. The value must start with a
   slash (/), can contain letters, digits, hyphens (-), slash (/), periods (.), percent signs (%), hashes(#), and(&)
@@ -74,11 +85,21 @@ The following arguments are supported:
 
   Defaults to **200**.
 
+* `http_method` - (Optional, String) Specifies the HTTP method. Value options: **GET**, **HEAD**, **POST**. Defaults to **GET**.
+
+* `enabled` - (Optional, Bool) Specifies whether the health check is enabled.
+  + **true(default)**: Health check is enabled.
+  + **false**: Health check is disabled.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The unique ID for the monitor.
+* `id` - The unique ID of the monitor.
+
+* `created_at` - The creation time of the monitor.
+
+* `updated_at` - The update time of the monitor.
 
 ## Import
 

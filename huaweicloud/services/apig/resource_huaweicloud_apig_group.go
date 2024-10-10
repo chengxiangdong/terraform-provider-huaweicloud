@@ -3,13 +3,12 @@ package apig
 import (
 	"context"
 	"fmt"
-	"regexp"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/apigroups"
@@ -20,6 +19,18 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/env-variables
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/env-variables
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/env-variables/{env_variable_id}
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/api-groups/{group_id}
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}/api-groups/{group_id}
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/api-groups
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/api-groups/{group_id}
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/api-groups/{group_id}/domains
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/api-groups/{group_id}/domains/{domain_id}
+// @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}/api-groups/{group_id}/sl-domain-access-settings
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/apis
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/apis/publish
 func ResourceApigGroupV2() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceGroupCreate,
@@ -46,29 +57,19 @@ func ResourceApigGroupV2() *schema.Resource {
 				Description: "The ID of the dedicated instance to which the group belongs.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5\\w]*$"),
-						"Only chinese and english letters, digits and underscores (_) are allowed, and must start "+
-							"with a chinese or english letter. Chinese characters must be in UTF-8 or Unicode format."),
-					validation.StringLenBetween(3, 64),
-				),
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The group name.",
 			},
 			"description": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringMatch(regexp.MustCompile(`^[^<>]*$`),
-						"The angle brackets (< and >) are not allowed."),
-					validation.StringLenBetween(0, 255),
-				),
+				Type:        schema.TypeString,
+				Optional:    true,
 				Description: "The group description.",
 			},
 			"environment": {
 				Type:     schema.TypeSet,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"variable": {
@@ -77,25 +78,13 @@ func ResourceApigGroupV2() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"name": {
-										Type:     schema.TypeString,
-										Required: true,
-										ValidateFunc: validation.All(
-											validation.StringMatch(
-												regexp.MustCompile(`^[A-Za-z][\w-]*$`),
-												"Only letters, digits, hyphens (-) and underscores (_) are allowed, "+
-													"and must start with a letter."),
-											validation.StringLenBetween(3, 32),
-										),
+										Type:        schema.TypeString,
+										Required:    true,
 										Description: "The variable name.",
 									},
 									"value": {
-										Type:     schema.TypeString,
-										Required: true,
-										ValidateFunc: validation.All(
-											validation.StringMatch(regexp.MustCompile(`^[\w:/.-]*$`),
-												"Only letters, digit and following special characters are allowed: _-/.:"),
-											validation.StringLenBetween(1, 255),
-										),
+										Type:        schema.TypeString,
+										Required:    true,
 										Description: "The variable value.",
 									},
 									"id": {
@@ -122,21 +111,71 @@ func ResourceApigGroupV2() *schema.Resource {
 				},
 				Description: "The array of one or more environments of the associated group.",
 			},
-			"registration_time": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The registration time.",
+			"url_domains": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				MaxItems: 5,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"min_ssl_version": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+						"is_http_redirect_to_https": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
 			},
-			"update_time": {
+			"domain_access_enabled": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
+				Description: "Specifies whether to use the debugging domain name to access the APIs within the group.",
+			},
+			"force_destroy": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
+				Description: "Whether to delete all sub-resources (for API) from this group.",
+			},
+			"created_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Deprecated:  "Use 'updated_at' instead",
-				Description: `schema: Deprecated; The latest update time of the group.`,
+				Description: `The creation time of the group, in RFC3339 format.`,
 			},
 			"updated_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `The latest update time of the group.`,
+				Description: `The latest update time of the group, in RFC3339 format.`,
+			},
+			// Deprecated
+			"registration_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: utils.SchemaDesc(
+					`The registration time.`,
+					utils.SchemaDescInput{
+						Deprecated: true,
+					},
+				),
+			},
+			"update_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: utils.SchemaDesc(
+					`The latest update time of the group.`,
+					utils.SchemaDescInput{
+						Deprecated: true,
+					},
+				),
 			},
 		},
 	}
@@ -199,12 +238,28 @@ func resourceGroupCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	}
 	d.SetId(resp.Id)
 
+	groupId := d.Id()
 	if environmentSet, ok := d.GetOk("environment"); ok {
-		err = createEnvironmentVariables(client, instanceId, d.Id(), environmentSet.(*schema.Set))
+		err = createEnvironmentVariables(client, instanceId, groupId, environmentSet.(*schema.Set))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
+
+	if domains, ok := d.GetOk("url_domains"); ok {
+		err = associateDomain(client, instanceId, groupId, domains.(*schema.Set).List())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// The API will not report an error if it is called repeatedly.
+	err = updateDomianAccessEnabled(client, instanceId, groupId, d.Get("domain_access_enabled").(bool))
+	if err != nil {
+		// This feature is not available in some region, so use log.Printf to record the error.
+		log.Printf("[ERROR] Update debugging domain name access status failed: %s", err)
+	}
+
 	return resourceGroupRead(ctx, d, meta)
 }
 
@@ -258,6 +313,23 @@ func flattenEnvironmentVariables(variables []environments.Variable) []map[string
 	return result
 }
 
+func flattenUrlDomain(urlDomains []apigroups.UrlDomian) []map[string]interface{} {
+	if len(urlDomains) == 0 {
+		return nil
+	}
+
+	result := make([]map[string]interface{}, len(urlDomains))
+	for i, v := range urlDomains {
+		result[i] = map[string]interface{}{
+			"name":                      v.DomainName,
+			"min_ssl_version":           v.MinSSLVersion,
+			"is_http_redirect_to_https": v.IsHttpRedirectToHttps,
+		}
+	}
+
+	return result
+}
+
 func resourceGroupRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	client, err := cfg.ApigV2Client(cfg.GetRegion(d))
@@ -279,6 +351,12 @@ func resourceGroupRead(_ context.Context, d *schema.ResourceData, meta interface
 		d.Set("region", cfg.GetRegion(d)),
 		d.Set("name", resp.Name),
 		d.Set("description", resp.Description),
+		d.Set("url_domains", flattenUrlDomain(resp.UrlDomians)),
+		d.Set("domain_access_enabled", resp.SlDomainAccessEnabled),
+		d.Set("force_destroy", d.Get("force_destroy")),
+		d.Set("created_at", resp.RegistraionTime),
+		d.Set("updated_at", resp.UpdateTime),
+		// Deprecated attributes
 		d.Set("registration_time", resp.RegistraionTime),
 		d.Set("update_time", resp.UpdateTime),
 	)
@@ -306,6 +384,96 @@ func updateEnvironmentVariables(client *golangsdk.ServiceClient, d *schema.Resou
 		return err
 	}
 	return createEnvironmentVariables(client, instanceId, groupId, addRaws)
+}
+
+func associateDomain(client *golangsdk.ServiceClient, instanceId, groupId string, domains []interface{}) error {
+	for _, v := range domains {
+		domain := v.(map[string]interface{})
+		opts := apigroups.AssociateDomainOpts{
+			InstanceId:            instanceId,
+			GroupId:               groupId,
+			UrlDomain:             domain["name"].(string),
+			MinSSLVersion:         domain["min_ssl_version"].(string),
+			IsHttpRedirectToHttps: domain["is_http_redirect_to_https"].(bool),
+		}
+		_, err := apigroups.AssociateDomain(client, opts)
+		if err != nil {
+			return fmt.Errorf("error binding domain name to the API group (%s): %s", groupId, err)
+		}
+	}
+	return nil
+}
+
+func getDomainIdByName(client *golangsdk.ServiceClient, instanceId, groupId, domainName string) (string, error) {
+	resp, err := apigroups.Get(client, instanceId, groupId).Extract()
+	if err != nil {
+		return "", fmt.Errorf("error retrieving dedicated group(%s): %s", groupId, err)
+	}
+
+	if len(resp.UrlDomians) == 0 {
+		return "", fmt.Errorf("unable to find any domain name information under dedicated group: %s", groupId)
+	}
+
+	for _, v := range resp.UrlDomians {
+		if v.DomainName == domainName {
+			return v.Id, nil
+		}
+	}
+
+	return "", golangsdk.ErrDefault404{}
+}
+
+func disAssociateDomain(client *golangsdk.ServiceClient, instanceId, groupId string, domains []interface{}) error {
+	for _, v := range domains {
+		domain := v.(map[string]interface{})
+		domainName := domain["name"].(string)
+		domainId, err := getDomainIdByName(client, instanceId, groupId, domainName)
+		if err != nil {
+			if _, ok := err.(golangsdk.ErrDefault404); ok {
+				log.Printf("[DEBUG] The domain name (%s) has been disassociated.", domainName)
+				continue
+			}
+			return err
+		}
+
+		err = apigroups.DisAssociateDomain(client, instanceId, groupId, domainId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updateAssociateDomian(client *golangsdk.ServiceClient, d *schema.ResourceData, instanceId, groupId string) error {
+	var (
+		oldRaws, newRaws = d.GetChange("url_domains")
+		addRaws          = newRaws.(*schema.Set).Difference(oldRaws.(*schema.Set))
+		removeRaws       = oldRaws.(*schema.Set).Difference(newRaws.(*schema.Set))
+	)
+	if removeRaws.Len() > 0 {
+		if err := disAssociateDomain(client, instanceId, groupId, removeRaws.List()); err != nil {
+			return err
+		}
+	}
+
+	if addRaws.Len() > 0 {
+		return associateDomain(client, instanceId, groupId, addRaws.List())
+	}
+
+	return nil
+}
+
+func updateDomianAccessEnabled(client *golangsdk.ServiceClient, instanceId, groupId string, domainAccessEnabled bool) error {
+	opt := apigroups.UpdateDomainAccessEnabledOpts{
+		InstanceId:            instanceId,
+		GroupId:               groupId,
+		SlDomainAccessEnabled: utils.Bool(domainAccessEnabled),
+	}
+	err := apigroups.UpdateDomainAccessEnabled(client, opt)
+	if err != nil {
+		return fmt.Errorf("error updating debugging domain name access (%s): %s", groupId, err)
+	}
+	return nil
 }
 
 func resourceGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -336,16 +504,140 @@ func resourceGroupUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 			return diag.Errorf("error updating environment variables: %s", err)
 		}
 	}
+
+	if d.HasChanges("url_domains") {
+		if err := updateAssociateDomian(client, d, instanceId, groupId); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("domain_access_enabled") {
+		err := updateDomianAccessEnabled(client, instanceId, groupId, d.Get("domain_access_enabled").(bool))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceGroupRead(ctx, d, meta)
 }
 
+func queryApisInGroup(client *golangsdk.ServiceClient, instanceId, groupId string) ([]interface{}, error) {
+	var (
+		httpUrl = "v2/{project_id}/apigw/instances/{instance_id}/apis?group_id={group_id}&limit=500"
+		offset  = 0
+		result  = make([]interface{}, 0)
+	)
+	listPath := client.Endpoint + httpUrl
+	listPath = strings.ReplaceAll(listPath, "{project_id}", client.ProjectID)
+	listPath = strings.ReplaceAll(listPath, "{instance_id}", instanceId)
+	listPath = strings.ReplaceAll(listPath, "{group_id}", groupId)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}
+
+	for {
+		listPathWithOffsset := fmt.Sprintf("%s&offset=%d", listPath, offset)
+		requestResp, err := client.Request("GET", listPathWithOffsset, &opt)
+		if err != nil {
+			return nil, fmt.Errorf("error querying API list: %s", err)
+		}
+		respBody, err := utils.FlattenResponse(requestResp)
+		if err != nil {
+			return nil, err
+		}
+		apiRecords := utils.PathSearch("apis", respBody, make([]interface{}, 0)).([]interface{})
+		if len(apiRecords) < 1 {
+			break
+		}
+		result = append(result, apiRecords...)
+		offset += len(apiRecords)
+	}
+	return result, nil
+}
+
+func parsePublishInfo(apiRecords []interface{}) map[string][]interface{} {
+	result := make(map[string][]interface{})
+	for _, apiRecord := range apiRecords {
+		apiId := utils.PathSearch("id", apiRecord, "").(string)
+		if apiId == "" {
+			log.Printf("[ERROR] The API ID field is missing.")
+			continue
+		}
+		publishedEnvs := utils.PathSearch("run_env_id", apiRecord, "").(string)
+		for _, env := range strings.Split(strings.TrimSpace(publishedEnvs), "|") {
+			if _, ok := result[env]; ok {
+				result[env] = append(result[env], apiId)
+				continue
+			}
+			result[env] = []interface{}{apiId}
+		}
+	}
+	return result
+}
+
+func batchUnpublishApis(client *golangsdk.ServiceClient, instanceId, envId string, apiIds []interface{}) error {
+	httpUrl := "v2/{project_id}/apigw/instances/{instance_id}/apis/publish?action=offline"
+	unpublishPath := client.Endpoint + httpUrl
+	unpublishPath = strings.ReplaceAll(unpublishPath, "{project_id}", client.ProjectID)
+	unpublishPath = strings.ReplaceAll(unpublishPath, "{instance_id}", instanceId)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+		JSONBody: map[string]interface{}{
+			"apis":   apiIds,
+			"env_id": envId,
+		},
+	}
+
+	_, err := client.Request("POST", unpublishPath, &opt)
+	return err
+}
+
+func forceUnpublishApis(client *golangsdk.ServiceClient, instanceId, groupId string) error {
+	apiRecords, err := queryApisInGroup(client, instanceId, groupId)
+	if err != nil {
+		return err
+	}
+	// Unpublish first if they have published APIs.
+	for envId, unpublishApiIds := range parsePublishInfo(apiRecords) {
+		if err = batchUnpublishApis(client, instanceId, envId, unpublishApiIds); err != nil {
+			log.Printf("[ERROR] Error unpublishing API from environment (%s): %s", envId, err)
+		}
+	}
+	// Remove all APIs.
+	for _, apiId := range utils.PathSearch("[*].id", apiRecords, make([]interface{}, 0)).([]interface{}) {
+		if err = deleteApi(client, instanceId, apiId.(string)); err != nil {
+			log.Printf("[ERROR] Error deleting API (%s): %s", apiId, err)
+		}
+	}
+	return nil
+}
+
 func resourceGroupDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cfg := meta.(*config.Config)
-	client, err := cfg.ApigV2Client(cfg.GetRegion(d))
+	var (
+		cfg        = meta.(*config.Config)
+		region     = cfg.GetRegion(d)
+		groupId    = d.Id()
+		instanceId = d.Get("instance_id").(string)
+	)
+	client, err := cfg.ApigV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating APIG v2 client: %s", err)
 	}
-	instanceId := d.Get("instance_id").(string)
+
+	if d.Get("force_destroy").(bool) {
+		if err = forceUnpublishApis(client, instanceId, groupId); err != nil {
+			log.Printf("[ERROR] Unable to clean the sub-resources (for API) under group (%s): %s", groupId, err)
+		}
+	}
+
 	err = apigroups.Delete(client, instanceId, d.Id()).ExtractErr()
 	if err != nil {
 		return diag.Errorf("error deleting group from the instance (%s): %s", instanceId, err)

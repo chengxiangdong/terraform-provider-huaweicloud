@@ -1,5 +1,8 @@
 ---
 subcategory: "Relational Database Service (RDS)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_rds_sqlserver_collations"
+description: ""
 ---
 
 # huaweicloud_rds_sqlserver_collations
@@ -23,6 +26,6 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `char_sets` - Indicates the character set information list.

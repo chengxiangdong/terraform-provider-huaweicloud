@@ -1,5 +1,8 @@
 ---
 subcategory: "Elastic Load Balance (ELB)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_lb_monitor"
+description: ""
 ---
 
 # huaweicloud_lb_monitor
@@ -75,7 +78,7 @@ The following arguments are supported:
 
 * `name` - (Optional, String) Specifies the health check name. The value contains a maximum of 255 characters.
 
-* `port` - (Optional, Int) Specifies the health check port. The port number ranges from 1 to 65535. If not specified,
+* `port` - (Optional, Int) Specifies the health check port. The port number ranges from `1` to `65,535`. If not specified,
   the port of the backend server will be used as the health check port.
 
 * `url_path` - (Optional, String) Specifies the HTTP request path for the health check. Required for HTTP type.
@@ -105,6 +108,6 @@ This resource provides the following timeouts configuration options:
 
 ELB monitor can be imported using the monitor ID, e.g.
 
-```
+```bash
 $ terraform import huaweicloud_lb_monitor.monitor_1 5c20fdad-7288-11eb-b817-0255ac10158b
 ```

@@ -81,6 +81,11 @@
                 "type": "string",
                 "computed": true
               },
+              "sse_algorithm": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "storage_class": {
                 "type": "string",
                 "optional": true,
@@ -178,6 +183,17 @@
                     }
                   },
                   "block_types": {
+                    "abort_incomplete_multipart_upload": {
+                      "block": {
+                        "attributes": {
+                          "days": {
+                            "type": "number",
+                            "required": true
+                          }
+                        }
+                      },
+                      "nesting_mode": "set"
+                    },
                     "expiration": {
                       "block": {
                         "attributes": {
@@ -237,6 +253,10 @@
               "logging": {
                 "block": {
                   "attributes": {
+                    "agency": {
+                      "type": "string",
+                      "required": true
+                    },
                     "target_bucket": {
                       "type": "string",
                       "required": true

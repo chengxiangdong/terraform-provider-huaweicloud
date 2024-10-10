@@ -1,97 +1,99 @@
 info:
-  version: 
-  title: resource_huaweicloud_gaussdb_mysql_instance
-  description: 
+    version: ""
+    title: resource_huaweicloud_gaussdb_mysql_instance
+    description: ""
 schemes:
-  - https
+    - https
 host: huaweicloud.com
 tags:
-  - name: GaussDBforMySQL
+    - name: GaussDBforMySQL
 paths:
-  /v3/{project_id}/configurations:
-    get:
-      tag: GaussDBforMySQL
-      operationId: List
-  /v3/{project_id}/dedicated-resources:
-    get:
-      tag: GaussDBforMySQL
-      operationId: ListDeh
-  /v3/{project_id}/instance/{instanceId}/audit-log/switch-status:
-    get:
-      tag: GaussDBforMySQL
-      operationId: Get
-  /v3/{project_id}/instance/{instanceId}/audit-log/switch:
-    post:
-      tag: GaussDBforMySQL
-      operationId: Update
-  /v3/{project_id}/instances/{id}/backups/policy/update:
-    put:
-      tag: GaussDBforMySQL
-      operationId: Update
-  /v3/{project_id}/instances/{id}/tags/action:
-    post:
-      tag: GaussDBforMySQL
-      operationId: Create
-  /v3/{project_id}/instances/{id}/tags:
-    get:
-      tag: GaussDBforMySQL
-      operationId: Get
-  /v3/{project_id}/instances/{instanceID}/action:
-    post:
-      tag: GaussDBforMySQL
-      operationId: Resize
-  /v3/{project_id}/instances/{instanceID}/name:
-    put:
-      tag: GaussDBforMySQL
-      operationId: UpdateName
-  /v3/{project_id}/instances/{instanceID}/nodes/enlarge:
-    post:
-      tag: GaussDBforMySQL
-      operationId: CreateReplica
-  /v3/{project_id}/instances/{instanceID}/nodes/{nodeID}:
-    delete:
-      tag: GaussDBforMySQL
-      operationId: DeleteReplica
-  /v3/{project_id}/instances/{instanceID}/password:
-    post:
-      tag: GaussDBforMySQL
-      operationId: UpdatePass
-  /v3/{project_id}/instances/{instanceID}/proxy/enlarge:
-    post:
-      tag: GaussDBforMySQL
-      operationId: EnlargeProxy
-  /v3/{project_id}/instances/{instanceID}/proxy:
-    delete:
-      tag: GaussDBforMySQL
-      operationId: DeleteProxy
-    get:
-      tag: GaussDBforMySQL
-      operationId: GetProxy
-    post:
-      tag: GaussDBforMySQL
-      operationId: EnableProxy
-  /v3/{project_id}/instances/{instanceId}/sql-filter/switch:
-    get:
-      tag: GaussDBforMySQL
-      operationId: Get
-    post:
-      tag: GaussDBforMySQL
-      operationId: Update
-  /v3/{project_id}/instances/{instanceID}/volume/extend:
-    post:
-      tag: GaussDBforMySQL
-      operationId: ExtendVolume
-  /v3/{project_id}/instances/{instanceID}:
-    delete:
-      tag: GaussDBforMySQL
-      operationId: Delete
-    get:
-      tag: GaussDBforMySQL
-      operationId: Get
-  /v3/{project_id}/instances:
-    get:
-      tag: GaussDBforMySQL
-      operationId: List
-    post:
-      tag: GaussDBforMySQL
-      operationId: Create
+    /v2/orders/customer-orders/details/{order_id}:
+        GET:
+            tag: BSS
+    /v2/orders/subscriptions/resources/autorenew/{instance_id}:
+        DELETE:
+            tag: BSS
+        POST:
+            tag: BSS
+    /v2/orders/subscriptions/resources/unsubscribe:
+        POST:
+            tag: BSS
+    /v3/{project_id}/configurations:
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/configurations/{configuration_id}/apply:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/dedicated-resources:
+        GET:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instance/{instance_id}/audit-log/switch:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instance/{instance_id}/audit-log/switch-status:
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances:
+        GET:
+            tag: GaussDBforMySQL
+        POST:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}:
+        DELETE:
+            tag: GaussDBforMySQL
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/action:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/backups/policy/update:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/configurations:
+        GET:
+            tag: GaussDBforMySQL
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/name:
+        PUT:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/nodes/{nodeID}:
+        DELETE:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/nodes/enlarge:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/password:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy:
+        DELETE:
+            tag: GaussDBforMySQL
+        GET:
+            tag: GaussDBforMySQL
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/proxy/enlarge:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/restart:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/sql-filter/switch:
+        GET:
+            tag: GaussDBforMySQL
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/tags:
+        GET:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/instances/{instance_id}/tags/action:
+        POST:
+            tag: GaussDBforNoSQL
+    /v3/{project_id}/instances/{instance_id}/volume/extend:
+        POST:
+            tag: GaussDBforMySQL
+    /v3/{project_id}/jobs:
+        GET:
+            tag: GaussDBforMySQL

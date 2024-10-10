@@ -14,7 +14,7 @@
               "agency_name": {
                 "type": "string",
                 "optional": true,
-                "forcenew": true
+                "computed": true
               },
               "auto_renew": {
                 "type": "string",
@@ -65,8 +65,7 @@
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "flavor_id": {
                 "type": "string",
@@ -99,6 +98,13 @@
                 "type": "string",
                 "optional": true,
                 "forcenew": true
+              },
+              "metadata": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
               },
               "name": {
                 "type": "string",
@@ -155,12 +161,12 @@
                   "map",
                   "string"
                 ],
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "user_data": {
                 "type": "string",
                 "optional": true,
+                "computed": true,
                 "forcenew": true
               },
               "user_id": {
@@ -200,8 +206,7 @@
                     "ip_address": {
                       "type": "string",
                       "optional": true,
-                      "computed": true,
-                      "forcenew": true
+                      "computed": true
                     },
                     "mac_address": {
                       "type": "string",
@@ -213,13 +218,11 @@
                     },
                     "subnet_id": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     }
                   }
                 },
                 "nesting_mode": "list",
-                "forcenew": true,
                 "min_items": 1,
                 "max_items": 2
               }

@@ -1,5 +1,8 @@
 ---
 subcategory: "Global Accelerator (GA)"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_ga_endpoint"
+description: ""
 ---
 
 # huaweicloud_ga_endpoint
@@ -43,7 +46,7 @@ The following arguments are supported:
   Changing this parameter will create a new resource.
 
 * `weight` - (Optional, Int) Specifies the weight of the endpoint based on which the listener distributes traffic.
-  The value ranges from **0** to **100**. Defaults to **1**.
+  The value ranges from `0` to `100`. Defaults to `1`.
 
 ## Attribute Reference
 
@@ -79,6 +82,6 @@ This resource provides the following timeouts configuration options:
 
 The endpoint can be imported using `endpoint_group_id`, `id`, separated by slashes, e.g.
 
-```
-$ terraform import huaweicloud_ga_endpoint.test &ltendpoint_group_id&gt/&ltid&gt
+```bash
+$ terraform import huaweicloud_ga_endpoint.test <endpoint_group_id>/<id>
 ```

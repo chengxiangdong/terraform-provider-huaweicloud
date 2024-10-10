@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/networking/v1/routetables"
@@ -20,6 +18,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API VPC DELETE /v1/{project_id}/routetables/{id}
+// @API VPC GET /v1/{project_id}/routetables/{id}
+// @API VPC PUT /v1/{project_id}/routetables/{id}
+// @API VPC POST /v1/{project_id}/routetables
+// @API VPC POST /v1/{project_id}/routetables/{id}/action
 func ResourceVPCRouteTable() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceVpcRouteTableCreate,
@@ -50,20 +53,10 @@ func ResourceVPCRouteTable() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 64),
-					validation.StringMatch(regexp.MustCompile("^[\u4e00-\u9fa50-9a-zA-Z-_\\.]*$"),
-						"only letters, digits, underscores (_), hyphens (-), and dot (.) are allowed"),
-				),
 			},
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.All(
-					validation.StringLenBetween(0, 255),
-					validation.StringMatch(regexp.MustCompile("^[^<>]*$"),
-						"The angle brackets (< and >) are not allowed."),
-				),
 			},
 			"subnets": {
 				Type:     schema.TypeSet,

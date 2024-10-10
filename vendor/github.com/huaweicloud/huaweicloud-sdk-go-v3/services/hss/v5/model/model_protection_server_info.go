@@ -35,6 +35,9 @@ type ProtectionServerInfo struct {
 	// 勒索防护状态，包含如下4种。   - closed ：关闭。   - opened ：开启。   - opening ：开启中。   - closing ：关闭中。
 	RansomProtectionStatus *string `json:"ransom_protection_status,omitempty"`
 
+	// agent版本
+	AgentVersion *string `json:"agent_version,omitempty"`
+
 	// 防护状态，包含如下2种。 - closed ：未防护。 - opened ：防护中。
 	ProtectStatus *string `json:"protect_status,omitempty"`
 
@@ -66,6 +69,9 @@ type ProtectionServerInfo struct {
 
 	// 主机开通的版本，包含如下7种输入。   - hss.version.null ：无。   - hss.version.basic ：基础版。   - hss.version.advanced ：专业版。   - hss.version.enterprise ：企业版。   - hss.version.premium ：旗舰版。   - hss.version.wtp ：网页防篡改版。   - hss.version.container.enterprise ：容器版。
 	Version *string `json:"version,omitempty"`
+
+	// 服务器类型，包含如下3种输入。   - ecs ：ecs。   - outside ：线下主机。   - workspace ：云桌面。
+	HostSource *string `json:"host_source,omitempty"`
 
 	// 存储库ID
 	VaultId *string `json:"vault_id,omitempty"`

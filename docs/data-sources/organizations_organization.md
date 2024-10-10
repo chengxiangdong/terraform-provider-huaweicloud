@@ -1,5 +1,8 @@
 ---
 subcategory: "Organizations"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_organizations_organization"
+description: ""
 ---
 
 # huaweicloud_organizations_organization
@@ -21,7 +24,7 @@ There are no arguments available for this data source.
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID.
+* `id` - The data source ID.
 
 * `urn` - Indicates the uniform resource name of the organization.
 

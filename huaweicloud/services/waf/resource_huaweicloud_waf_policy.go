@@ -18,6 +18,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API WAF DELETE /v1/{project_id}/waf/policy/{policy_id}
+// @API WAF GET /v1/{project_id}/waf/policy/{policy_id}
+// @API WAF PATCH /v1/{project_id}/waf/policy/{policy_id}
+// @API WAF POST /v1/{project_id}/waf/policy
 func ResourceWafPolicyV1() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceWafPolicyV1Create,
@@ -296,6 +300,7 @@ func resourceWafPolicyV1Read(_ context.Context, d *schema.ResourceData, meta int
 
 	n, err := policies.GetWithEpsID(wafClient, d.Id(), cfg.GetEnterpriseProjectID(d)).Extract()
 	if err != nil {
+		// If the policy does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving WAF policy")
 	}
 
@@ -383,7 +388,8 @@ func resourceWafPolicyV1Delete(_ context.Context, d *schema.ResourceData, meta i
 
 	err = policies.DeleteWithEpsID(wafClient, d.Id(), cfg.GetEnterpriseProjectID(d)).ExtractErr()
 	if err != nil {
-		return diag.Errorf("error deleting WAF policy: %s", err)
+		// If the policy does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF policy")
 	}
 	return nil
 }

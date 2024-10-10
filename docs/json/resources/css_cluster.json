@@ -11,17 +11,27 @@
               },
               "availability_zone": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
+              },
+              "backup_available": {
+                "type": "bool",
+                "computed": true
+              },
+              "bandwidth_resource_id": {
+                "type": "string",
+                "computed": true
               },
               "charging_mode": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
-              "created": {
+              "created_at": {
                 "type": "string",
+                "computed": true
+              },
+              "disk_encrypted": {
+                "type": "bool",
                 "computed": true
               },
               "endpoint": {
@@ -36,14 +46,12 @@
               },
               "engine_version": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "enterprise_project_id": {
                 "type": "string",
                 "optional": true,
-                "computed": true,
-                "forcenew": true
+                "computed": true
               },
               "https_enabled": {
                 "type": "bool",
@@ -53,6 +61,10 @@
               },
               "id": {
                 "type": "string",
+                "computed": true
+              },
+              "is_period": {
+                "type": "bool",
                 "computed": true
               },
               "name": {
@@ -68,7 +80,9 @@
                     {
                       "availability_zone": "string",
                       "id": "string",
+                      "ip": "string",
                       "name": "string",
+                      "resource_id": "string",
                       "spec_code": "string",
                       "status": "string",
                       "type": "string"
@@ -80,18 +94,15 @@
               "password": {
                 "type": "string",
                 "optional": true,
-                "forcenew": true,
                 "sensitive": true
               },
               "period": {
                 "type": "number",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "period_unit": {
                 "type": "string",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "region": {
                 "type": "string",
@@ -99,13 +110,11 @@
               },
               "security_group_id": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "security_mode": {
                 "type": "bool",
-                "optional": true,
-                "forcenew": true
+                "optional": true
               },
               "status": {
                 "type": "string",
@@ -122,6 +131,10 @@
                   "string"
                 ],
                 "optional": true
+              },
+              "updated_at": {
+                "type": "string",
+                "computed": true
               },
               "vpc_id": {
                 "type": "string",
@@ -180,12 +193,18 @@
                   "attributes": {
                     "flavor": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     },
                     "instance_number": {
                       "type": "number",
                       "required": true
+                    },
+                    "shrink_node_ids": {
+                      "type": [
+                        "list",
+                        "string"
+                      ],
+                      "optional": true
                     }
                   },
                   "block_types": {
@@ -194,18 +213,15 @@
                         "attributes": {
                           "size": {
                             "type": "number",
-                            "required": true,
-                            "forcenew": true
+                            "required": true
                           },
                           "volume_type": {
                             "type": "string",
-                            "required": true,
-                            "forcenew": true
+                            "required": true
                           }
                         }
                       },
                       "nesting_mode": "list",
-                      "forcenew": true,
                       "min_items": 1,
                       "max_items": 1
                     }
@@ -219,12 +235,18 @@
                   "attributes": {
                     "flavor": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     },
                     "instance_number": {
                       "type": "number",
                       "required": true
+                    },
+                    "shrink_node_ids": {
+                      "type": [
+                        "list",
+                        "string"
+                      ],
+                      "optional": true
                     }
                   },
                   "block_types": {
@@ -256,12 +278,18 @@
                   "attributes": {
                     "flavor": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     },
                     "instance_number": {
                       "type": "number",
                       "required": true
+                    },
+                    "shrink_node_ids": {
+                      "type": [
+                        "list",
+                        "string"
+                      ],
+                      "optional": true
                     }
                   },
                   "block_types": {
@@ -318,12 +346,18 @@
                   "attributes": {
                     "flavor": {
                       "type": "string",
-                      "required": true,
-                      "forcenew": true
+                      "required": true
                     },
                     "instance_number": {
                       "type": "number",
                       "required": true
+                    },
+                    "shrink_node_ids": {
+                      "type": [
+                        "list",
+                        "string"
+                      ],
+                      "optional": true
                     }
                   },
                   "block_types": {
@@ -332,18 +366,15 @@
                         "attributes": {
                           "size": {
                             "type": "number",
-                            "required": true,
-                            "forcenew": true
+                            "required": true
                           },
                           "volume_type": {
                             "type": "string",
-                            "required": true,
-                            "forcenew": true
+                            "required": true
                           }
                         }
                       },
                       "nesting_mode": "list",
-                      "forcenew": true,
                       "min_items": 1,
                       "max_items": 1
                     }

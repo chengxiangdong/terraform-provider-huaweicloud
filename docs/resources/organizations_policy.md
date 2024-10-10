@@ -1,5 +1,8 @@
 ---
 subcategory: "Organizations"
+layout: "huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_organizations_policy"
+description: ""
 ---
 
 # huaweicloud_organizations_policy
@@ -12,9 +15,9 @@ Manages an Organizations policy resource within HuaweiCloud.
 
 ```hcl
 resource "huaweicloud_organizations_policy" "scp_policy"{
-  name     = "test_policy_name"
-  type     = "service_control_policy"
-  contenet = jsonencode(
+  name    = "test_policy_name"
+  type    = "service_control_policy"
+  content = jsonencode(
     {
       "Version":"5.0",
       "Statement":[
@@ -32,9 +35,9 @@ resource "huaweicloud_organizations_policy" "scp_policy"{
 
 ```hcl
 resource "huaweicloud_organizations_policy" "tag_policy"{
-  name     = "test_policy_name"
-  type     = "tag_policy"
-  contenet = jsonencode(
+  name    = "test_policy_name"
+  type    = "tag_policy"
+  content = jsonencode(
     {
       "tags":{
         "test_tag":{

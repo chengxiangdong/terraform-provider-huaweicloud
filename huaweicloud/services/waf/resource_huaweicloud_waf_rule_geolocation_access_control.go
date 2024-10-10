@@ -21,6 +21,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API WAF PUT /v1/{project_id}/waf/policy/{policy_id}/{rule_type}/{rule_id}/status
+// @API WAF POST /v1/{project_id}/waf/policy/{policy_id}/geoip
+// @API WAF PUT /v1/{project_id}/waf/policy/{policy_id}/geoip/{rule_id}
+// @API WAF DELETE /v1/{project_id}/waf/policy/{policy_id}/geoip/{rule_id}
+// @API WAF GET /v1/{project_id}/waf/policy/{policy_id}/geoip/{rule_id}
 func ResourceRuleGeolocation() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRuleGeolocationCreate,
@@ -160,6 +165,7 @@ func resourceRuleGeolocationRead(_ context.Context, d *schema.ResourceData, meta
 
 	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
+		// If the rule does not exist, the response HTTP status code of the details API is 404.
 		return common.CheckDeletedDiag(d, err, "error retrieving WAF geolocation access control rule")
 	}
 
@@ -259,7 +265,8 @@ func resourceRuleGeolocationDelete(_ context.Context, d *schema.ResourceData, me
 
 	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
-		return diag.Errorf("error deleting WAF geolocation access control rule: %s", err)
+		// If the rule does not exist, the response HTTP status code of the deletion API is 404.
+		return common.CheckDeletedDiag(d, err, "error deleting WAF geolocation access control rule")
 	}
 
 	return nil
