@@ -48,8 +48,9 @@ const (
 
 // resourcemode from SC
 const (
-	Availability = "availability"
-	ShareType    = "shareType"
+	Availability                 = "availability"
+	ShareType                    = "shareType"
+	AutoCreateSecurityGroupRules = "autoCreateSecurityGroupRules"
 )
 
 func (cs *controllerServer) CreateVolume(_ context.Context, req *csi.CreateVolumeRequest) (
@@ -98,6 +99,15 @@ func (cs *controllerServer) CreateVolume(_ context.Context, req *csi.CreateVolum
 		shareType = defaultShareType
 	}
 
+	var autoCreateSGRules *string
+	if val, ok := parameters[AutoCreateSecurityGroupRules]; ok && val != "" {
+		if val != "true" && val != "false" {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"Validation failed, autoCreateSecurityGroupRules must be \"true\" or \"false\", got: %s", val)
+		}
+		autoCreateSGRules = &val
+	}
+
 	createShareOpts := shares.Share{
 		Name:             name,
 		ShareProto:       defaultShareProto,
@@ -107,6 +117,9 @@ func (cs *controllerServer) CreateVolume(_ context.Context, req *csi.CreateVolum
 		VpcID:            cs.Driver.cloud.Vpc.ID,
 		SubnetID:         cs.Driver.cloud.Vpc.SubnetID,
 		SecurityGroupID:  cs.Driver.cloud.Vpc.SecurityGroupID,
+		Metadata: shares.Metadata{
+			AutoCreateSecurityGroupRules: autoCreateSGRules,
+		},
 	}
 	log.Infof("CreateVolume creating param: %v", protosanitizer.StripSecrets(createShareOpts))
 	// Check if there are any volumes with the same name
@@ -166,6 +179,7 @@ func checkVolumeExists(cloud *config.CloudCredentials, share shares.Share) (
 				VpcID:            v.VpcID,
 				SubnetID:         v.SubnetID,
 				SecurityGroupID:  v.SecurityGroupID,
+				Metadata:         share.Metadata,
 			}
 			if reflect.DeepEqual(turboOpts, share) {
 				return &v, nil
@@ -411,7 +425,7 @@ func (cs *controllerServer) ControllerExpandVolume(_ context.Context, req *csi.C
 	}
 	log.Infof("Successfully resized volume %v to size %v", volumeID, sizeInGiB)
 	return &csi.ControllerExpandVolumeResponse{
-		CapacityBytes:         int64(sizeInGiB),
+		CapacityBytes:         int64(sizeInGiB) * common.GbByteSize,
 		NodeExpansionRequired: false,
 	}, nil
 }
